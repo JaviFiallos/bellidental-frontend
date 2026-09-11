@@ -1,0 +1,88 @@
+bellidental-frontend/
+├── package.json
+├── angular.json
+├── tsconfig.json
+│
+└── src/
+    ├── main.ts
+    │
+    ├── app/
+    │   │
+    │   ├── app.component.ts
+    │   ├── app.config.ts
+    │   ├── app.routes.ts
+    │   │
+    │   ├── core/
+    │   │   ├── auth/
+    │   │   │   ├── auth.service.ts
+    │   │   │   ├── auth-state.service.ts
+    │   │   │   └── auth.models.ts
+    │   │   │
+    │   │   ├── guards/
+    │   │   │   ├── auth.guard.ts
+    │   │   │   └── role.guard.ts
+    │   │   │
+    │   │   ├── interceptors/
+    │   │   │   ├── auth.interceptor.ts
+    │   │   │   └── error.interceptor.ts
+    │   │   │
+    │   │   ├── services/
+    │   │   │   └── api.service.ts
+    │   │   │
+    │   │   └── models/
+    │   │       └── user.model.ts
+    │   │
+    │   ├── shared/
+    │   │   ├── components/
+    │   │   │   ├── button/
+    │   │   │   ├── modal/
+    │   │   │   ├── table/
+    │   │   │   └── empty-state/
+    │   │   │
+    │   │   ├── directives/
+    │   │   ├── pipes/
+    │   │   └── utils/
+    │   │
+    │   ├── layout/
+    │   │   ├── main-layout/
+    │   │   ├── sidebar/
+    │   │   ├── header/
+    │   │   └── breadcrumbs/
+    │   │
+    │   └── features/
+    │       │
+    │       ├── auth/
+    │       │   ├── pages/
+    │       │   │   └── login/
+    │       │   ├── components/
+    │       │   └── auth.routes.ts
+    │       │
+    │       ├── dashboard/
+    │       │   ├── pages/
+    │       │   │   └── dashboard/
+    │       │   ├── components/
+    │       │   │   ├── stat-card/
+    │       │   │   ├── appointments-summary/
+    │       │   │   └── quick-actions/
+    │       │   ├── services/
+    │       │   └── dashboard.routes.ts
+    │       │
+    │       ├── patients/
+    │       │   ├── pages/
+    │       │   ├── components/
+    │       │   ├── services/
+    │       │   │   └── patient.service.ts
+    │       │   ├── models/
+    │       │   │   └── patient.model.ts
+    │       │   └── patients.routes.ts
+    │       │
+    │       ├── professionals/
+    │       ├── appointments/
+    │       ├── clinical/
+    │       ├── prescriptions/
+    │       ├── billing/
+    │       └── notifications/
+    │
+    └── assets/
+        ├── images/
+        └── icons/
