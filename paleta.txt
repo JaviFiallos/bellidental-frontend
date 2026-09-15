@@ -1,0 +1,17 @@
+Azul de marca
+#0F2A44 /* Azul profundo — color principal de marca */
+#1C3C5C /* Azul primario — logo y elementos principales */
+#2C5F8A /* Azul medio — variantes, enlaces y elementos secundarios */
+🌤️ Pasteles para degradados
+#6E93B8 /* Azul pastel oscuro — inicio de degradados */
+#A8C4DE /* Azul pastel medio — transición de degradados */
+#D3E4F0 /* Azul pastel claro — transición suave */
+#EFF6FB /* Azul casi blanco — final de degradados / fondos suaves */
+🟠 Acentos antagónicos — dorado / cálido
+#E3A857 /* Dorado suave — acentos destacados */
+#C97B2E /* Dorado oscuro — botones y elementos de acción */
+#D9724F /* Coral — acento opcional para alertas o destacados */
+⚪ Neutros / superficie
+#F7F9FB /* Blanco frío — fondos principales y superficies */
+#2E3A46 /* Gris azulado oscuro — textos, bordes o superficies oscuras */
+#FFFFFF /* Blanco puro — tarjetas, fondos y texto sobre fondos oscuros */

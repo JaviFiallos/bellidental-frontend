@@ -1,0 +1,215 @@
+<main class="login-page" aria-label="Página de inicio de sesión">
+
+  <!-- ═══════════════════════════════════════════════════
+       PANEL IZQUIERDO — 61.8% — Marca / Ilustración
+  ═══════════════════════════════════════════════════ -->
+  <section class="brand-panel" aria-hidden="true">
+    <div class="brand-panel__content">
+
+      <!-- Ilustración SVG del diente (línea fina, estilo minimalista) -->
+      <div class="brand-panel__tooth">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" fill="none" aria-hidden="true">
+          <!-- Corona del diente -->
+          <path
+            d="M20 55 C10 30, 15 10, 30 8 C40 6, 48 14, 60 14 C72 14, 80 6, 90 8 C105 10, 110 30, 100 55
+               C95 70, 88 85, 84 100 C81 112, 78 125, 73 130 C69 134, 65 132, 62 128 C60 125, 60 118, 60 118
+               C60 118, 60 125, 58 128 C55 132, 51 134, 47 130 C42 125, 39 112, 36 100
+               C32 85, 25 70, 20 55 Z"
+            stroke="rgba(255,255,255,0.9)"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+          <!-- Línea interna del diente (detalle anatómico) -->
+          <path
+            d="M40 20 C44 32, 44 48, 42 60"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <path
+            d="M80 20 C76 32, 76 48, 78 60"
+            stroke="rgba(255,255,255,0.4)"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <!-- Punto dorado — toque cálido único -->
+          <circle cx="60" cy="38" r="3.5" fill="#E3A857" opacity="0.85"/>
+        </svg>
+      </div>
+
+      <!-- Eslogan en tipografía script -->
+      <div class="brand-panel__slogan">
+        <p class="slogan-text">Creamos bellas sonrisas</p>
+        <p class="brand-name">Bellidental</p>
+      </div>
+
+      <!-- Decoración: líneas de fondo sutiles -->
+      <div class="brand-panel__deco" aria-hidden="true">
+        <span class="deco-circle deco-circle--lg"></span>
+        <span class="deco-circle deco-circle--sm"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════
+       PANEL DERECHO — 38.2% — Formulario de login
+  ═══════════════════════════════════════════════════ -->
+  <section class="form-panel">
+    <div class="form-panel__inner">
+
+      <!-- Logo pequeño -->
+      <div class="form-logo" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" fill="none" width="40" height="46">
+          <path
+            d="M8 22 C4 12, 6 4, 12 3 C16 2, 19 6, 24 6 C29 6, 32 2, 36 3
+               C42 4, 44 12, 40 22 C38 28, 35 34, 34 40 C32 45, 31 50, 29 52
+               C27 54, 26 53, 25 51 C24 50, 24 47, 24 47 C24 47, 24 50, 23 51
+               C22 53, 21 54, 19 52 C17 50, 16 45, 14 40 C13 34, 10 28, 8 22 Z"
+            stroke="#1C3C5C"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+          <circle cx="24" cy="15" r="2" fill="#E3A857"/>
+        </svg>
+      </div>
+
+      <!-- Encabezado del formulario -->
+      <header class="form-header">
+        <h1 class="form-title">Bienvenido de nuevo</h1>
+        <div class="form-title-accent" aria-hidden="true"></div>
+        <p class="form-subtitle">Ingresa tus credenciales para continuar</p>
+      </header>
+
+      <!-- Formulario -->
+      <form
+        class="login-form"
+        (ngSubmit)="onSubmit()"
+        #loginForm="ngForm"
+        novalidate
+        aria-label="Formulario de inicio de sesión"
+      >
+
+        <!-- Campo usuario -->
+        <div class="form-field">
+          <label class="field-label" for="username">Usuario</label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input
+              id="username"
+              class="input input--icon"
+              type="text"
+              [(ngModel)]="credentials.username"
+              name="username"
+              placeholder="tu_usuario"
+              autocomplete="username"
+              required
+              [attr.aria-invalid]="errorMessage() ? 'true' : null"
+            />
+          </div>
+        </div>
+
+        <!-- Campo contraseña -->
+        <div class="form-field">
+          <label class="field-label" for="password">Contraseña</label>
+          <div class="input-wrapper">
+            <span class="input-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input
+              id="password"
+              class="input input--icon"
+              [type]="showPassword() ? 'text' : 'password'"
+              [(ngModel)]="credentials.password"
+              name="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              required
+              [attr.aria-invalid]="errorMessage() ? 'true' : null"
+            />
+            <button
+              type="button"
+              class="input-toggle-btn"
+              (click)="togglePassword()"
+              [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              @if (showPassword()) {
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              }
+            </button>
+          </div>
+        </div>
+
+        <!-- Recordarme + ¿Olvidaste tu contraseña? -->
+        <div class="form-actions-row">
+          <label class="checkbox-label" for="remember-me">
+            <input
+              id="remember-me"
+              type="checkbox"
+              class="checkbox"
+              [(ngModel)]="rememberMe"
+              name="rememberMe"
+            />
+            <span class="checkbox-custom" aria-hidden="true"></span>
+            <span>Recordarme</span>
+          </label>
+          <a href="#" class="link-forgot" tabindex="0">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <!-- Mensaje de error -->
+        @if (errorMessage()) {
+          <div class="error-alert" role="alert" aria-live="polite">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <!-- Botón principal -->
+        <button
+          id="btn-login-submit"
+          type="submit"
+          class="btn btn-primary btn-login"
+          [disabled]="isLoading()"
+          [class.btn-login--loading]="isLoading()"
+        >
+          @if (isLoading()) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Iniciando sesión…</span>
+          } @else {
+            <span>Iniciar sesión</span>
+          }
+        </button>
+
+      </form>
+
+      <!-- Footer del panel -->
+      <footer class="form-footer">
+        <p class="form-footer__text">
+          ¿Problemas para acceder? Contacta al
+          <a href="mailto:admin@bellidental.com" class="link-support">administrador</a>.
+        </p>
+      </footer>
+
+    </div>
+  </section>
+
+</main>
