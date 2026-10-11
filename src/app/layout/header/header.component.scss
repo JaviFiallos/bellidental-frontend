@@ -1,0 +1,146 @@
+@use '../../shared/styles/breakpoints' as bp;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.app-header {
+  height: 64px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-md);
+  gap: var(--space-md);
+  box-sizing: border-box;
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+.app-header__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    background-color: var(--slate-100);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+  }
+
+  @include bp.bp-up('md') {
+    display: none;
+  }
+}
+
+.app-header__search-slot {
+  flex: 1;
+  max-width: 480px;
+}
+
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+/* Próxima cita */
+.app-header__next-appointment {
+  font-size: var(--fs-xs);
+  display: none;
+
+  @include bp.bp-up('sm') {
+    display: block;
+  }
+}
+
+.next-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--slate-100);
+  color: var(--color-text);
+  font-weight: 500;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @include bp.bp-up('lg') {
+    max-width: 400px;
+  }
+}
+
+.next-app--active {
+  background-color: var(--blue-100);
+  color: var(--blue-800);
+}
+
+.next-app--error {
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.next-app--empty {
+  background-color: transparent;
+  color: var(--color-text-muted);
+}
+
+.next-app__label {
+  font-weight: 600;
+}
+
+.next-app__time {
+  font-weight: 600;
+}
+
+.next-app__sep {
+  opacity: 0.6;
+}
+
+.next-app__patient,
+.next-app__prof {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fecha */
+.app-header__date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.app-header__date-icon {
+  color: var(--color-primary);
+}
+
+.app-header__date-text {
+  text-transform: capitalize;
+}

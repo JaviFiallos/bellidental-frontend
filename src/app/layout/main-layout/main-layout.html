@@ -1,0 +1,59 @@
+<div class="shell-layout">
+  <!-- Sidebar fijo en desktop / tablet (md+) -->
+  @if (sidebarMode() !== 'drawer') {
+    <aside class="shell-sidebar-container">
+      <app-sidebar
+        [items]="navItems()"
+        [userName]="userName()"
+        [areaLabel]="areaLabel()"
+        [mode]="sidebarMode()"
+        (logout)="onLogout()"
+      />
+    </aside>
+  }
+
+  <!-- Drawer para pantallas pequeñas (< md) con CDK TrapFocus -->
+  @if (sidebarMode() === 'drawer' && isDrawerOpen()) {
+    <div
+      class="drawer-backdrop"
+      (click)="closeDrawer()"
+      aria-hidden="true"
+    ></div>
+    <div
+      id="sidebar-drawer"
+      class="drawer-panel"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menú de navegación"
+    >
+      <app-sidebar
+        [items]="navItems()"
+        [userName]="userName()"
+        [areaLabel]="areaLabel()"
+        mode="drawer"
+        (logout)="onLogout()"
+      />
+    </div>
+  }
+
+  <!-- Contenedor Principal (Header + Contenido) -->
+  <div class="shell-main">
+    <app-header
+      [today]="today()"
+      [nextAppointment]="nextAppointmentStore.nextAppointment()"
+      [showProfessional]="showProfessionalInHeader()"
+      [hasError]="nextAppointmentStore.hasError()"
+      [isLoading]="nextAppointmentStore.isLoading()"
+      [isDrawerOpen]="isDrawerOpen()"
+      (menuToggle)="toggleDrawer()"
+    />
+
+    <main class="shell-content">
+      <div class="shell-content-inner">
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+</div>

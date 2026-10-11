@@ -1,35 +1,84 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { homeRedirectGuard } from './core/guards/home-redirect.guard';
+import { profileGuard } from './core/guards/profile.guard';
+import { MainLayout } from './layout/main-layout/main-layout';
 
 export const routes: Routes = [
-  {
-    path: '',
-    pathMatch: 'full',
-    canActivate: [homeRedirectGuard],
-    children: [],
-  },
   {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.authRoutes),
   },
   {
-    path: 'recepcion',
+    path: '',
+    component: MainLayout,
     canActivate: [authGuard],
-    loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
-  },
-  {
-    path: 'consultorio',
-    canActivate: [authGuard],
-    loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
-  },
-  {
-    path: 'direccion/estadisticas',
-    canActivate: [authGuard],
-    loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        canActivate: [homeRedirectGuard],
+        children: [],
+      },
+      {
+        path: 'recepcion',
+        canActivate: [profileGuard('SECRETARIA')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Agenda del día', task: 'tarea 003' },
+      },
+      {
+        path: 'recepcion/horarios',
+        canActivate: [profileGuard('SECRETARIA')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Horarios', task: 'tarea 006' },
+      },
+      {
+        path: 'pacientes/nuevo',
+        canActivate: [profileGuard('SECRETARIA')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Nuevo paciente', task: 'tarea 005' },
+      },
+      {
+        path: 'pacientes/:id',
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Ficha del paciente', task: 'tareas 005/014' },
+      },
+      {
+        path: 'consultorio',
+        canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Mis citas de hoy', task: 'tarea 007' },
+      },
+      {
+        path: 'consultorio/atencion/:encounterId',
+        canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Atención', task: 'tarea 008' },
+      },
+      {
+        path: 'direccion/estadisticas',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Estadísticas', task: 'tarea 016' },
+      },
+      {
+        path: 'direccion/auditoria',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
+        data: { title: 'Auditoría', task: 'tarea 017' },
+      },
+    ],
   },
   {
     path: '**',
-    redirectTo: 'auth/login',
+    redirectTo: '',
   },
 ];

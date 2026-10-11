@@ -1,0 +1,231 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, var(--blue-900), var(--blue-800));
+  color: var(--white);
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.sidebar--full,
+.sidebar--drawer {
+  width: 232px;
+}
+
+.sidebar--icons {
+  width: 72px;
+}
+
+.sidebar__brand {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--white) 10%, transparent);
+}
+
+.sidebar--icons .sidebar__brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar__brand-logo {
+  color: var(--gold-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar__brand-title {
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  color: var(--white);
+  line-height: 1;
+}
+
+.sidebar__menu {
+  flex: 1;
+  list-style: none;
+  padding: var(--space-md) 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.sidebar__menu-item {
+  width: 100%;
+}
+
+.sidebar__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.75rem var(--space-md);
+  color: color-mix(in srgb, var(--white) 80%, transparent);
+  text-decoration: none;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  min-height: 44px;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--white) 8%, transparent);
+    color: var(--white);
+  }
+
+  &.is-active {
+    background-color: color-mix(in srgb, var(--white) 12%, transparent);
+    color: var(--white);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: var(--gold-400);
+      border-radius: 0 2px 2px 0;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold-400);
+    outline-offset: -2px;
+  }
+}
+
+.sidebar--icons {
+  .sidebar__link {
+    justify-content: center;
+    padding: 0.75rem 0;
+  }
+
+  .sidebar__logout-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+  }
+
+  .sidebar__link,
+  .sidebar__logout-btn {
+    &:hover .sidebar__tooltip,
+    &:focus-visible .sidebar__tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(-50%) translateX(0);
+    }
+  }
+}
+
+.sidebar__link-icon {
+  flex-shrink: 0;
+}
+
+.sidebar__link-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__tooltip {
+  position: absolute;
+  left: 76px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background-color: var(--blue-950);
+  color: var(--white);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+}
+
+.sidebar__footer {
+  padding: var(--space-md);
+  border-top: 1px solid color-mix(in srgb, var(--white) 10%, transparent);
+}
+
+.sidebar--icons .sidebar__footer {
+  padding: var(--space-sm) 0;
+}
+
+.sidebar__user-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  &.is-collapsed {
+    align-items: center;
+
+    .sidebar__user-details {
+      display: none;
+    }
+  }
+}
+
+.sidebar__user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.sidebar__user-name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__user-area {
+  font-size: var(--fs-xs);
+  color: var(--blue-200);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sidebar__logout-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--white) 15%, transparent);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  min-height: 44px;
+  justify-content: center;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--white) 10%, transparent);
+    border-color: color-mix(in srgb, var(--white) 30%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold-400);
+  }
+}
