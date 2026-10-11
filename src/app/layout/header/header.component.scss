@@ -6,6 +6,7 @@
 }
 
 .app-header {
+  position: relative;
   height: 64px;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -50,9 +51,85 @@
   }
 }
 
+.app-header__mobile-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    background-color: var(--slate-100);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+  }
+
+  @include bp.bp-up('md') {
+    display: none;
+  }
+}
+
 .app-header__search-slot {
+  display: none;
   flex: 1;
-  max-width: 480px;
+  max-width: 36rem;
+
+  @include bp.bp-down('md') {
+    &.is-expanded {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      background-color: var(--color-surface);
+      padding: 0 var(--space-md);
+
+      app-patient-search {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+  }
+
+  @include bp.bp-up('md') {
+    display: block;
+  }
+}
+
+.app-header__search-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--slate-100);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+  }
+
+  @include bp.bp-up('md') {
+    display: none;
+  }
 }
 
 .app-header__right {

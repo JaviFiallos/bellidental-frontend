@@ -1,0 +1,66 @@
+@use '../../../../shared/styles/breakpoints' as bp;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.search-prefix {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: var(--space-sm);
+  color: var(--color-text-muted);
+}
+
+.search-suffix {
+  display: flex;
+  align-items: center;
+  padding-right: var(--space-sm);
+}
+
+.search-shortcut {
+  display: none;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  line-height: 1;
+
+  @include bp.bp-up('lg') {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+.patient-result-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+
+  &__name {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+  }
+
+  &__sep {
+    opacity: 0.6;
+  }
+}

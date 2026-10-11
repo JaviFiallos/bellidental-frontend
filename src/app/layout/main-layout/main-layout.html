@@ -8,6 +8,7 @@
         [areaLabel]="areaLabel()"
         [mode]="sidebarMode()"
         (logout)="onLogout()"
+        (searchRequested)="onSearchRequested()"
       />
     </aside>
   }
@@ -34,6 +35,7 @@
         [areaLabel]="areaLabel()"
         mode="drawer"
         (logout)="onLogout()"
+        (searchRequested)="onSearchRequested()"
       />
     </div>
   }
@@ -47,7 +49,16 @@
       [hasError]="nextAppointmentStore.hasError()"
       [isLoading]="nextAppointmentStore.isLoading()"
       [isDrawerOpen]="isDrawerOpen()"
+      [isCompact]="isCompact()"
+      [searchResults]="patientSearchStore.results()"
+      [isSearchLoading]="patientSearchStore.isLoading()"
+      [searchError]="patientSearchStore.errorMessage()"
+      [searchQuery]="patientSearchStore.query()"
+      [canRegisterPatient]="canRegisterPatient()"
       (menuToggle)="toggleDrawer()"
+      (searchQueryChange)="onSearchQueryChange($event)"
+      (patientSelected)="onPatientSelected($event)"
+      (registerPatient)="onRegisterPatient($event)"
     />
 
     <main class="shell-content">

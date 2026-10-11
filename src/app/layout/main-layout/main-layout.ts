@@ -7,6 +7,7 @@ import {
   inject,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -18,12 +19,13 @@ import { HeaderComponent } from '../header/header.component';
 import { getNavItemsForProfile } from '../nav-items';
 import { NextAppointmentStore } from '../../features/appointments';
 import { ProfessionalsApi } from '../../features/professionals';
+import { Patient, PatientSearchStore } from '../../features/patients';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
   imports: [RouterOutlet, SidebarComponent, HeaderComponent, A11yModule],
-  providers: [NextAppointmentStore],
+  providers: [NextAppointmentStore, PatientSearchStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.scss',
@@ -35,12 +37,19 @@ export class MainLayout implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly professionalsApi = inject(ProfessionalsApi);
   readonly nextAppointmentStore = inject(NextAppointmentStore);
+  readonly patientSearchStore = inject(PatientSearchStore);
+
+  readonly headerRef = viewChild(HeaderComponent);
 
   readonly isDrawerOpen = signal<boolean>(false);
   readonly windowWidth = signal<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   // Nombre del usuario (profesional si existe, o correo)
   readonly professionalName = signal<string | null>(null);
+
+  readonly canRegisterPatient = computed(() => {
+    return this.sessionStore.profile() === 'SECRETARIA';
+  });
 
   readonly today = computed(() => this.nextAppointmentStore.today());
 
@@ -79,6 +88,8 @@ export class MainLayout implements OnInit {
     return 'full';
   });
 
+  readonly isCompact = computed(() => this.sidebarMode() === 'drawer');
+
   @HostListener('window:resize')
   onResize(): void {
     if (typeof window !== 'undefined') {
@@ -94,6 +105,56 @@ export class MainLayout implements OnInit {
     if (this.isDrawerOpen()) {
       this.isDrawerOpen.set(false);
     }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    // Atajos Ctrl+K y Cmd+K
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      this.focusSearch();
+      return;
+    }
+
+    // Atajo / (solo si el foco no está en un input, textarea o contenteditable)
+    if (event.key === '/') {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isInput =
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        Boolean(target?.isContentEditable);
+
+      if (!isInput) {
+        event.preventDefault();
+        this.focusSearch();
+      }
+    }
+  }
+
+  focusSearch(): void {
+    this.headerRef()?.focusSearch();
+  }
+
+  onSearchRequested(): void {
+    if (this.isDrawerOpen()) {
+      this.closeDrawer();
+    }
+    this.focusSearch();
+  }
+
+  onSearchQueryChange(text: string): void {
+    this.patientSearchStore.setQuery(text);
+  }
+
+  onPatientSelected(patient: Patient): void {
+    this.patientSearchStore.clear();
+    this.router.navigate(['/pacientes', patient.id]);
+  }
+
+  onRegisterPatient(query: string): void {
+    this.patientSearchStore.clear();
+    this.router.navigate(['/pacientes/nuevo'], { queryParams: { q: query } });
   }
 
   ngOnInit(): void {

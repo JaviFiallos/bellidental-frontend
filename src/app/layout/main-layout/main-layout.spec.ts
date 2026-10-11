@@ -1,9 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { Component } from '@angular/core';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MainLayout } from './main-layout';
 import { SessionStore } from '../../core/auth/session.store';
 
@@ -70,6 +70,8 @@ describe('MainLayout', () => {
           { path: 'recepcion', component: DummyComponent },
           { path: 'recepcion/horarios', component: DummyComponent },
           { path: 'consultorio', component: DummyComponent },
+          { path: 'pacientes/:id', component: DummyComponent },
+          { path: 'pacientes/nuevo', component: DummyComponent },
         ]),
       ],
     }).compileComponents();
@@ -234,5 +236,196 @@ describe('MainLayout', () => {
     const areaLabelEl = compiled.querySelector('.sidebar__user-area');
     expect(userNameEl?.textContent).toContain('secretaria@bellidental.local');
     expect(areaLabelEl?.textContent).toContain('Recepción');
+  });
+
+  it('buscador: secretaria escribe "per" → GET /api/v1/patients?query=per&page=0&size=8 → muestra nombres → ↓ + Enter navega a /pacientes/{id}', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
+
+    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setCurrentUser({
+      userId: 'u-sec',
+      email: 'secretaria@bellidental.local',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ'],
+    });
+
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    fixture = TestBed.createComponent(MainLayout);
+    fixture.detectChanges();
+
+    // Atender GET /api/v1/appointments inicial
+    const appReq = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    appReq.flush({
+      success: true,
+      message: 'OK',
+      data: [],
+    });
+    fixture.detectChanges();
+
+    // Escribir "per" en el buscador
+    const inputEl = fixture.nativeElement.querySelector('.combobox-input') as HTMLInputElement;
+    expect(inputEl).toBeTruthy();
+    inputEl.value = 'per';
+    inputEl.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    // Avanzar debounce (250 ms)
+    vi.advanceTimersByTime(250);
+
+    // Atender petición de pacientes
+    const patReq = httpMock.expectOne(
+      (req) =>
+        req.url === '/api/v1/patients' &&
+        req.params.get('query') === 'per' &&
+        req.params.get('page') === '0' &&
+        req.params.get('size') === '8'
+    );
+    expect(patReq.request.method).toBe('GET');
+
+    patReq.flush({
+      success: true,
+      message: 'OK',
+      data: {
+        content: [
+          {
+            id: 'pat-1',
+            documentType: 'CI',
+            documentNumber: '1712345678',
+            firstName: 'Juan',
+            lastName: 'Pérez',
+            fullName: 'Juan Pérez',
+            birthDate: '1995-05-10',
+            age: 31,
+            sex: 'M',
+            bloodType: 'O_POSITIVE',
+            bloodTypeLabel: 'O+',
+            phoneE164: '593987654321',
+            email: 'juan.perez@example.com',
+            emergencyContactName: null,
+            emergencyContactPhoneE164: null,
+            active: true,
+            createdAt: '2026-01-01T10:00:00Z',
+            updatedAt: '2026-01-01T10:00:00Z',
+          },
+          {
+            id: 'pat-2',
+            documentType: 'CI',
+            documentNumber: '1787654321',
+            firstName: 'María',
+            lastName: 'Pérez',
+            fullName: 'María Pérez',
+            birthDate: '2000-01-15',
+            age: 26,
+            sex: 'F',
+            bloodType: null,
+            bloodTypeLabel: null,
+            phoneE164: '593991234567',
+            email: null,
+            emergencyContactName: null,
+            emergencyContactPhoneE164: null,
+            active: true,
+            createdAt: '2026-01-01T10:00:00Z',
+            updatedAt: '2026-01-01T10:00:00Z',
+          },
+        ],
+        totalElements: 2,
+        totalPages: 1,
+        number: 0,
+        size: 8,
+      },
+    });
+
+    fixture.detectChanges();
+
+    // Se ven los dos nombres en la lista
+    expect(document.body.textContent).toContain('Juan Pérez');
+    expect(document.body.textContent).toContain('María Pérez');
+
+    // ↓ + Enter
+    inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    fixture.detectChanges();
+
+    inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+
+    // Navega a /pacientes/pat-1
+    expect(navigateSpy).toHaveBeenCalledWith(['/pacientes', 'pat-1']);
+  });
+
+  it('buscador: secretaria escribe "zzz" → respuesta vacía → se ve "Registrar paciente «zzz»" → Enter navega a /pacientes/nuevo?q=zzz', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
+
+    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setCurrentUser({
+      userId: 'u-sec',
+      email: 'secretaria@bellidental.local',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ'],
+    });
+
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
+    fixture = TestBed.createComponent(MainLayout);
+    fixture.detectChanges();
+
+    // Atender GET /api/v1/appointments inicial
+    const appReq = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    appReq.flush({
+      success: true,
+      message: 'OK',
+      data: [],
+    });
+    fixture.detectChanges();
+
+    // Escribir "zzz" en el buscador
+    const inputEl = fixture.nativeElement.querySelector('.combobox-input') as HTMLInputElement;
+    expect(inputEl).toBeTruthy();
+    inputEl.value = 'zzz';
+    inputEl.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    // Avanzar debounce (250 ms)
+    vi.advanceTimersByTime(250);
+
+    // Atender petición de pacientes con página vacía
+    const patReq = httpMock.expectOne(
+      (req) =>
+        req.url === '/api/v1/patients' &&
+        req.params.get('query') === 'zzz' &&
+        req.params.get('page') === '0' &&
+        req.params.get('size') === '8'
+    );
+    expect(patReq.request.method).toBe('GET');
+
+    patReq.flush({
+      success: true,
+      message: 'OK',
+      data: {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        number: 0,
+        size: 8,
+      },
+    });
+
+    fixture.detectChanges();
+
+    // Se ve la opción "Registrar paciente «zzz»"
+    expect(document.body.textContent).toContain('Registrar paciente «zzz»');
+
+    // Enter
+    inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+
+    // Navega a /pacientes/nuevo?q=zzz
+    expect(navigateSpy).toHaveBeenCalledWith(['/pacientes/nuevo'], {
+      queryParams: { q: 'zzz' },
+    });
   });
 });

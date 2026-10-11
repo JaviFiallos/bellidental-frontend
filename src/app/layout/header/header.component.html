@@ -1,4 +1,4 @@
-<header class="app-header">
+<header class="app-header" [class.app-header--search-expanded]="isMobileSearchExpanded()">
   <div class="app-header__left">
     <!-- Botón hamburguesa en < md -->
     <button
@@ -12,8 +12,39 @@
       <bd-icon [name]="menuIcon" [size]="24" />
     </button>
 
-    <!-- Espacio reservado para buscador global (Tarea 002b) -->
-    <div class="app-header__search-slot"></div>
+    <!-- Botón de búsqueda en < md cuando no está expandido -->
+    <button
+      type="button"
+      class="app-header__mobile-search-btn"
+      (click)="openMobileSearch()"
+      aria-label="Buscar pacientes"
+    >
+      <bd-icon [name]="searchIcon" [size]="20" />
+    </button>
+
+    <!-- Buscador global -->
+    <div class="app-header__search-slot" [class.is-expanded]="isMobileSearchExpanded()">
+      <app-patient-search
+        [results]="searchResults()"
+        [isLoading]="isSearchLoading()"
+        [errorMessage]="searchError()"
+        [query]="searchQuery()"
+        [canRegister]="canRegisterPatient()"
+        (queryChange)="onSearchQueryChange($event)"
+        (selected)="onPatientSelected($event)"
+        (register)="onRegisterPatient($event)"
+      />
+      @if (isMobileSearchExpanded()) {
+        <button
+          type="button"
+          class="app-header__search-close-btn"
+          (click)="closeMobileSearch()"
+          aria-label="Cerrar búsqueda"
+        >
+          <bd-icon [name]="closeIcon" [size]="20" />
+        </button>
+      }
+    </div>
   </div>
 
   <div class="app-header__right">
