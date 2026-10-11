@@ -2,68 +2,11 @@
    BELLIDENTAL — GLOBAL STYLES
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
-
-:root {
-  /* --- Colores de marca --- */
-  --color-primary-dark: #0F2A44;
-  --color-primary: #1C3C5C;
-  --color-primary-mid: #2C5F8A;
-
-  --color-pastel-1: #6E93B8;
-  --color-pastel-2: #A8C4DE;
-  --color-pastel-3: #D3E4F0;
-  --color-pastel-4: #EFF6FB;
-
-  --color-accent-gold: #E3A857;
-  --color-accent-gold-dark: #C97B2E;
-  --color-accent-coral: #D9724F;
-
-  --color-bg: #F7F9FB;
-  --color-surface: #FFFFFF;
-  --color-text: #2E3A46;
-  --color-text-muted: #6B7684;
-  --color-border: #E1E7ED;
-
-  /* --- Estados --- */
-  --color-danger: #C94F4F;
-  --color-success: #3E8E63;
-
-  /* --- Tipografía --- */
-  --font-heading: 'Playfair Display', Georgia, serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.875rem;
-  --fs-base: 1rem;
-  --fs-md: 1.125rem;
-  --fs-lg: 1.5rem;
-  --fs-xl: 2rem;
-  --fs-2xl: 2.75rem;
-
-  --lh-tight: 1.2;
-  --lh-normal: 1.6;
-
-  /* --- Espaciado (escala aproximada a proporción áurea) --- */
-  --space-xs: 0.4rem;
-  --space-sm: 0.65rem;
-  --space-md: 1rem;
-  --space-lg: 1.6rem;
-  --space-xl: 2.6rem;
-  --space-2xl: 4.2rem;
-
-  /* --- Radios y sombras --- */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --shadow-sm: 0 1px 3px rgba(15, 42, 68, 0.06);
-  --shadow-md: 0 4px 16px rgba(15, 42, 68, 0.08);
-  --shadow-lg: 0 12px 32px rgba(15, 42, 68, 0.12);
-
-  /* --- Transiciones --- */
-  --transition-fast: 150ms ease;
-  --transition-base: 220ms ease;
-}
+@use '@fontsource-variable/inter';
+@use '@fontsource/playfair-display';
+@use '@fontsource/playfair-display/400-italic.css' as playfair-italic;
+@use './app/shared/styles/tokens';
+@use './app/shared/styles/breakpoints' as bp;
 
 /* --- Reset básico --- */
 *, *::before, *::after {
@@ -92,12 +35,13 @@ img, svg {
 }
 
 a {
-  color: var(--color-primary-mid);
+  color: var(--color-info);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
+
 a:hover {
-  color: var(--color-accent-gold-dark);
+  color: var(--color-accent-hover);
 }
 
 /* --- Tipografía --- */
@@ -105,7 +49,7 @@ h1, h2, h3, .font-heading {
   font-family: var(--font-heading);
   font-weight: 500;
   line-height: var(--lh-tight);
-  color: var(--color-primary-dark);
+  color: var(--blue-900);
   letter-spacing: -0.01em;
 }
 
@@ -120,14 +64,14 @@ p {
 .text-muted { color: var(--color-text-muted); }
 .text-brand { color: var(--color-primary); }
 
-/* Acento tipo "firma" — para eslóganes o nombre de marca, como en el logo */
+/* Acento de marca (logotipo / firma) */
 .brand-script {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-heading);
   font-style: italic;
   font-weight: 500;
 }
 
-/* --- Botones --- */
+/* --- Botones (clases base con alias semánticos) --- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -140,35 +84,67 @@ p {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  text-decoration: none;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
 }
-.btn:active { transform: scale(0.98); }
 
 .btn-primary {
   background-color: var(--color-primary);
-  color: #fff;
-}
-.btn-primary:hover {
-  background-color: var(--color-primary-mid);
+  color: var(--white);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
 }
 
 .btn-outline {
   background-color: transparent;
   color: var(--color-primary);
   border-color: var(--color-border);
-}
-.btn-outline:hover {
-  background-color: var(--color-pastel-4);
-  border-color: var(--color-pastel-2);
+
+  &:hover:not(:disabled) {
+    background-color: var(--blue-50);
+    border-color: var(--blue-300);
+  }
 }
 
 .btn-accent {
-  background-color: var(--color-accent-gold);
-  color: var(--color-primary-dark);
+  background-color: var(--color-accent);
+  color: var(--blue-950);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+    color: var(--blue-950);
+  }
 }
-.btn-accent:hover {
-  background-color: var(--color-accent-gold-dark);
-  color: #fff;
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-text);
+  border-color: transparent;
+
+  &:hover:not(:disabled) {
+    background-color: var(--slate-100);
+  }
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: var(--white);
+
+  &:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-danger) 85%, black);
+  }
 }
 
 /* --- Inputs / formularios --- */
@@ -188,17 +164,35 @@ p {
   font-size: var(--fs-base);
   color: var(--color-text);
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--slate-300);
   border-radius: var(--radius-sm);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-.input::placeholder {
-  color: var(--color-text-muted);
-}
-.input:focus {
-  outline: none;
-  border-color: var(--color-primary-mid);
-  box-shadow: 0 0 0 3px rgba(44, 95, 138, 0.15);
+
+  &::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 15%, transparent);
+  }
+
+  &[aria-invalid='true'],
+  &.input-error {
+    border-color: var(--coral-500);
+
+    &:focus {
+      border-color: var(--coral-500);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral-500) 20%, transparent);
+    }
+  }
+
+  &:disabled {
+    background-color: var(--slate-100);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+  }
 }
 
 /* --- Superficies / tarjetas --- */
@@ -210,17 +204,17 @@ p {
   padding: var(--space-lg);
 }
 
-/* --- Degradado de marca reutilizable --- */
+/* --- Degradados de marca --- */
 .gradient-brand {
-  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 45%, var(--color-pastel-1) 100%);
+  background: linear-gradient(135deg, var(--blue-900) 0%, var(--blue-800) 50%, var(--blue-400) 100%);
 }
 
 .gradient-soft {
-  background: linear-gradient(180deg, var(--color-pastel-4) 0%, var(--color-surface) 100%);
+  background: linear-gradient(180deg, var(--blue-50) 0%, var(--color-surface) 100%);
 }
 
-/* --- Utilidades de foco accesible --- */
+/* --- Foco accesible --- */
 :focus-visible {
-  outline: 2px solid var(--color-primary-mid);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }

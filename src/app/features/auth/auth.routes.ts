@@ -1,11 +1,11 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './pages/login/login.component';
+import { guestGuard } from '../../core/guards/guest.guard';
 
 export const authRoutes: Routes = [
   {
     path: 'login',
-    component: LoginComponent,
-    title: 'Bellidental — Iniciar sesión',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./pages/login/login.page').then((m) => m.LoginPage),
   },
   {
     path: '',

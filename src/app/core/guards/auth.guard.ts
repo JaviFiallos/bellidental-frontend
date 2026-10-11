@@ -1,18 +1,13 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthStateService } from '../auth/auth-state.service';
+import { map } from 'rxjs';
+import { AuthService } from '../auth/auth.service';
 
-/**
- * Guard que protege rutas privadas.
- * Redirige al login si el usuario no está autenticado.
- */
 export const authGuard: CanActivateFn = () => {
-  const authState = inject(AuthStateService);
+  const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authState.isAuthenticated()) {
-    return true;
-  }
-
-  return router.createUrlTree(['/auth/login']);
+  return authService.restoreSession().pipe(
+    map((hasSession) => (hasSession ? true : router.createUrlTree(['/auth/login'])))
+  );
 };

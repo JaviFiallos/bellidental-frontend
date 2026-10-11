@@ -1,25 +1,32 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { homeRedirectGuard } from './core/guards/home-redirect.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'auth/login',
     pathMatch: 'full',
+    canActivate: [homeRedirectGuard],
+    children: [],
   },
   {
     path: 'auth',
-    loadChildren: () =>
-      import('./features/auth/auth.routes').then((m) => m.authRoutes),
+    loadChildren: () => import('./features/auth/auth.routes').then((m) => m.authRoutes),
   },
   {
-    path: 'dashboard',
+    path: 'recepcion',
     canActivate: [authGuard],
-    // TODO: lazy-load dashboard feature when it's implemented
-    loadComponent: () =>
-      import('./features/auth/pages/login/login.component').then(
-        (m) => m.LoginComponent
-      ),
+    loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
+  },
+  {
+    path: 'consultorio',
+    canActivate: [authGuard],
+    loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
+  },
+  {
+    path: 'direccion/estadisticas',
+    canActivate: [authGuard],
+    loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.dashboardRoutes),
   },
   {
     path: '**',
