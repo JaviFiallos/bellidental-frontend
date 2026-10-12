@@ -93,7 +93,7 @@ interface LegendSection {
       padding: 0.6rem 1rem;
       font-size: var(--fs-sm);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
       cursor: pointer;
       user-select: none;
       background-color: var(--slate-50);
@@ -102,7 +102,7 @@ interface LegendSection {
 
     .bd-legend__summary:hover {
       background-color: var(--slate-100);
-      color: var(--slate-900);
+      color: var(--slate-800);
     }
 
     .bd-legend__summary:focus-visible {
@@ -156,7 +156,7 @@ interface LegendSection {
       align-items: center;
       gap: 0.65rem;
       font-size: var(--fs-sm);
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .bd-legend__item-label {

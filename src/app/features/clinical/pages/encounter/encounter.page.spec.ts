@@ -644,5 +644,112 @@ describe('EncounterPage', () => {
     expect(panel.textContent).toContain('Caries · oclusal · Pendiente');
     expect(panel.textContent).toContain('Anular');
   });
-});
 
+  it('prótesis fija de 15 a 13 → POST con endToothCode y aparece la banda', async () => {
+    sessionStore.setSession('token-123', 3600000);
+    sessionStore.setCurrentUser({
+      userId: 'usr-1',
+      email: 'odontologo@example.com',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_READ', 'RECORD_CREATE', 'RECORD_UPDATE'],
+      professionalId: 'prof-1',
+    });
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+
+    // Carga inicial de la atención
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+
+    flushOdontogram(httpMock, 'pat-1', mockPatientOdontogramEmpty, 'enc-1', []);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // 1. Clic en el número 15 y después en "Prótesis fija" del panel
+    const numberOf = (code: string): SVGTextElement | undefined =>
+      Array.from(compiled.querySelectorAll('text')).find(
+        (text) => text.textContent?.trim() === code
+      ) as SVGTextElement | undefined;
+
+    numberOf('15')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    const panel = compiled.querySelector('bd-tooth-panel') as HTMLElement;
+    const splintBtn = (Array.from(panel.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (btn) => btn.textContent?.includes('Prótesis fija')
+    );
+    expect(splintBtn).toBeTruthy();
+    splintBtn!.click();
+    fixture.detectChanges();
+
+    // 2. El aviso "toca la pieza final" es visible
+    const notice = compiled.querySelector('bd-span-notice') as HTMLElement;
+    expect(notice.textContent).toContain('toca la pieza final');
+
+    // 3. Clic en el número 13 → POST con endToothCode
+    numberOf('13')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    const postReq = httpMock.expectOne('/api/v1/encounters/enc-1/findings');
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      toothCode: 15,
+      endToothCode: 13,
+      conditionId: 11,
+      status: 'DONE',
+    });
+
+    const newFinding: Finding = {
+      id: 'f-span-15-13',
+      toothCode: 15,
+      endToothCode: 13,
+      surfaceCode: null,
+      surfaceLabel: null,
+      conditionId: 11,
+      status: 'DONE',
+      grade: null,
+      notes: null,
+      createdAt: '2026-10-12T10:00:00Z',
+      symbol: {
+        id: 12,
+        status: 'DONE',
+        shape: 'SQUARES_LINE',
+        color: '#000000',
+        secondaryColor: null,
+        filled: true,
+        lineStyle: 'DOTTED',
+      },
+    };
+
+    postReq.flush(
+      { success: true, message: 'Hallazgo registrado', data: newFinding },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+
+    // 4. Recarga del odontograma con el hallazgo SPAN y GET de hallazgos de la atención
+    const updatedOdontogram: PatientOdontogram = {
+      ...mockPatientOdontogramEmpty,
+      findings: [newFinding],
+    };
+    flushOdontogram(httpMock, 'pat-1', updatedOdontogram, 'enc-1', [newFinding]);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // 5. La banda aparece y el aviso desaparece
+    expect(
+      compiled.querySelector('[role="img"][aria-label="Prótesis fija de 15 a 13 (Realizado)"]')
+    ).toBeTruthy();
+    expect(compiled.querySelector('bd-span-notice')).toBeNull();
+  });
+});

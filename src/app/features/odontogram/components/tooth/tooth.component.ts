@@ -44,6 +44,7 @@ interface RegionViewModel {
     '[attr.aria-label]': 'label()',
     '[attr.tabindex]': 'tabIndex()',
     '[style.outline]': '"none"',
+    '[attr.opacity]': 'dimmed() ? 0.4 : null',
     '(focus)': 'onFocus()',
     '(blur)': 'onBlur()',
     '(keydown)': 'onKeydown($event)',
@@ -154,6 +155,7 @@ export class ToothComponent {
   readonly editable = input<boolean>(false);
   readonly isSelectedTooth = input<boolean>(false);
   readonly selectedFace = input<SurfaceCode | null>(null);
+  readonly dimmed = input<boolean>(false);
 
   readonly toothActivate = output<number>();
   readonly keyNav = output<{ key: NavKey; code: number; event: KeyboardEvent }>();

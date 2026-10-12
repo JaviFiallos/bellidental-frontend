@@ -147,6 +147,39 @@ import { PeriodontalGradesComponent } from './periodontal-grades.component';
         [saving]="saving()"
         (gradeSelected)="onRegisterPeriodontal($event.condition, $event.grade)"
       />
+
+      <!-- 4. Prótesis (de una pieza a otra) -->
+      @if (spanConditions().length > 0) {
+        <section class="conditions-group" aria-labelledby="span-group-heading">
+          <h4 id="span-group-heading" class="conditions-group__title">Prótesis (de una pieza a otra)</h4>
+          <div class="conditions-grid">
+            @for (cond of spanConditions(); track cond.id) {
+              @let sym = getSymbolForStatus(cond, 'DONE');
+              @let isActive = isSpanning() && activeSpanConditionId() === cond.id;
+              <button
+                type="button"
+                class="btn btn-outline condition-btn"
+                [class.active]="isActive"
+                [attr.aria-pressed]="isActive"
+                [disabled]="saving() || !canStartSpan()"
+                (click)="onStartSpan(cond)"
+              >
+                @if (sym) {
+                  <bd-symbol-glyph
+                    [shape]="sym.shape"
+                    scope="SPAN"
+                    [color]="sym.color"
+                    [secondaryColor]="sym.secondaryColor"
+                    [filled]="sym.filled"
+                    [lineStyle]="sym.lineStyle"
+                  />
+                }
+                <span>{{ isActive ? 'Eligiendo pieza final…' : cond.name }}</span>
+              </button>
+            }
+          </div>
+        </section>
+      }
     </div>
   `,
   styles: `
@@ -174,7 +207,7 @@ import { PeriodontalGradesComponent } from './periodontal-grades.component';
     .conditions-group__hint {
       margin: 0;
       font-size: var(--fs-xs);
-      color: var(--slate-400);
+      color: var(--slate-500);
       font-style: italic;
     }
 
@@ -193,7 +226,7 @@ import { PeriodontalGradesComponent } from './periodontal-grades.component';
       padding: 0.35rem 0.65rem;
       font-size: var(--fs-sm);
       font-weight: 500;
-      color: var(--slate-700);
+      color: var(--slate-600);
       background: var(--white);
       border: 1px solid var(--slate-300);
       border-radius: var(--radius-sm);
@@ -202,7 +235,7 @@ import { PeriodontalGradesComponent } from './periodontal-grades.component';
 
       &:hover:not(:disabled) {
         background: var(--slate-50);
-        border-color: var(--slate-400);
+        border-color: var(--slate-500);
       }
 
       &:disabled {
@@ -227,8 +260,13 @@ export class ToothConditionsComponent {
   readonly catalog = input<OdontogramCatalog | null>(null);
   readonly marks = input<ToothMarks | null>(null);
   readonly saving = input<boolean>(false);
+  readonly canStartSpan = input<boolean>(false);
+  readonly isSpanning = input<boolean>(false);
+  readonly activeSpanConditionId = input<number | null>(null);
 
   readonly registerFinding = output<CreateFindingRequest>();
+  readonly startSpan = output<DentalCondition>();
+  readonly cancelSpan = output<void>();
 
   readonly isOtherOpen = signal<boolean>(false);
 
@@ -254,6 +292,11 @@ export class ToothConditionsComponent {
   readonly otherCondition = computed<DentalCondition | null>(() => {
     const conds = this.catalog()?.conditions ?? [];
     return conds.find((c) => c.code === 'OTHER') ?? null;
+  });
+
+  readonly spanConditions = computed<DentalCondition[]>(() => {
+    const conds = this.catalog()?.conditions ?? [];
+    return conds.filter((c) => c.scope === 'SPAN');
   });
 
   readonly mobilityCondition = computed<DentalCondition | null>(() => {
@@ -307,6 +350,10 @@ export class ToothConditionsComponent {
   toggleOther(): void {
     const next = !this.isOtherOpen();
     this.isOtherOpen.set(next);
+    if (next && this.isSpanning()) {
+      // Elegir otra condición del panel sale del modo prótesis (010b, criterio 6).
+      this.cancelSpan.emit();
+    }
     if (next) {
       setTimeout(() => this.otherForm?.focus());
     }
@@ -338,6 +385,10 @@ export class ToothConditionsComponent {
       grade,
     });
     this.registerFinding.emit(req);
+  }
+
+  onStartSpan(condition: DentalCondition): void {
+    this.startSpan.emit(condition);
   }
 
   focusPeriodontal(): void {

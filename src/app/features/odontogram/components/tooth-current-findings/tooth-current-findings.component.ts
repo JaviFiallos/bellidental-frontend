@@ -122,7 +122,7 @@ function isToothInFindingSpan(toothCode: number, finding: Finding): boolean {
     .current-findings__empty {
       margin: 0;
       font-size: var(--fs-sm);
-      color: var(--slate-400);
+      color: var(--slate-500);
       font-style: italic;
     }
 

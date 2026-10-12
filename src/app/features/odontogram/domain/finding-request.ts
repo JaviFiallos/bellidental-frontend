@@ -5,11 +5,14 @@ import {
   FindingStatus,
   OdontogramCatalog,
   SurfaceCode,
+  Tooth,
 } from '../models/odontogram.models';
+import { getArch } from './odontogram-layout';
 import { getSurfaceName } from './surface-layout';
 
 export interface CreateFindingParams {
   toothCode: number;
+  endToothCode?: number | null;
   surfaceCode?: SurfaceCode | null;
   condition: DentalCondition;
   status: FindingStatus;
@@ -44,6 +47,27 @@ export function effectiveStatus(
 }
 
 /**
+ * Valida la pieza final de una prótesis (SPAN): debe ser distinta de la inicial, de la misma arcada
+ * y de la misma dentición. Retorna null si es válida, o el mensaje de error para la interfaz.
+ */
+export function validateSpanEnd(
+  startCode: number,
+  endCode: number,
+  allTeeth: Tooth[]
+): string | null {
+  const message = `La pieza final debe ser de la misma arcada (y dentición) y distinta de la ${startCode}.`;
+  if (startCode === endCode || getArch(startCode) !== getArch(endCode)) {
+    return message;
+  }
+  const startTooth = allTeeth.find((t) => t.code === startCode);
+  const endTooth = allTeeth.find((t) => t.code === endCode);
+  if (startTooth && endTooth && startTooth.dentition !== endTooth.dentition) {
+    return message;
+  }
+  return null;
+}
+
+/**
  * Construye el body CreateFindingRequest según las reglas del contrato backend.
  */
 export function createRequest(params: CreateFindingParams): CreateFindingRequest {
@@ -54,7 +78,10 @@ export function createRequest(params: CreateFindingParams): CreateFindingRequest
     status: effective,
   };
 
-  if (params.condition.scope === 'SURFACE' && params.surfaceCode) {
+  if (params.condition.scope === 'SPAN' && params.endToothCode != null) {
+    req.endToothCode = params.endToothCode;
+    // SPAN nunca incluye surfaceCode
+  } else if (params.condition.scope === 'SURFACE' && params.surfaceCode) {
     req.surfaceCode = params.surfaceCode;
   }
 
@@ -80,9 +107,13 @@ export function buildFindingDescription(
   condition: DentalCondition | undefined,
   toothCode: number,
   surfaceCode?: SurfaceCode | null,
-  grade?: number | null
+  grade?: number | null,
+  endToothCode?: number | null
 ): string {
   const condName = condition?.name ?? 'Hallazgo';
+  if (endToothCode != null) {
+    return `${condName} registrada de ${toothCode} a ${endToothCode}`;
+  }
   if (condition?.scope === 'SURFACE' && surfaceCode) {
     const sName = getSurfaceName(toothCode, surfaceCode);
     return `${condName} registrada en ${toothCode} ${sName}`;

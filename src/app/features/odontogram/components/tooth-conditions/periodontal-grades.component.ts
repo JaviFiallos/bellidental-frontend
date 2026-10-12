@@ -90,7 +90,7 @@ import { DentalCondition } from '../../models/odontogram.models';
     .periodontal-label {
       font-size: var(--fs-sm);
       font-weight: 500;
-      color: var(--slate-700);
+      color: var(--slate-600);
       min-width: 5rem;
     }
 
@@ -108,7 +108,7 @@ import { DentalCondition } from '../../models/odontogram.models';
       justify-content: center;
       font-size: var(--fs-sm);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
       border-radius: var(--radius-sm);
 
       &.periodontal-btn--active,

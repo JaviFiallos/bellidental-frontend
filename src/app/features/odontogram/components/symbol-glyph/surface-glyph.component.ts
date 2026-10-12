@@ -13,7 +13,7 @@ import { SymbolShape } from '../../models/odontogram.models';
       width="18"
       height="18"
       fill="var(--white)"
-      stroke="var(--slate-400)"
+      stroke="var(--slate-500)"
       stroke-width="1"
     />
     @if (shape() === 'ASTERISK') {

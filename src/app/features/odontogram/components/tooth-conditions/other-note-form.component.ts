@@ -64,7 +64,7 @@ import { FormsModule } from '@angular/forms';
     .other-form__label {
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .other-form__input {

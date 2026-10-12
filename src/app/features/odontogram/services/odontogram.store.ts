@@ -115,7 +115,13 @@ export class OdontogramStore implements OnDestroy {
     const cond = this.catalog()?.conditions.find((c) => c.id === request.conditionId);
     const actionDesc =
       customDescription ||
-      buildFindingDescription(cond, request.toothCode, request.surfaceCode, request.grade);
+      buildFindingDescription(
+        cond,
+        request.toothCode,
+        request.surfaceCode,
+        request.grade,
+        request.endToothCode
+      );
 
     this.api.createFinding(encId, request).subscribe({
       next: () => {

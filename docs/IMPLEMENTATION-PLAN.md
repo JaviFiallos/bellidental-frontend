@@ -589,7 +589,7 @@ features/clinical/
   por ámbito), cuadrantes con < 720 px (`ResizeObserver`), foco itinerante (`tooth-navigation`) y la salida
   `toothActivate` lista para la 010.
 
-### 5.10 Odontograma: registro en la atención — tarea 010 (P10, parte 2)
+### 5.10 Odontograma: registro en la atención — tareas 010a y 010b (P10, parte 2)
 - **Depende de:** 009. **API:** `POST /encounters/{id}/findings` · `POST /findings/{id}/void` ·
   `GET /encounters/{id}/findings` · recarga de `GET /patients/{id}/odontogram`.
 - **Comportamiento:** interacción de §6 (2 clics por caries), panel de la pieza, anular lo de esta atención.
@@ -597,6 +597,14 @@ features/clinical/
   con `{toothCode:36, surfaceCode:'O', conditionId, status:'PENDING'}` → la cara se pinta roja.
 - **Prueba manual:** registrar caries, obturación, extracción, endodoncia, prótesis fija (rango), movilidad y
   recesión; anular; tablet con el dedo.
+
+- **Hecho (010a):** registro en 2 clics (cara → condición) con `tooth-panel`, `tooth-conditions` y
+  `tooth-current-findings`; `finding-request` arma el body según el contrato. El store separa `loading` (inicial) de
+  `refreshing` (recarga sin destruir la vista). Los hallazgos de la atención llevan "Anular" con confirmación. Vale
+  para las temporales (cuentan en el ceo).
+
+- **Hecho (010b):** modo "Elige la pieza final" (`spanMode`, `span-notice`, `validateSpanEnd`: misma arcada y
+  dentición). Audit del odontograma (009a–010b): 16/20. Se corrigieron tokens `slate-400/700/900` heredados.
 
 ### 5.11 "Más del 033" — tarea 011 (P15)
 - **Depende de:** 008. **API:** `PUT /encounters/{id}` (mismo store de la 008).
@@ -696,7 +704,9 @@ siempre visibles [F-6]. Filas periodontales confirmadas por el usuario (F-11): R
 - Forma, color, relleno y línea vienen del `symbol` de cada `FindingResponse`; el catálogo da nombres y qué
   condiciones aplican a cada scope. Nada de colores inventados.
 - Accesibilidad: cada región es un `<path>` con `role="button"`, `aria-label` "16 mesial: caries pendiente" y foco
-  visible; ←→ recorre piezas, ↑↓ cambia de cara, Enter abre el panel, Esc lo cierra.
+  visible. Teclado (ajustado en la 009b/010a): foco itinerante por pieza; ←→ recorre la fila, ↑↓ cambia de fila,
+  Home/End; Enter selecciona la pieza y lleva el foco a los botones de cara del panel (≥ 44 px); Esc limpia la selección.
+  El panel va dentro de la tarjeta (a la derecha en `≥ lg`, debajo en `< lg`), como el boceto, sin overlay.
 
 **Interacción (solo en la atención y solo el odontólogo que atiende):**
 1. Clic en una cara → panel con la cara preseleccionada y las condiciones SURFACE (Caries, Obturación, Sellante).
@@ -817,8 +827,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 008b | Atención: panel de antecedentes (033) | 008a · G-9 | Commit `dc6099c` |
 | 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | Commit `3d0d014` |
 | 009a | Odontograma: estructura, caras, filas periodontales e índices | 008 · F-11 | Commit `c0ec93a` |
-| 009b | Odontograma: símbolos de pieza, rangos, leyenda, cuadrantes y teclado | 009a | Aprobada (commit pendiente) |
-| 010 | Odontograma: registro | 009 | — |
+| 009b | Odontograma: símbolos de pieza, rangos, leyenda, cuadrantes y teclado | 009a | Commit `aba5a95` |
+| 010a | Odontograma: registro con el panel de la pieza (cara, pieza, periodontal, anular) | 009b | Commit `525688d` |
+| 010b | Odontograma: prótesis en rango ("Elige la pieza final") | 010a | Aprobada (commit pendiente; ejecutó Haiku) |
 | 011 | Más del 033 | 008 | — |
 | 012 | Tratamientos en la atención | 010 · backend 010 | — |
 | 013 | Receta y PDF | 008 · backend 011 | — |

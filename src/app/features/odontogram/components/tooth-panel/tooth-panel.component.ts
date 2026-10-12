@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import {
   CreateFindingRequest,
+  DentalCondition,
   Finding,
   FindingStatus,
   OdontogramCatalog,
@@ -125,8 +126,23 @@ interface FaceOption {
           [catalog]="catalog()"
           [marks]="currentMarks()"
           [saving]="saving()"
+          [canStartSpan]="selectedToothCode() !== null"
+          [isSpanning]="isSpanning()"
+          [activeSpanConditionId]="activeSpanConditionId()"
           (registerFinding)="registerFinding.emit($event)"
+          (startSpan)="startSpan.emit($event)"
+          (cancelSpan)="cancelSpan.emit()"
         />
+
+        @if (isSpanning()) {
+          <button
+            type="button"
+            class="btn btn-outline btn-sm tooth-panel__cancel-span-btn"
+            (click)="cancelSpan.emit()"
+          >
+            Cancelar modo prótesis
+          </button>
+        }
 
         <!-- Hallazgos vigentes en la pieza -->
         <bd-tooth-current-findings
@@ -200,17 +216,17 @@ interface FaceOption {
     }
 
     .tooth-panel__close-btn {
-      min-height: 36px;
-      min-width: 36px;
+      min-height: 44px;
+      min-width: 44px;
       padding: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: var(--slate-400);
+      color: var(--slate-500);
       border-color: transparent;
 
       &:hover {
-        color: var(--slate-700);
+        color: var(--slate-600);
         background: var(--slate-100);
       }
     }
@@ -267,7 +283,7 @@ interface FaceOption {
       justify-content: center;
       font-size: var(--fs-sm);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
       border-radius: var(--radius-sm);
 
       &.active,
@@ -296,12 +312,16 @@ export class ToothPanelComponent {
   readonly saving = input<boolean>(false);
   readonly actionError = input<string | null>(null);
   readonly lastAction = input<string | null>(null);
+  readonly isSpanning = input<boolean>(false);
+  readonly activeSpanConditionId = input<number | null>(null);
 
   readonly faceChange = output<SurfaceCode>();
   readonly statusChange = output<FindingStatus>();
   readonly clearSelection = output<void>();
   readonly registerFinding = output<CreateFindingRequest>();
   readonly voidFinding = output<Finding>();
+  readonly startSpan = output<DentalCondition>();
+  readonly cancelSpan = output<void>();
 
   readonly statusOptions: SegmentedOption<FindingStatus>[] = [
     { value: 'PENDING', label: 'Pendiente (rojo)' },

@@ -42,6 +42,7 @@ import {
 } from '../../domain/tooth-navigation';
 import {
   CreateFindingRequest,
+  DentalCondition,
   DentalIndices,
   Finding,
   FindingStatus,
@@ -49,9 +50,11 @@ import {
   SurfaceCode,
   Tooth,
 } from '../../models/odontogram.models';
+import { validateSpanEnd, createRequest } from '../../domain/finding-request';
 import { DentalIndicesComponent } from '../dental-indices/dental-indices.component';
 import { PeriodontalRowComponent } from '../periodontal-row/periodontal-row.component';
 import { ToothComponent } from '../tooth/tooth.component';
+import { SpanNoticeComponent } from '../span-notice/span-notice.component';
 import { SpanBandComponent } from '../span-band/span-band.component';
 import { ToothPanelComponent } from '../tooth-panel/tooth-panel.component';
 import { OdontogramLegendComponent } from '../odontogram-legend/odontogram-legend.component';
@@ -62,6 +65,7 @@ interface RenderedToothItem {
   layout: LayoutTooth;
   marks: ToothMarks | null;
   label: string;
+  dimmed: boolean;
 }
 
 interface RenderedSpanItem {
@@ -69,6 +73,22 @@ interface RenderedSpanItem {
   offset: number;
   label: string;
 }
+
+interface SpanMode {
+  condition: DentalCondition;
+  startCode: number;
+}
+
+/** Cuadrante de la otra mitad de la misma arcada (1 ↔ 2 superior, 3 ↔ 4 inferior). */
+const ARCH_PARTNER_QUADRANT: Record<number, 1 | 2 | 3 | 4> = { 1: 2, 2: 1, 3: 4, 4: 3 };
+
+/** Rango de dientes de cada cuadrante, como se nombra en la vista por pestañas. */
+const QUADRANT_RANGE_LABELS: Record<number, string> = {
+  1: '18–11',
+  2: '21–28',
+  3: '31–38',
+  4: '48–41',
+};
 
 @Component({
   selector: 'bd-odontogram',
@@ -79,6 +99,7 @@ interface RenderedSpanItem {
     DentalIndicesComponent,
     SpanBandComponent,
     OdontogramLegendComponent,
+    SpanNoticeComponent,
     ToothPanelComponent,
     OdontogramQuadrantBarComponent,
   ],
@@ -95,11 +116,25 @@ interface RenderedSpanItem {
           />
         }
 
+        <!-- Aviso de modo prótesis (span) -->
+        @if (spanMode(); as spanning) {
+          @if (editable()) {
+            <bd-span-notice
+              [conditionName]="spanning.condition.name"
+              [startCode]="spanning.startCode"
+              [error]="spanError()"
+              [partnerHint]="spanPartnerHint()"
+              (cancel)="onCancelSpan()"
+            />
+          }
+        }
+
         <svg
           [attr.viewBox]="viewBox()"
           role="group"
           aria-label="Odontograma"
           class="odontogram-svg"
+          (keydown.escape)="onClearSelection()"
         >
           <!-- Etiquetas laterales o superiores de fila -->
           @for (lbl of layout().labels; track lbl.text + lbl.y) {
@@ -169,6 +204,7 @@ interface RenderedSpanItem {
               [editable]="editable()"
               [isSelectedTooth]="selectedToothCode() === item.tooth.code"
               [selectedFace]="selectedToothCode() === item.tooth.code ? selectedFace() : null"
+              [dimmed]="item.dimmed"
               (toothActivate)="onToothActivate($event)"
               (keyNav)="onKeyNav($event)"
               (faceClick)="onFaceClick($event)"
@@ -203,17 +239,23 @@ interface RenderedSpanItem {
             [saving]="saving()"
             [actionError]="actionError()"
             [lastAction]="lastAction()"
+            [isSpanning]="!!spanMode()"
+            [activeSpanConditionId]="spanMode()?.condition?.id ?? null"
             (faceChange)="onFaceChange($event)"
             (statusChange)="onStatusChange($event)"
             (clearSelection)="onClearSelection()"
-            (registerFinding)="registerFinding.emit($event)"
+            (registerFinding)="onPanelRegister($event)"
             (voidFinding)="voidFinding.emit($event)"
+            (startSpan)="onStartSpan($event)"
+            (cancelSpan)="onCancelSpan()"
           />
         </aside>
       }
     </div>
   `,
   styles: `
+    @use '../../../../shared/styles/breakpoints' as bp;
+
     :host {
       display: block;
       width: 100%;
@@ -226,7 +268,7 @@ interface RenderedSpanItem {
       gap: var(--space-md);
     }
 
-    @media (min-width: 1200px) {
+    @include bp.bp-up(lg) {
       .odontogram-wrapper--editable {
         display: grid;
         grid-template-columns: 1fr minmax(18rem, 22rem);
@@ -298,6 +340,18 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   readonly selectedToothCode = signal<number | null>(null);
   readonly selectedFace = signal<SurfaceCode | null>(null);
   readonly selectedStatus = signal<FindingStatus>('PENDING');
+  readonly spanMode = signal<SpanMode | null>(null);
+  readonly spanError = signal<string | null>(null);
+
+  /** En vista por cuadrante, indica la otra pestaña donde está la mitad de la arcada. */
+  readonly spanPartnerHint = computed<string | null>(() => {
+    const spanning = this.spanMode();
+    if (!spanning || !this.isNarrow()) return null;
+    const startQuadrant = Math.floor(spanning.startCode / 10);
+    if (startQuadrant !== this.selectedQuadrant()) return null;
+    const partner = ARCH_PARTNER_QUADRANT[startQuadrant];
+    return partner ? QUADRANT_RANGE_LABELS[partner] : null;
+  });
 
   readonly orientationText = computed<string>(() => {
     switch (this.selectedQuadrant()) {
@@ -394,6 +448,7 @@ export class OdontogramComponent implements OnInit, OnDestroy {
     for (const t of cat.teeth) {
       toothMap.set(t.code, t);
     }
+    const sm = this.spanMode();
 
     return this.layout().teeth.map((lt) => {
       const tooth = toothMap.get(lt.code) ?? fallbackTooth(lt.code);
@@ -405,11 +460,17 @@ export class OdontogramComponent implements OnInit, OnDestroy {
         marks.spans
       );
 
+      const dimmed =
+        sm !== null &&
+        lt.code !== sm.startCode &&
+        validateSpanEnd(sm.startCode, lt.code, cat.teeth) !== null;
+
       return {
         tooth,
         layout: lt,
         marks: toothMarks,
         label,
+        dimmed,
       };
     });
   });
@@ -489,18 +550,30 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   }
 
   onFaceClick(event: { toothCode: number; surface: SurfaceCode }): void {
+    if (this.spanMode()) {
+      this.onSpanEnd(event.toothCode);
+      return;
+    }
     this.selectedToothCode.set(event.toothCode);
     this.selectedFace.set(event.surface);
     this.focusedToothCode.set(event.toothCode);
   }
 
   onToothNumberClick(toothCode: number): void {
+    if (this.spanMode()) {
+      this.onSpanEnd(toothCode);
+      return;
+    }
     this.selectedToothCode.set(toothCode);
     this.selectedFace.set(null);
     this.focusedToothCode.set(toothCode);
   }
 
   onPeriodontalCellClick(event: { permanentCode: number; rowType: PeriodontalRowType }): void {
+    if (this.spanMode()) {
+      this.onSpanEnd(event.permanentCode);
+      return;
+    }
     this.selectedToothCode.set(event.permanentCode);
     this.selectedFace.set(null);
     this.focusedToothCode.set(event.permanentCode);
@@ -510,6 +583,10 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   }
 
   onToothActivate(code: number): void {
+    if (this.spanMode()) {
+      this.onSpanEnd(code);
+      return;
+    }
     this.selectedToothCode.set(code);
     this.selectedFace.set(null);
     this.focusedToothCode.set(code);
@@ -528,6 +605,11 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   }
 
   onClearSelection(): void {
+    if (this.spanMode()) {
+      this.spanMode.set(null);
+      this.spanError.set(null);
+      return;
+    }
     const code = this.selectedToothCode();
     this.selectedToothCode.set(null);
     this.selectedFace.set(null);
@@ -537,5 +619,44 @@ export class OdontogramComponent implements OnInit, OnDestroy {
         tc?.focus();
       });
     }
+  }
+
+  onStartSpan(condition: DentalCondition): void {
+    const startCode = this.selectedToothCode();
+    if (!startCode) return;
+    this.spanMode.set({ condition, startCode });
+    this.spanError.set(null);
+    this.selectedFace.set(null);
+  }
+
+  onCancelSpan(): void {
+    this.spanMode.set(null);
+    this.spanError.set(null);
+  }
+
+  /** Un registro normal desde el panel (otra condición) también sale del modo prótesis. */
+  onPanelRegister(request: CreateFindingRequest): void {
+    this.spanMode.set(null);
+    this.spanError.set(null);
+    this.registerFinding.emit(request);
+  }
+
+  private onSpanEnd(endCode: number): void {
+    const sm = this.spanMode();
+    if (!sm) return;
+    const error = validateSpanEnd(sm.startCode, endCode, this.catalog().teeth);
+    if (error) {
+      this.spanError.set(error);
+      return;
+    }
+    this.spanError.set(null);
+    this.spanMode.set(null);
+    const req = createRequest({
+      toothCode: sm.startCode,
+      endToothCode: endCode,
+      condition: sm.condition,
+      status: 'DONE',
+    });
+    this.registerFinding.emit(req);
   }
 }
