@@ -21,18 +21,17 @@ export const routes: Routes = [
         children: [],
       },
       {
-        path: 'recepcion',
-        canActivate: [profileGuard('SECRETARIA')],
-        loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Agenda del día', task: 'tarea 003' },
-      },
-      {
         path: 'recepcion/horarios',
         canActivate: [profileGuard('SECRETARIA')],
         loadComponent: () =>
           import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
         data: { title: 'Horarios', task: 'tarea 006' },
+      },
+      {
+        path: 'recepcion',
+        canActivate: [profileGuard('SECRETARIA')],
+        loadChildren: () =>
+          import('./features/appointments/appointments.routes').then((m) => m.appointmentsRoutes),
       },
       {
         path: 'pacientes/nuevo',
