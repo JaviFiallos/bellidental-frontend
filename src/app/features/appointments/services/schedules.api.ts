@@ -35,15 +35,11 @@ export class SchedulesApi {
     );
   }
 
-  /** Reglas activas de la semana tipo (se ignoran las excepciones por fecha). */
+  /** Reglas activas: semana tipo (`weekday`) y excepciones por fecha (`specificDate`). */
   list(professionalId: string): Observable<Schedule[]> {
     return this.api
       .get<Schedule[]>(`/api/v1/professionals/${professionalId}/schedules`)
-      .pipe(
-        map((schedules) =>
-          schedules.filter((schedule) => schedule.specificDate === null).map(normalizeSchedule)
-        )
-      );
+      .pipe(map((schedules) => schedules.map(normalizeSchedule)));
   }
 
   create(professionalId: string, body: ScheduleRequest): Observable<Schedule> {

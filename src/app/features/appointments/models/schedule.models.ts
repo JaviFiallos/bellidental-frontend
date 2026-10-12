@@ -17,11 +17,12 @@ export interface Schedule {
   available: boolean;
 }
 
+/** Cuerpo de alta o edición: semana tipo (`weekday`) o excepción (`specificDate`), nunca ambos. */
 export interface ScheduleRequest {
-  weekday: number;
-  specificDate: null;
-  startTime: string;
-  endTime: string;
+  weekday: number | null;
+  specificDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
   available: boolean;
 }
 

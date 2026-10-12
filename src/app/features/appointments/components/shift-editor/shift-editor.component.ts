@@ -6,6 +6,7 @@ import {
   OnInit,
   output,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ShiftValue } from '../../services/schedules.store';
 
@@ -51,14 +52,16 @@ let nextEditorId = 0;
         <p class="shift-editor__error" role="alert">{{ errorMessage() }}</p>
       }
 
-      <div class="shift-editor__actions">
-        <button type="button" class="btn btn-ghost shift-editor__btn" (click)="cancel.emit()">
-          Cancelar
-        </button>
-        <button type="submit" class="btn btn-primary shift-editor__btn" [disabled]="!canSave()">
-          Guardar
-        </button>
-      </div>
+      @if (!embedded()) {
+        <div class="shift-editor__actions">
+          <button type="button" class="btn btn-ghost shift-editor__btn" (click)="cancel.emit()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary shift-editor__btn" [disabled]="!canSave()">
+            Guardar
+          </button>
+        </div>
+      }
     </form>
   `,
   styles: `
@@ -114,9 +117,12 @@ export class ShiftEditorComponent implements OnInit {
   readonly endTime = input<string>('');
   readonly saving = input<boolean>(false);
   readonly errorMessage = input<string | null>(null);
+  /** Sin botones: el padre recibe el valor válido (o null) en cada cambio, p. ej. en el formulario de excepciones. */
+  readonly embedded = input<boolean>(false);
 
   readonly save = output<ShiftValue>();
   readonly cancel = output<void>();
+  readonly valueChange = output<ShiftValue | null>();
 
   readonly startId = `shift-start-${nextEditorId}`;
   readonly endId = `shift-end-${nextEditorId}`;
@@ -129,6 +135,17 @@ export class ShiftEditorComponent implements OnInit {
 
   ngOnInit(): void {
     this.form.reset({ startTime: this.startTime(), endTime: this.endTime() });
+
+    if (this.embedded()) {
+      this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+        this.valueChange.emit(this.isValid() ? this.form.getRawValue() : null);
+      });
+    }
+  }
+
+  private isValid(): boolean {
+    const { startTime, endTime } = this.form.getRawValue();
+    return !!startTime && !!endTime && endTime > startTime;
   }
 
   rangeError(): string | null {
@@ -142,7 +159,7 @@ export class ShiftEditorComponent implements OnInit {
   }
 
   submit(): void {
-    if (!this.canSave()) return;
+    if (this.embedded() || !this.canSave()) return;
     const { startTime, endTime } = this.form.getRawValue();
     this.save.emit({ startTime, endTime });
   }

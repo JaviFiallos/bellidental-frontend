@@ -464,6 +464,10 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   - Componentes dumb `weekly-schedule` (domingo en `<details>`) y `shift-editor`.
   - `SchedulesApi.list/create/update/deactivate`; la hora se normaliza a `HH:mm`.
   - Sin `SCHEDULE_MANAGE` la página es solo de lectura.
+- **Hecho (006b):** excepciones por fecha y calendario mensual efectivo en la misma página.
+  - Excepciones: "No atiende" (`available: false`) u "Horario especial" (un `POST` por turno).
+  - Calendario: `GET …/effective` del mes visible (`?mes=`). En `< 36rem` de contenedor pasa a lista.
+  - Componentes dumb `schedule-exceptions`, `exception-form` y `effective-calendar`.
 
 ### 5.7 Consultorio: mis citas de hoy — tarea 007 (P8)
 - **Depende de:** 002, 003 (reutiliza `AppointmentCard` y `appointmentDisplayState`) · [G-1].
@@ -768,8 +772,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 004b | Sin cita (walk-in) y reprogramar | 004a | Commit `266d779` |
 | 005a | Pacientes: alta y edición | 002b · G-5 | Commit `2b80240` |
 | 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Commit `0a63492` |
-| 006a | Horarios: semana tipo por profesional | 002 · G-8 | Aprobada |
-| 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Redactada |
+| 006a | Horarios: semana tipo por profesional | 002 · G-8 | Commit `417bed3` |
+| 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Aprobada |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | — |
 | 008 | Atención: cabecera, antecedentes, diagnósticos, completar | 007 | — |
 | 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
