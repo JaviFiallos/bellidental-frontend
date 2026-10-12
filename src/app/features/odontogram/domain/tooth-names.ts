@@ -1,3 +1,6 @@
+import { Tooth, ToothType } from '../models/odontogram.models';
+import { getArch } from './odontogram-layout';
+
 const PERMANENT_POSITIONS = [
   '',
   'incisivo central',
@@ -39,4 +42,30 @@ export function getToothName(code: number): string {
     : PERMANENT_POSITIONS[position] || '';
   const quadName = QUADRANT_NAMES[quadrant] || '';
   return `${posName} ${quadName}`.trim();
+}
+
+export function fallbackTooth(code: number): Tooth {
+  const quadrant = Math.floor(code / 10);
+  const position = code % 10;
+  const isDeciduous = quadrant >= 5;
+  const arch = getArch(code);
+  const type: ToothType =
+    position <= 2
+      ? 'INCISOR'
+      : position === 3
+        ? 'CANINE'
+        : position <= 5
+          ? isDeciduous
+            ? 'MOLAR'
+            : 'PREMOLAR'
+          : 'MOLAR';
+
+  return {
+    code,
+    dentition: isDeciduous ? 'DECIDUOUS' : 'PERMANENT',
+    arch,
+    quadrant,
+    position,
+    type,
+  };
 }

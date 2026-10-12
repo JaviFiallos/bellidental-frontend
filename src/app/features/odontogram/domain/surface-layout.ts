@@ -155,11 +155,17 @@ export function buildRegionPaths(
 }
 
 /**
- * Dibuja un asterisco de 3 segmentos cruzados en el centroide de la región (Criterio 14)
+ * Dibuja un asterisco de 3 segmentos cruzados en el centroide de la región (Criterio 14 / 009b Criterio 3)
  */
-export function buildAsteriskPath(centroid: [number, number], s: number): string {
+export function buildAsteriskPath(
+  centroid: [number, number],
+  s: number,
+  position?: RegionPosition
+): string {
   const [cx, cy] = centroid;
-  const h = (0.36 * s) / 2; // mitad de longitud total
+  const regionHeight = position === 'center' ? 0.4 * s : 0.3 * s;
+  const maxLen = Math.min(0.36 * s, 0.9 * regionHeight);
+  const h = maxLen / 2; // mitad de longitud total
   const dx = h * 0.5; // cos(60°) = 0.5
   const dy = h * (Math.sqrt(3) / 2); // sin(60°) = ~0.866
   const r2 = (n: number) => Number(n.toFixed(2));

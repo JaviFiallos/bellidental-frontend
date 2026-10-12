@@ -584,6 +584,11 @@ features/clinical/
   `OdontogramApi` con el catálogo en caché). Dominio `odontogram-layout` (854×414), `surface-layout`, `tooth-names` y
   `finding-symbol`. Montado en la atención, entre la cabecera y el motivo.
 
+- **Hecho (009b):** marcas de pieza (orden RECTANGLE→CROSS; triángulo con la punta hacia la raíz), piezas perdidas
+  atenuadas, `span-band` (fija, removible, total; solapamiento 7 unidades hacia afuera), leyenda (`symbol-glyph` dividido
+  por ámbito), cuadrantes con < 720 px (`ResizeObserver`), foco itinerante (`tooth-navigation`) y la salida
+  `toothActivate` lista para la 010.
+
 ### 5.10 Odontograma: registro en la atención — tarea 010 (P10, parte 2)
 - **Depende de:** 009. **API:** `POST /encounters/{id}/findings` · `POST /findings/{id}/void` ·
   `GET /encounters/{id}/findings` · recarga de `GET /patients/{id}/odontogram`.
@@ -811,8 +816,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 008a | Atención: cabecera, motivo, diagnósticos, completar | 007 | Commit `c220096` |
 | 008b | Atención: panel de antecedentes (033) | 008a · G-9 | Commit `dc6099c` |
 | 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | Commit `3d0d014` |
-| 009a | Odontograma: estructura, caras, filas periodontales e índices | 008 · F-11 | Aprobada (commit pendiente) |
-| 009b | Odontograma: símbolos de pieza, rangos, leyenda, cuadrantes y teclado | 009a | — |
+| 009a | Odontograma: estructura, caras, filas periodontales e índices | 008 · F-11 | Commit `c0ec93a` |
+| 009b | Odontograma: símbolos de pieza, rangos, leyenda, cuadrantes y teclado | 009a | Aprobada (commit pendiente) |
 | 010 | Odontograma: registro | 009 | — |
 | 011 | Más del 033 | 008 | — |
 | 012 | Tratamientos en la atención | 010 · backend 010 | — |
