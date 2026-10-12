@@ -6,7 +6,7 @@ import {
   input,
   output,
 } from '@angular/core';
-import { Bot, Footprints } from 'lucide-angular';
+import { Bot, Check, Footprints } from 'lucide-angular';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
@@ -25,6 +25,7 @@ import { Appointment } from '../../models/appointment.models';
       [class.appointment-card--cancelled]="isCancelled()"
       [class.appointment-card--positioned]="isPositioned()"
       [class.appointment-card--with-pro]="showProfessional()"
+      [class.appointment-card--selected]="selected()"
       [style.top]="topStyle()"
       [style.height]="heightStyle()"
       [style.--card-tone-bar]="toneBar()"
@@ -96,6 +97,22 @@ import { Appointment } from '../../models/appointment.models';
 
       <div class="appointment-card__actions">
         <ng-content select="[actions]" />
+        @if (checkInAvailable()) {
+          <button
+            type="button"
+            class="appointment-card__check-in-btn"
+            [attr.aria-label]="checkInAriaLabel()"
+            [disabled]="checkInPending()"
+            (click)="onCheckInClick($event)"
+          >
+            @if (checkInPending()) {
+              <span class="appointment-card__spinner" aria-hidden="true"></span>
+            } @else {
+              <bd-icon [name]="checkIcon" [size]="14" aria-hidden="true" />
+            }
+            <span>Llegó</span>
+          </button>
+        }
       </div>
     </article>
   `,
@@ -106,13 +123,11 @@ import { Appointment } from '../../models/appointment.models';
       flex-direction: column;
       background-color: var(--card-tone-bg);
       border-radius: var(--radius-sm);
+      border: 1px solid color-mix(in srgb, var(--card-tone-bar) 20%, var(--slate-200));
       border-left: 4px solid var(--card-tone-bar);
-      border-top: 1px solid color-mix(in srgb, var(--card-tone-bar) 20%, var(--slate-200));
-      border-right: 1px solid color-mix(in srgb, var(--card-tone-bar) 20%, var(--slate-200));
-      border-bottom: 1px solid color-mix(in srgb, var(--card-tone-bar) 20%, var(--slate-200));
       overflow: hidden;
       box-shadow: var(--shadow-sm);
-      transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+      transition: box-shadow var(--transition-fast);
       box-sizing: border-box;
     }
 
@@ -260,11 +275,62 @@ import { Appointment } from '../../models/appointment.models';
       color: var(--slate-500);
     }
 
+    .appointment-card--selected {
+      outline: 2px solid var(--color-primary);
+      outline-offset: -1px;
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+    }
+
     .appointment-card__actions {
       position: absolute;
       bottom: 0.35rem;
       right: 0.4rem;
       z-index: 4;
+    }
+
+    .appointment-card__check-in-btn {
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      padding: 0.35rem 0.65rem;
+      background-color: var(--color-primary);
+      color: var(--white);
+      border: 1px solid var(--color-primary);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: background-color var(--transition-fast);
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 1px;
+      }
+
+      &:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+    }
+
+    .appointment-card__spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: cardBtnSpin 0.7s linear infinite;
+    }
+
+    @keyframes cardBtnSpin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .sr-only {
@@ -287,8 +353,14 @@ export class AppointmentCardComponent {
   readonly showProfessional = input<boolean>(false);
   readonly topRem = input<number | null>(null);
   readonly heightRem = input<number | null>(null);
+  readonly selected = input<boolean>(false);
+  readonly checkInAvailable = input<boolean>(false);
+  readonly checkInPending = input<boolean>(false);
 
   readonly opened = output<Appointment>();
+  readonly checkIn = output<Appointment>();
+
+  readonly checkIcon: LucideIconData = Check;
 
   readonly displayState = computed(() => appointmentDisplayState(this.appointment()));
 
@@ -330,6 +402,15 @@ export class AppointmentCardComponent {
     const st = this.displayState();
     return `${this.startTimeFormatted()} a ${this.endTimeFormatted()}, ${appt.patientName}, ${appt.specialtyName}, ${st.label}`;
   });
+
+  readonly checkInAriaLabel = computed(() => `Registrar llegada de ${this.appointment().patientName}`);
+
+  onCheckInClick(event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.checkInAvailable() && !this.checkInPending()) {
+      this.checkIn.emit(this.appointment());
+    }
+  }
 
   readonly toneBar = computed(() => {
     switch (this.displayState().tone) {

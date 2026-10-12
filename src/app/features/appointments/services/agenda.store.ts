@@ -6,16 +6,20 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EMPTY, forkJoin, of, Subject } from 'rxjs';
+import { EMPTY, forkJoin, Observable, of, Subject } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { ApiError } from '../../../core/api/api.models';
 import { ClinicClock } from '../../../core/services/clinic-clock.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Professional, ProfessionalsApi } from '../../professionals';
 import {
   AgendaTimeRange,
   calculateAgendaTimeRange,
 } from '../domain/agenda-layout';
-import { appointmentDisplayState } from '../domain/appointment-state';
+import {
+  appointmentDisplayState,
+  AppointmentActionType,
+} from '../domain/appointment-state';
 import { Appointment } from '../models/appointment.models';
 import { EffectiveDay } from '../models/schedule.models';
 import { AppointmentsApi } from './appointments.api';
@@ -35,6 +39,7 @@ export class AgendaStore implements OnDestroy {
   private readonly professionalsApi = inject(ProfessionalsApi);
   private readonly schedulesApi = inject(SchedulesApi);
   private readonly appointmentsApi = inject(AppointmentsApi);
+  private readonly notificationService = inject(NotificationService);
 
   // State signals
   readonly date = signal<string>('');
@@ -45,6 +50,11 @@ export class AgendaStore implements OnDestroy {
   readonly professionals = signal<Professional[]>([]);
   readonly effectiveDays = signal<Record<string, EffectiveDay[]>>({});
   readonly appointments = signal<Appointment[]>([]);
+
+  readonly selectedAppointmentId = signal<string | null>(null);
+  readonly pendingAction = signal<AppointmentActionType | null>(null);
+  readonly pendingActionAppointmentId = signal<string | null>(null);
+  readonly actionError = signal<string | null>(null);
 
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
@@ -134,6 +144,12 @@ export class AgendaStore implements OnDestroy {
   }
 
   // Computed signals
+  readonly selectedAppointment = computed<Appointment | null>(() => {
+    const id = this.selectedAppointmentId();
+    if (!id) return null;
+    return this.appointments().find((a) => a.id === id) ?? null;
+  });
+
   readonly displayedAppointments = computed(() => {
     const list = this.appointments();
     if (this.showCancelled()) {
@@ -291,6 +307,56 @@ export class AgendaStore implements OnDestroy {
     this.loadTrigger$.next(dateToLoad);
   }
 
+  selectAppointment(id: string | null): void {
+    this.selectedAppointmentId.set(id);
+    this.actionError.set(null);
+  }
+
+  runAction(id: string, action: AppointmentActionType): void {
+    if (this.pendingAction()) {
+      return;
+    }
+
+    this.pendingAction.set(action);
+    this.pendingActionAppointmentId.set(id);
+    this.actionError.set(null);
+
+    let call$: Observable<string>;
+    switch (action) {
+      case 'confirm':
+        call$ = this.appointmentsApi.confirm(id);
+        break;
+      case 'check-in':
+        call$ = this.appointmentsApi.checkIn(id);
+        break;
+      case 'no-show':
+        call$ = this.appointmentsApi.noShow(id);
+        break;
+      case 'cancel':
+        call$ = this.appointmentsApi.cancel(id);
+        break;
+    }
+
+    call$.subscribe({
+      next: (message: string) => {
+        this.pendingAction.set(null);
+        this.pendingActionAppointmentId.set(null);
+        this.actionError.set(null);
+        this.notificationService.success(message);
+        if (action === 'cancel') {
+          this.selectedAppointmentId.set(null);
+        }
+        this.refreshAppointments();
+      },
+      error: (err: ApiError) => {
+        this.pendingAction.set(null);
+        this.pendingActionAppointmentId.set(null);
+        this.actionError.set(err?.message || 'Error al procesar la acción');
+        this.refreshAppointments();
+      },
+    });
+  }
+
   refreshAppointments(): void {
     const curDate = this.date();
     if (!curDate || this.loading() || this.error()) {
@@ -301,6 +367,14 @@ export class AgendaStore implements OnDestroy {
     this.appointmentsApi.list({ from: range.from, to: range.to }).subscribe({
       next: (appts) => {
         if (this.date() === curDate) {
+          const currentSelectedId = this.selectedAppointmentId();
+          if (currentSelectedId) {
+            const exists = appts.some((a) => a.id === currentSelectedId);
+            if (!exists) {
+              this.selectedAppointmentId.set(null);
+              this.notificationService.error('La cita ya no está en este día');
+            }
+          }
           this.appointments.set(appts);
           const currentNow = this.clinicClock.now();
           this.now.set(currentNow);

@@ -343,6 +343,13 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   `calculateShades`, `calculatePositionedAppointment`; 1 h = 8 rem). Columnas con `data-professional-id`.
   `ProfessionalsApi.list()` filtra activos. `ClinicClock` + `dayRange`, `addDays`, `minutesOfDay`. Compartidos nuevos:
   `bd-segmented`, `bd-date-nav`, `bd-status-badge`, `bd-empty-state`, `bd-skeleton`.
+- **Hecho (003b):** `availableActions()` y `canQuickCheckIn()` (≥ 30 min) en `domain/appointment-state.ts` son la
+  única fuente de las reglas. La página calcula `quickCheckInIds`, `selectedId` y `pendingCheckInId` y los pasa a las
+  3 vistas; la tarjeta es dumb (`checkIn` output). `AgendaStore.runAction()` evita el doble envío, muestra el toast y
+  vuelve a pedir la lista; tras cancelar cierra el panel. `bd-side-sheet` usa `position: fixed` (no CDK Overlay;
+  desviación aceptada) y cambia el deslizamiento por un fundido con `prefers-reduced-motion`. Uso de
+  `ConfirmDialogService.open()`: `{title, message, confirmLabel, cancelLabel, tone, reasonLabel?}` →
+  `Observable<{confirmed, reason?}>`.
 - **Test:** `reception-agenda.page.spec.ts` — carga del día (3 GET) → se ven las tarjetas en su columna con su
   estado; clic "Llegó" → `POST /appointments/{id}/check-in` → recarga → la tarjeta dice "En espera". 409 al
   cancelar → mensaje del backend visible.
@@ -708,8 +715,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 001 | Base, sesión y login | — | Commit `cb2b6e1` |
 | 002a | Shell y perfiles | 001 · (G-2 opcional) | Commit `8320033` |
 | 002b | Buscador global de pacientes | 002a | Commit `3cbf525` |
-| 003a | Agenda del día (lectura) | 002b · G-8 | Aprobada |
-| 003b | Agenda: panel y acciones de estado | 003a | Redactada |
+| 003a | Agenda del día (lectura) | 002b · G-8 | Commit `efa8233` |
+| 003b | Agenda: panel y acciones de estado | 003a | Aprobada |
 | 004 | Nueva cita, sin cita, reprogramar | 003 | — |
 | 005 | Pacientes: alta, edición, ficha de recepción | 002 · G-4, G-5 | — |
 | 006 | Horarios de profesionales | 002 | — |

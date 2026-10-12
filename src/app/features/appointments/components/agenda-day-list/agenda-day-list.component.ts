@@ -55,7 +55,11 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
           <bd-appointment-card
             [appointment]="appt"
             [showProfessional]="false"
+            [selected]="selectedId() === appt.id"
+            [checkInAvailable]="quickCheckInIds().has(appt.id)"
+            [checkInPending]="pendingCheckInId() === appt.id"
             (opened)="opened.emit($event)"
+            (checkIn)="checkIn.emit($event)"
           />
         } @empty {
           <div class="agenda-day-list__empty">
@@ -130,8 +134,12 @@ export class AgendaDayListComponent {
 
   readonly professionals = input.required<Professional[]>();
   readonly appointmentsByProf = input.required<Record<string, Appointment[]>>();
+  readonly selectedId = input<string | null>(null);
+  readonly quickCheckInIds = input<Set<string>>(new Set());
+  readonly pendingCheckInId = input<string | null>(null);
 
   readonly opened = output<Appointment>();
+  readonly checkIn = output<Appointment>();
 
   readonly selectedProfId = signal<string>('');
 

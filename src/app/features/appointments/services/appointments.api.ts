@@ -27,4 +27,20 @@ export class AppointmentsApi {
 
     return this.api.get<Appointment[]>('/api/v1/appointments', { params: httpParams });
   }
+
+  confirm(id: string): Observable<string> {
+    return this.api.post<string>(`/api/v1/appointments/${id}/confirm`, {});
+  }
+
+  checkIn(id: string): Observable<string> {
+    return this.api.post<string>(`/api/v1/appointments/${id}/check-in`, {});
+  }
+
+  noShow(id: string): Observable<string> {
+    return this.api.post<string>(`/api/v1/appointments/${id}/no-show`, {});
+  }
+
+  cancel(id: string): Observable<string> {
+    return this.api.post<string>(`/api/v1/appointments/${id}/cancel`, {});
+  }
 }

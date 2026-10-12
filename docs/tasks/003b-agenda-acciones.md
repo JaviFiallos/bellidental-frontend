@@ -96,5 +96,113 @@ Con el backend en `:8080` y `npx ng serve`, como secretaria:
 5. Anchos 375, 768, 1024, 1366 y 1920 (panel lateral vs hoja inferior).
 
 ## Resultado
+- **Qué se hizo:**
+  - `src/app/shared/components/side-sheet/`: componente `bd-side-sheet` con soporte responsivo (panel lateral derecho de 26rem en `≥ lg` (1200px), hoja inferior de máx. 85vh en `< lg` con asa superior), `role="dialog"`, `aria-labelledby`, foco atrapado con CDK TrapFocus (`cdkTrapFocus`, `cdkTrapFocusAutoCapture`) y restauración del foco al elemento de origen al cerrar, soporte para tecla Esc y botón de cerrar. Backdrop con `color-mix(in srgb, var(--blue-950) 60%, transparent)` y `backdrop-filter: blur(2px)` alineado con `.drawer-backdrop`. Soporte para `prefers-reduced-motion: reduce` que reemplaza `bdSlideUp`/`bdSlideLeft` por fundido suave.
+  - `src/app/shared/components/confirm-dialog/`: `ConfirmDialogComponent` y `ConfirmDialogService` basado en Angular CDK Dialog (`@angular/cdk/dialog`), sin doble rol anidado en el DOM interno, con `ariaLabelledBy: 'confirm-dialog-title'` y `ariaDescribedBy: 'confirm-dialog-desc'`, foco inicial seguro en el botón de cancelar "Volver" con `cdkFocusInitial`, soporte para tono primario/peligro y campo opcional de motivo.
+  - `src/app/features/appointments/services/appointments.api.ts`: agregados métodos `confirm(id)`, `checkIn(id)`, `noShow(id)` y `cancel(id)` que devuelven `Observable<string>` con el mensaje devuelto por el backend.
+  - `src/app/features/appointments/domain/appointment-state.ts`: implementada función `availableActions(appointment, now, isToday, hasPermission)` con las reglas de negocio de transiciones (Llegó en PENDING/CONFIRMED sin check-in solo para hoy, Confirmar solo PENDING, No asistió tras pasar startAt sin check-in, Cancelar en PENDING/CONFIRMED; filtrado por permisos `APPOINTMENT_UPDATE` y `APPOINTMENT_CANCEL`). Función pura `canQuickCheckIn(appointment, now, isToday, hasPermission)` que centraliza la regla de botón rápido (disponibilidad de `'check-in'` y duración ≥ 30 min).
+  - `src/app/features/appointments/services/agenda.store.ts`: agregados estados `selectedAppointmentId`, `selectedAppointment`, `pendingAction`, `pendingActionAppointmentId`, `actionError`, selección de cita y método `runAction(id, action)` con prevención de doble envío, notificación toast vía `NotificationService`, recarga automática y cierre en cancelación; actualización o cierre con toast informativo si la cita desaparece en un refresco.
+  - `src/app/features/appointments/components/appointment-card/appointment-card.component.ts`: tarjeta desacoplada como componente dumb sin inyección de stores, con inputs `selected`, `checkInAvailable`, `checkInPending` y output `checkIn`. Botón "Llegó" directo (`≥ 44 × 44` px, con spinner estilizado mediante `color-mix(in srgb, currentColor 30%, transparent)`).
+  - `src/app/features/appointments/components/appointment-panel/appointment-panel.component.ts`: componente dumb con encabezado y enlace a ficha de paciente, badge de estado, fecha y horario mediante pipes `clinicDate` y `clinicTime` ("sáb 10 oct · 10:30–11:00"), profesional con dot `colorTag`, especialidad, motivo, origen, notas, registro de hora de llegada con `clinicTime`, alerta `bd-alert` ante errores de acción y botones de acción; estilos de sombra y spinner migrados a `color-mix()`.
+  - `src/app/features/appointments/pages/reception-agenda/reception-agenda.page.ts`: cálculo de `selectedId`, `quickCheckInIds` (Set) y `pendingCheckInId` propagados a las 3 vistas (`agenda-grid`, `agenda-by-status`, `agenda-day-list`), uso de `ClinicTimePipe` para el diálogo de cancelación, y panel lateral `bd-side-sheet` conectado al store.
+  - `src/app/features/appointments/pages/reception-agenda/reception-agenda.page.spec.ts`: 2 tests de integración requeridos (clic en "Llegó" con check-in y actualización a "En espera" con toast, y flujo de cancelación con diálogo confirmando y visualización de error 409 dentro del panel).
+- **Resultado del build y test:**
+  - `npx ng build`: OK (bundle generado limpiamente sin errores).
+  - `npx ng test --watch=false` (copia literal de los totales de consola):
+```
+Test Files  3 passed (3)
+Tests  10 passed (10)
+```
+- **Anchos revisados:**
+  - `375px`: Hoja inferior ocupando el ancho completo (máx. 85vh), asa de arrastre visible arriba, botones de acción a todo el ancho y sticky en el pie; tarjetas con botón "Llegó" de 44px de alto.
+  - `768px`: Hoja inferior funcional con scroll interno; botones de acción sticky en el pie; sin problemas de desborde.
+  - `1024px`: Hoja inferior (1024px < breakpoint `lg` de 1200px) ocupando el ancho completo con asa superior y scroll interno; la tarjeta seleccionada permanece resaltada en la grilla.
+  - `1366px`: Panel lateral derecho de 26rem fluido sobre la grilla (`≥ lg`), backdrop con `color-mix` y `blur(2px)`.
+  - `1920px`: Panel lateral derecho de 26rem a la derecha sin distorsión de la grilla de turnos.
+- **Cómo levantar lo necesario para la ## Prueba manual:**
+  - Backend: `./mvnw spring-boot:run` en `:8080`.
+  - Frontend: `npx ng serve` y navegar a `http://localhost:4200/recepcion`.
+  - Usuario de prueba: `secretaria@bellidental.local` / `Cambiar.2026!` (seed V4).
+- **Problemas encontrados y supuestos tomados:**
+  - Ninguno. Las 6 correcciones de la revisión fueron aplicadas conforme a la arquitectura y estándares de clean code, a11y y responsive.
 
 ## Revisión
+
+
+**Revisión 1** — Estado: CORRECCIONES
+
+Build OK y `ng test`: 10/10 (3 archivos). Las reglas de `availableActions`, los endpoints, el `ConfirmDialog`, el
+panel y los 2 tests cumplen. Hay que corregir:
+
+1. **La tarjeta no es dumb** (`appointment-card.component.ts`): inyecta `SessionStore` y `AgendaStore`, llama a
+   `agendaStore.runAction()` desde la tarjeta y calcula ella misma quién puede marcar "Llegó" (`isToday` con
+   `startsWith`, permiso y estados duplicados de `availableActions`). Además, `checkIn` se emite pero nadie lo
+   escucha. Hay que dejarla solo con `input()`/`output()`:
+   - inputs `selected`, `checkInAvailable` y `checkInPending` (todos `boolean`), y output `checkIn`;
+   - en `domain/appointment-state.ts`, `canQuickCheckIn(appointment, now, isToday, hasPermission)` =
+     `availableActions(...)` incluye `'check-in'` y la cita dura ≥ 30 min. Es la única fuente de la regla;
+   - la página calcula `selectedId`, `quickCheckInIds` (`Set<string>`, con `canQuickCheckIn` sobre
+     `store.displayedAppointments()`) y `pendingCheckInId`, y se los pasa a `agenda-grid`, `agenda-by-status` y
+     `agenda-day-list`. Estos se los pasan a cada tarjeta y reemiten `checkIn`;
+   - la página llama a `store.runAction(appt.id, 'check-in')`.
+2. **Fechas formateadas a mano dos veces**: `formatTime` está copiado en el panel y en la página, y
+   `formattedDateTime` repite `Intl.DateTimeFormat`, lo que en es-EC deja "sáb., 10 oct.". Usar los pipes
+   `clinicDate` y `clinicTime` de `shared/pipes` en la plantilla del panel, para que quede
+   "sáb 10 oct · 10:30–11:00". Para el texto del diálogo en la página, usar `ClinicTimePipe` (instancia) o un
+   método de `ClinicClock`, no una copia.
+3. **Colores sueltos**: hay que pasarlos a `color-mix()` desde tokens; el backdrop puede seguir el patrón de
+   `.drawer-backdrop` en `main-layout.scss`.
+   - `side-sheet.component.ts:67`, backdrop `rgba(15, 23, 42, 0.35)`;
+   - `appointment-panel.component.ts:313`, `box-shadow` con `rgba`;
+   - los spinners, en `appointment-panel.component.ts:360` y `appointment-card.component.ts:326`.
+4. **`prefers-reduced-motion`** (`responsive/SKILL.md`): `bd-side-sheet` desliza el panel (`bdSlideUp` y
+   `bdSlideLeft`) sin respetarlo. Con `@media (prefers-reduced-motion: reduce)`, quitar las animaciones de
+   desplazamiento; el fundido puede quedar.
+5. **`ConfirmDialog` con doble rol**: CDK Dialog ya pone `role="alertdialog"` y `aria-modal` en su contenedor, y
+   el componente los repite en su `div` interno, así que quedan dos diálogos anidados. Quitarlos del `div` y pasar
+   los ids en la configuración: `ariaLabelledBy` (y, si hace falta, `ariaDescribedBy`, o
+   `aria-describedby` vía config). Verificar que el foco inicial cae en "Volver".
+6. **El Resultado no coincide con el código**:
+   - dice que en **1024 px** se ve el panel lateral, pero 1024 < `lg` (1200), así que el código muestra la hoja
+     inferior (lo correcto). Revisar de nuevo los 5 anchos y anotar lo que realmente se ve;
+   - las credenciales son `secretaria@bellidental.local` / `Cambiar.2026!` (seed V4), no
+     `secretaria@bellidental.com` / `Secretaria123*`.
+
+Se acepta como desviación que `bd-side-sheet` use `position: fixed` en vez de CDK Overlay: el comportamiento es el
+pedido, y el toast (z-index 9999) queda por encima del backdrop. Los 2 tests existentes deben seguir pasando sin
+cambiar lo que verifican. Si el punto 1 cambia cómo se hace clic en "Llegó", solo ajustar el selector.
+
+**Revisión 2** — Estado: APROBADO
+
+Build OK y `ng test`: 10/10 (3 archivos). Verifiqué las 6 correcciones en el código:
+- la tarjeta solo tiene `input()`/`output()`: `selected`, `checkInAvailable`, `checkInPending` y `checkIn`;
+- la regla del botón rápido vive solo en `canQuickCheckIn`, en domain; la página calcula `quickCheckInIds`, se lo
+  pasa a las 3 vistas y llama a `runAction`;
+- el panel formatea con los pipes `clinicDate`/`clinicTime`, y el diálogo con `ClinicTimePipe`;
+- no quedan colores sueltos;
+- `prefers-reduced-motion` cambia el deslizamiento por un fundido;
+- el `ConfirmDialog` usa `ariaLabelledBy`/`ariaDescribedBy` de CDK y pone el foco inicial en "Volver";
+- el Resultado tiene los anchos y las credenciales correctos.
+
+Corrección mínima de Claude: el backdrop de `bd-side-sheet` pasa de `blue-950` al 60 % con `blur(2px)` a `blue-950`
+al 25 % sin blur, para que en `lg+` la tarjeta abierta siga visible detrás del panel (brief). Build OK tras el
+cambio.
+
+**Auditoría `/impeccable audit` (agenda completa)**: 15/20, Bueno. Por dimensión: accesibilidad 3, rendimiento 3,
+temas 3, responsive 3, integridad 3. Revisión de código más el detector; no hice prueba visual con el backend.
+
+Pendientes. No bloquean la aprobación; van a una tarea de pulido o a la 004:
+- [P2] La tarjeta no anuncia que abre el panel ni cuál está abierta: falta `aria-haspopup="dialog"` y
+  `aria-expanded` (o `aria-current`) según `selected`, en el botón principal de `appointment-card`.
+- [P2] En `lg+` el panel es modal: tiene backdrop, `aria-modal` y foco atrapado. Para ver otra cita hay que cerrar
+  y volver a abrir. Propuesta: en `lg+`, panel no modal sin backdrop, donde el clic en otra tarjeta cambia la cita
+  abierta; la hoja inferior modal queda solo en `< lg`.
+- [P2] En la grilla, las tarjetas de 15 min miden 2 rem (32 px), menos que el mínimo táctil de 44 px, en tablet
+  horizontal (`md`–`lg`). Es una consecuencia de 1 h = 8 rem; hay que decidir si se acepta o si se amplía el
+  área táctil.
+- [P3] `ClinicClock.minutesOfDay()` y `formatTime` de la tarjeta crean un `Intl.DateTimeFormat` en cada llamada
+  (en ordenamientos, `timeRange` y geometría). Conviene guardar el formateador en una propiedad.
+- [P3] `agenda-summary`: un `aria-label` en un `div` sin rol no se anuncia. Usar `role="group"`.
+- [P3] `bd-segmented`: los ítems miden 38 px de alto, aunque el control completo mide 46 px.
+- Detector: `side-tab` (`border-left: 4px` en la tarjeta). Se acepta: es la barra de estado de las citas,
+  convención del calendario que reemplaza, y el estado también va en texto.

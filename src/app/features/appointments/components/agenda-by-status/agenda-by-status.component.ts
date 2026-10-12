@@ -52,7 +52,11 @@ interface StatusColumnDef {
                 <bd-appointment-card
                   [appointment]="appt"
                   [showProfessional]="true"
+                  [selected]="selectedId() === appt.id"
+                  [checkInAvailable]="quickCheckInIds().has(appt.id)"
+                  [checkInPending]="pendingCheckInId() === appt.id"
                   (opened)="opened.emit($event)"
+                  (checkIn)="checkIn.emit($event)"
                 />
               } @empty {
                 <div class="agenda-by-status__empty-col">
@@ -70,7 +74,11 @@ interface StatusColumnDef {
           <bd-appointment-card
             [appointment]="appt"
             [showProfessional]="true"
+            [selected]="selectedId() === appt.id"
+            [checkInAvailable]="quickCheckInIds().has(appt.id)"
+            [checkInPending]="pendingCheckInId() === appt.id"
             (opened)="opened.emit($event)"
+            (checkIn)="checkIn.emit($event)"
           />
         } @empty {
           <div class="agenda-by-status__empty-col">
@@ -172,8 +180,12 @@ interface StatusColumnDef {
 export class AgendaByStatusComponent {
   readonly appointmentsByStatus = input.required<Record<string, Appointment[]>>();
   readonly showCancelled = input.required<boolean>();
+  readonly selectedId = input<string | null>(null);
+  readonly quickCheckInIds = input<Set<string>>(new Set());
+  readonly pendingCheckInId = input<string | null>(null);
 
   readonly opened = output<Appointment>();
+  readonly checkIn = output<Appointment>();
 
   readonly activeMobileTab = signal<string>('scheduled');
 

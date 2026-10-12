@@ -3,8 +3,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SessionStore } from '../../../../core/auth/session.store';
+import { NotificationService } from '../../../../core/services/notification.service';
 import {
   mockAppointmentsApiResponse,
+  mockAppointmentsDay,
   mockEffectiveDaysApiResponseProf1,
   mockEffectiveDaysApiResponseProf2,
   mockProfessionalsApiResponse,
@@ -15,6 +18,8 @@ describe('ReceptionAgendaPage', () => {
   let fixture: ComponentFixture<ReceptionAgendaPage>;
   let httpMock: HttpTestingController;
   let router: Router;
+  let sessionStore: SessionStore;
+  let notificationService: NotificationService;
 
   beforeEach(async () => {
     vi.useFakeTimers();
@@ -27,12 +32,22 @@ describe('ReceptionAgendaPage', () => {
         provideHttpClientTesting(),
         provideRouter([
           { path: 'recepcion', component: ReceptionAgendaPage },
+          { path: 'pacientes/:id', component: ReceptionAgendaPage },
         ]),
       ],
     }).compileComponents();
 
     router = TestBed.inject(Router);
     httpMock = TestBed.inject(HttpTestingController);
+    sessionStore = TestBed.inject(SessionStore);
+    notificationService = TestBed.inject(NotificationService);
+
+    sessionStore.setCurrentUser({
+      userId: 'user-sec',
+      email: 'secretaria@bellidental.com',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ', 'APPOINTMENT_UPDATE', 'APPOINTMENT_CANCEL'],
+    });
 
     await router.navigateByUrl('/recepcion?fecha=2026-10-10');
     fixture = TestBed.createComponent(ReceptionAgendaPage);
@@ -162,4 +177,145 @@ describe('ReceptionAgendaPage', () => {
     expect(updatedText).toContain('María Gómez');
     expect(fixture.nativeElement.querySelector('.reception-agenda-page__error-container')).toBeNull();
   });
+
+  it('clic en "Llegó" de la cita PENDING de hoy → POST /api/v1/appointments/{id}/check-in → responde message → nuevo GET /api/v1/appointments → la tarjeta dice "En espera" y se ve el toast con el message', async () => {
+    fixture.detectChanges();
+
+    // Carga inicial
+    const reqProfs = httpMock.expectOne('/api/v1/professionals');
+    reqProfs.flush(mockProfessionalsApiResponse);
+
+    const reqSched1 = httpMock.expectOne(
+      '/api/v1/professionals/prof-1/schedules/effective?from=2026-10-10&to=2026-10-10'
+    );
+    reqSched1.flush(mockEffectiveDaysApiResponseProf1);
+
+    const reqSched2 = httpMock.expectOne(
+      '/api/v1/professionals/prof-2/schedules/effective?from=2026-10-10&to=2026-10-10'
+    );
+    reqSched2.flush(mockEffectiveDaysApiResponseProf2);
+
+    const reqAppts = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    reqAppts.flush(mockAppointmentsApiResponse);
+
+    fixture.detectChanges();
+
+    // 1. Ubicar el botón "Llegó" de la tarjeta de David Pérez (appt-1, PENDING)
+    const checkInBtn = fixture.nativeElement.querySelector('.appointment-card__check-in-btn') as HTMLButtonElement;
+    expect(checkInBtn).toBeTruthy();
+    expect(checkInBtn.textContent).toContain('Llegó');
+
+    // 2. Clic en "Llegó"
+    checkInBtn.click();
+    fixture.detectChanges();
+
+    // 3. Verifica POST /api/v1/appointments/appt-1/check-in
+    const reqCheckIn = httpMock.expectOne('/api/v1/appointments/appt-1/check-in');
+    expect(reqCheckIn.request.method).toBe('POST');
+    reqCheckIn.flush({
+      success: true,
+      message: 'Check-in realizado.',
+      data: null,
+    });
+
+    // 4. Refresco automático de citas
+    const reqRefresh = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    expect(reqRefresh.request.method).toBe('GET');
+
+    const updatedAppointments = mockAppointmentsDay.map((a) =>
+      a.id === 'appt-1' ? { ...a, checkedInAt: '2026-10-10T12:00:00-05:00' } : a
+    );
+    reqRefresh.flush({
+      success: true,
+      message: 'Citas obtenidas',
+      data: updatedAppointments,
+    });
+
+    fixture.detectChanges();
+
+    // 5. La tarjeta ahora dice "En espera"
+    const colProf1 = fixture.nativeElement.querySelector('[data-professional-id="prof-1"]');
+    expect(colProf1.textContent).toContain('David Pérez');
+    expect(colProf1.textContent).toContain('En espera');
+
+    // 6. Toast con el mensaje mostrado
+    const toasts = notificationService.toasts();
+    expect(toasts.some((t) => t.message === 'Check-in realizado.')).toBe(true);
+  });
+
+  it('abrir el panel de una cita → "Cancelar" → confirmar en el diálogo → POST …/cancel responde 409 con message "Solo se pueden cancelar citas en estado PENDING o CONFIRMED." → el mensaje se ve dentro del panel', async () => {
+    fixture.detectChanges();
+
+    // Carga inicial
+    const reqProfs = httpMock.expectOne('/api/v1/professionals');
+    reqProfs.flush(mockProfessionalsApiResponse);
+
+    const reqSched1 = httpMock.expectOne(
+      '/api/v1/professionals/prof-1/schedules/effective?from=2026-10-10&to=2026-10-10'
+    );
+    reqSched1.flush(mockEffectiveDaysApiResponseProf1);
+
+    const reqSched2 = httpMock.expectOne(
+      '/api/v1/professionals/prof-2/schedules/effective?from=2026-10-10&to=2026-10-10'
+    );
+    reqSched2.flush(mockEffectiveDaysApiResponseProf2);
+
+    const reqAppts = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    reqAppts.flush(mockAppointmentsApiResponse);
+
+    fixture.detectChanges();
+
+    // 1. Abrir panel haciendo clic en la tarjeta de David Pérez
+    const cardBtn = fixture.nativeElement.querySelector('.appointment-card__main-btn') as HTMLButtonElement;
+    expect(cardBtn).toBeTruthy();
+    cardBtn.click();
+    fixture.detectChanges();
+
+    // 2. Verificar que el panel está abierto
+    const panel = fixture.nativeElement.querySelector('.appointment-panel');
+    expect(panel).toBeTruthy();
+    expect(panel.textContent).toContain('David Pérez');
+
+    // 3. Clic en "Cancelar cita" dentro del panel
+    const cancelBtn = panel.querySelector('.appointment-panel__btn-cancel') as HTMLButtonElement;
+    expect(cancelBtn).toBeTruthy();
+    cancelBtn.click();
+    fixture.detectChanges();
+
+    // 4. Se abre el diálogo de confirmación (CDK Dialog en el DOM)
+    const dialog = (document.querySelector('.confirm-dialog') ||
+      document.querySelector('[role="alertdialog"]')) as HTMLElement;
+    expect(dialog).toBeTruthy();
+    expect(dialog.textContent).toContain('¿Cancelar la cita de David Pérez');
+
+    // 5. Confirmar cancelación en el diálogo
+    const confirmBtn = dialog.querySelector('.btn-danger') as HTMLButtonElement;
+    expect(confirmBtn).toBeTruthy();
+    confirmBtn.click();
+    fixture.detectChanges();
+
+    // 6. Verifica llamada a POST /api/v1/appointments/appt-1/cancel y responder 409
+    const reqCancel = httpMock.expectOne('/api/v1/appointments/appt-1/cancel');
+    expect(reqCancel.request.method).toBe('POST');
+    reqCancel.flush(
+      {
+        success: false,
+        message: 'Solo se pueden cancelar citas en estado PENDING o CONFIRMED.',
+        data: null,
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+
+    // 7. Error recarga citas
+    const reqReload = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    reqReload.flush(mockAppointmentsApiResponse);
+
+    fixture.detectChanges();
+
+    // 8. El mensaje de error se ve dentro del panel
+    const alertEl = panel.querySelector('.appointment-panel__error-container');
+    expect(alertEl).toBeTruthy();
+    expect(alertEl.textContent).toContain('Solo se pueden cancelar citas en estado PENDING o CONFIRMED.');
+  });
 });
+

@@ -111,7 +111,11 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
                     [appointment]="item.appointment"
                     [topRem]="item.topRem"
                     [heightRem]="item.heightRem"
+                    [selected]="selectedId() === item.appointment.id"
+                    [checkInAvailable]="quickCheckInIds().has(item.appointment.id)"
+                    [checkInPending]="pendingCheckInId() === item.appointment.id"
                     (opened)="opened.emit($event)"
+                    (checkIn)="checkIn.emit($event)"
                   />
                 }
               </div>
@@ -329,8 +333,12 @@ export class AgendaGridComponent implements AfterViewInit {
   readonly professionals = input.required<Professional[]>();
   readonly effectiveDays = input.required<Record<string, EffectiveDay[]>>();
   readonly appointmentsByProf = input.required<Record<string, Appointment[]>>();
+  readonly selectedId = input<string | null>(null);
+  readonly quickCheckInIds = input<Set<string>>(new Set());
+  readonly pendingCheckInId = input<string | null>(null);
 
   readonly opened = output<Appointment>();
+  readonly checkIn = output<Appointment>();
 
   readonly isToday = computed(() => this.date() === this.clinicClock.todayDateString());
 

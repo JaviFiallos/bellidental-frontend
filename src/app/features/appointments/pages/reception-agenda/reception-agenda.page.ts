@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
   OnInit,
@@ -8,16 +9,26 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CalendarX } from 'lucide-angular';
+import { SessionStore } from '../../../../core/auth/session.store';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
+import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { LucideIconData } from '../../../../shared/components/icon/icon.component';
+import { SideSheetComponent } from '../../../../shared/components/side-sheet';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
+import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { AgendaByStatusComponent } from '../../components/agenda-by-status/agenda-by-status.component';
 import { AgendaDayListComponent } from '../../components/agenda-day-list/agenda-day-list.component';
 import { AgendaGridComponent } from '../../components/agenda-grid/agenda-grid.component';
 import { AgendaSummaryComponent } from '../../components/agenda-summary/agenda-summary.component';
 import { AgendaToolbarComponent } from '../../components/agenda-toolbar/agenda-toolbar.component';
+import { AppointmentPanelComponent } from '../../components/appointment-panel/appointment-panel.component';
+import {
+  availableActions,
+  canQuickCheckIn,
+  AppointmentActionType,
+} from '../../domain/appointment-state';
 import { Appointment } from '../../models/appointment.models';
 import { AgendaStore } from '../../services/agenda.store';
 
@@ -28,6 +39,8 @@ import { AgendaStore } from '../../services/agenda.store';
     AlertComponent,
     EmptyStateComponent,
     SkeletonComponent,
+    SideSheetComponent,
+    AppointmentPanelComponent,
     AgendaToolbarComponent,
     AgendaSummaryComponent,
     AgendaGridComponent,
@@ -128,7 +141,11 @@ import { AgendaStore } from '../../services/agenda.store';
               [professionals]="store.displayedProfessionals()"
               [effectiveDays]="store.effectiveDays()"
               [appointmentsByProf]="store.appointmentsByProfessional()"
+              [selectedId]="selectedId()"
+              [quickCheckInIds]="quickCheckInIds()"
+              [pendingCheckInId]="pendingCheckInId()"
               (opened)="onOpenAppointment($event)"
+              (checkIn)="onQuickCheckIn($event)"
             />
           </div>
 
@@ -137,7 +154,11 @@ import { AgendaStore } from '../../services/agenda.store';
             <bd-agenda-day-list
               [professionals]="store.displayedProfessionals()"
               [appointmentsByProf]="store.appointmentsByProfessional()"
+              [selectedId]="selectedId()"
+              [quickCheckInIds]="quickCheckInIds()"
+              [pendingCheckInId]="pendingCheckInId()"
               (opened)="onOpenAppointment($event)"
+              (checkIn)="onQuickCheckIn($event)"
             />
           </div>
         } @else {
@@ -145,10 +166,32 @@ import { AgendaStore } from '../../services/agenda.store';
           <bd-agenda-by-status
             [appointmentsByStatus]="store.appointmentsByStatus()"
             [showCancelled]="store.showCancelled()"
+            [selectedId]="selectedId()"
+            [quickCheckInIds]="quickCheckInIds()"
+            [pendingCheckInId]="pendingCheckInId()"
             (opened)="onOpenAppointment($event)"
+            (checkIn)="onQuickCheckIn($event)"
           />
         }
       }
+
+      <!-- Panel lateral / Hoja inferior con detalle de la cita -->
+      <bd-side-sheet
+        [isOpen]="!!store.selectedAppointment()"
+        [titleId]="'appointment-panel-title'"
+        (closed)="onClosePanel()"
+      >
+        @if (store.selectedAppointment(); as appt) {
+          <bd-appointment-panel
+            [appointment]="appt"
+            [actions]="panelActions()"
+            [pendingAction]="store.pendingAction()"
+            [error]="store.actionError()"
+            (action)="onPanelAction($event)"
+            (close)="onClosePanel()"
+          />
+        }
+      </bd-side-sheet>
     </div>
   `,
   styles: `
@@ -228,8 +271,42 @@ export class ReceptionAgendaPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly clinicClock = inject(ClinicClock);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly sessionStore = inject(SessionStore);
 
   readonly calendarXIcon: LucideIconData = CalendarX;
+  private readonly clinicTimePipe = new ClinicTimePipe();
+
+  readonly isToday = computed(() => this.store.date() === this.clinicClock.todayDateString());
+
+  readonly selectedId = computed(() => this.store.selectedAppointmentId());
+  readonly pendingCheckInId = computed(() =>
+    this.store.pendingAction() === 'check-in' ? this.store.pendingActionAppointmentId() : null
+  );
+
+  readonly quickCheckInIds = computed<Set<string>>(() => {
+    const set = new Set<string>();
+    const now = this.store.now();
+    const isToday = this.isToday();
+    const hasPerm = (p: string) => this.sessionStore.hasPermission(p);
+    for (const appt of this.store.displayedAppointments()) {
+      if (canQuickCheckIn(appt, now, isToday, hasPerm)) {
+        set.add(appt.id);
+      }
+    }
+    return set;
+  });
+
+  readonly panelActions = computed(() => {
+    const appt = this.store.selectedAppointment();
+    if (!appt) return [];
+    return availableActions(
+      appt,
+      this.store.now(),
+      this.isToday(),
+      (perm) => this.sessionStore.hasPermission(perm)
+    );
+  });
 
   ngOnInit(): void {
     this.route.queryParamMap
@@ -272,7 +349,39 @@ export class ReceptionAgendaPage implements OnInit {
   }
 
   onOpenAppointment(appt: Appointment): void {
-    // En tarea 003a solo emite, la página no hace nada aún (el panel es de la 003b)
+    this.store.selectAppointment(appt.id);
+  }
+
+  onClosePanel(): void {
+    this.store.selectAppointment(null);
+  }
+
+  onQuickCheckIn(appt: Appointment): void {
+    this.store.runAction(appt.id, 'check-in');
+  }
+
+  onPanelAction(action: AppointmentActionType): void {
+    const appt = this.store.selectedAppointment();
+    if (!appt) return;
+
+    if (action === 'cancel') {
+      const timeText = this.clinicTimePipe.transform(appt.startAt);
+      this.confirmDialog
+        .open({
+          title: 'Cancelar cita',
+          message: `¿Cancelar la cita de ${appt.patientName} de las ${timeText}?`,
+          confirmLabel: 'Cancelar cita',
+          cancelLabel: 'Volver',
+          tone: 'danger',
+        })
+        .subscribe((res) => {
+          if (res.confirmed) {
+            this.store.runAction(appt.id, 'cancel');
+          }
+        });
+    } else {
+      this.store.runAction(appt.id, action);
+    }
   }
 
   private syncUrl(date: string, view: 'professional' | 'status'): void {
