@@ -36,6 +36,7 @@ import { IconComponent, LucideIconData } from '../icon/icon.component';
       <div
         #panelElement
         class="bd-side-sheet"
+        [class.bd-side-sheet--fullscreen-below-md]="fullscreenBelowMd()"
         role="dialog"
         [attr.aria-modal]="!isLg() ? 'true' : null"
         [attr.aria-labelledby]="titleId()"
@@ -93,6 +94,22 @@ import { IconComponent, LucideIconData } from '../icon/icon.component';
       border-top-left-radius: var(--radius-lg);
       border-top-right-radius: var(--radius-lg);
       animation: bdSlideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+
+      &.bd-side-sheet--fullscreen-below-md {
+        @include bp.bp-down('md') {
+          top: 0;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          max-height: 100dvh;
+          height: 100dvh;
+          border-radius: 0;
+
+          .bd-side-sheet__handle {
+            display: none;
+          }
+        }
+      }
 
       // En >= lg: Panel lateral derecho de 26rem sobre la grilla
       @include bp.bp-up('lg') {
@@ -193,6 +210,7 @@ export class SideSheetComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isOpen = input<boolean>(false);
+  readonly fullscreenBelowMd = input<boolean>(false);
   readonly titleId = input<string | undefined>(undefined);
   readonly ariaLabel = input<string | undefined>(undefined);
 

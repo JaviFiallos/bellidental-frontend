@@ -121,7 +121,7 @@ Se crean en la primera tarea que los necesita y se reutilizan después. Ningún 
 | `bd-icon` | envoltura de `lucide-angular` con tamaño y `aria-hidden` | 002a |
 | `NotificationService` + `bd-toast-host` (core) | toasts de éxito/error | 002a |
 | `bd-combobox` | buscador con lista (CDK overlay, ↑↓ Enter Esc, `aria-activedescendant`) | 002b |
-| `bd-side-sheet` | panel lateral en `≥ lg`, hoja inferior en `< lg` | 003b |
+| `bd-side-sheet` | panel lateral no modal en `≥ lg` (la página reserva 26rem), hoja inferior modal en `< lg`; `fullscreenBelowMd` para formularios | 003b · 003c · 004a |
 | `ConfirmDialog` (CDK Dialog) | confirmar acciones; con campo de motivo opcional | 003b |
 | `bd-page-header` | encabezado de página | 002a |
 | `bd-empty-state`, `bd-skeleton` | vacío, carga | 003a |
@@ -350,12 +350,16 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   desviación aceptada) y cambia el deslizamiento por un fundido con `prefers-reduced-motion`. Uso de
   `ConfirmDialogService.open()`: `{title, message, confirmLabel, cancelLabel, tone, reasonLabel?}` →
   `Observable<{confirmed, reason?}>`.
+- **Hecho (003c):** en `≥ lg` el panel no es modal y la página reserva `padding-inline-end: 26rem`; en `< lg`
+  sigue la hoja inferior modal. La geometría de la agenda se calcula en horas (`topHours`, `heightHours`,
+  `totalHours`) con `--hour-height`: 8rem, o 11rem con `pointer: coarse` (15 min = 44 px). El Esc de
+  `bd-side-sheet` respeta `defaultPrevented`. `ClinicClock` crea sus formateadores una sola vez.
 - **Test:** `reception-agenda.page.spec.ts` — carga del día (3 GET) → se ven las tarjetas en su columna con su
   estado; clic "Llegó" → `POST /appointments/{id}/check-in` → recarga → la tarjeta dice "En espera". 409 al
   cancelar → mensaje del backend visible.
 - **Prueba manual:** 1920 y 1366 con 3 profesionales; cambiar de día y de vista.
 
-### 5.4 Recepción: nueva cita, sin cita y reprogramar — tarea 004 (P4)
+### 5.4 Recepción: nueva cita, sin cita y reprogramar — tareas 004a (nueva cita) y 004b (sin cita, reprogramar) (P4)
 - **Depende de:** 003. **Perfil:** SECRETARIA (formularios dentro de `/recepcion`).
 - **API:** `GET /specialties` (con `defaultDurationMinutes`) · `GET /availability?professionalId&specialtyId&date`
   · `POST /appointments` · `POST /appointments/walk-in` · `POST /appointments/{id}/reschedule`.
@@ -374,6 +378,24 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
 - **Test:** `reception-agenda.page.spec.ts` (se amplía): nueva cita desde un hueco → `GET /availability` →
   elegir hora → `POST /appointments` con body correcto → la tarjeta aparece; 409 → mensaje.
 - **Prueba manual:** crear dos citas cruzadas; walk-in; reprogramar a otro día.
+- **Decisiones (004a/004b):**
+  - La 004 se divide en dos tareas.
+  - Orden del formulario: paciente → especialidad (de `GET /specialties`, limitadas a las del profesional si se
+    abre desde un hueco) → profesional (filtrado por la especialidad; si hay uno solo, queda elegido) → fecha →
+    hora.
+  - El formulario no envía `endAt`: el backend usa la duración de la especialidad.
+  - El estado del formulario va en `AppointmentFormStore` (lo provee la página); los formularios son dumb.
+  - `bd-side-sheet` gana `fullscreenBelowMd`.
+  - En el walk-in, el profesional por defecto es el que tiene el hueco más cercano según `/availability` de hoy.
+  - En reprogramar se envían `professionalId` y `specialtyId` solo si cambiaron.
+- **Hecho (004a):** `AppointmentFormStore` (provisto por la página junto a `PatientSearchStore`) pide
+  `/availability` con `switchMap`, reconcilia la hora preseleccionada con `minutesOfDay` y, tras un 409, vuelve a
+  pedir las horas. La página guarda `activePanel: 'detail' | 'create' | null`; si la cita seleccionada desaparece,
+  el panel de detalle se cierra. `slotAtOffset()` (`domain/agenda-layout.ts`) convierte el clic en la columna en
+  una hora redondeada a 15 min, dentro del turno, y devuelve `null` en el pasado. Componentes dumb nuevos:
+  `appointment-form`, `appointment-patient-field` y `slot-picker` (radiogroup nativo). Los inputs y los selects
+  usan la clase global `.input`. `SpecialtiesApi` y `Specialty` (`id: number`) se exportan desde
+  `professionals/index.ts`.
 
 ### 5.5 Pacientes: alta, edición y ficha de recepción — tarea 005 (P5 sin cuenta, P6)
 - **Depende de:** 002 · [G-4] (citas del paciente) · [G-5] (observaciones). **Perfil:** SECRETARIA; en
@@ -716,8 +738,10 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 002a | Shell y perfiles | 001 · (G-2 opcional) | Commit `8320033` |
 | 002b | Buscador global de pacientes | 002a | Commit `3cbf525` |
 | 003a | Agenda del día (lectura) | 002b · G-8 | Commit `efa8233` |
-| 003b | Agenda: panel y acciones de estado | 003a | Aprobada |
-| 004 | Nueva cita, sin cita, reprogramar | 003 | — |
+| 003b | Agenda: panel y acciones de estado | 003a | Commit `cee09ad` |
+| 003c | Agenda: pulido tras la auditoría (panel no modal en lg+, 44 px táctil, a11y) | 003b | Commit `221b5f5` |
+| 004a | Nueva cita (formulario, slot-picker, clic en hueco de la grilla) | 003c | Aprobada (rev. 2) |
+| 004b | Sin cita (walk-in) y reprogramar | 004a | Redactada |
 | 005 | Pacientes: alta, edición, ficha de recepción | 002 · G-4, G-5 | — |
 | 006 | Horarios de profesionales | 002 | — |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | — |
@@ -733,4 +757,4 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 017 | Auditoría | 002 · backend 013 + G-7 | — |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
-Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 004 → 007 → 008 → 009/010 → 012 → 013 → 015.
+Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012 → 013 → 015.

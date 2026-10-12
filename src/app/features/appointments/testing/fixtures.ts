@@ -1,6 +1,6 @@
 import { ApiResponse } from '../../../core/api/api.models';
-import { Professional } from '../../professionals';
-import { Appointment } from '../models/appointment.models';
+import { Professional, Specialty } from '../../professionals';
+import { Appointment, AvailableSlot } from '../models/appointment.models';
 import { EffectiveDay } from '../models/schedule.models';
 
 export const mockProfessionals: Professional[] = [
@@ -11,7 +11,7 @@ export const mockProfessionals: Professional[] = [
     licenseNumber: 'MED-1001',
     colorTag: '#2C5F8A',
     specialties: [
-      { id: 'spec-1', name: 'Profilaxis', defaultDurationMinutes: 30 },
+      { id: 1, name: 'Profilaxis', defaultDurationMinutes: 30 },
     ],
     active: true,
   },
@@ -22,7 +22,7 @@ export const mockProfessionals: Professional[] = [
     licenseNumber: 'MED-1002',
     colorTag: '#9A5B1C',
     specialties: [
-      { id: 'spec-2', name: 'Endodoncia', defaultDurationMinutes: 60 },
+      { id: 2, name: 'Endodoncia', defaultDurationMinutes: 60 },
     ],
     active: true,
   },
@@ -68,7 +68,7 @@ export const mockAppointmentsDay: Appointment[] = [
     professionalId: 'prof-1',
     professionalName: 'Dr. Daniel Vargas',
     colorTag: '#2C5F8A',
-    specialtyId: 'spec-1',
+    specialtyId: 1,
     specialtyName: 'Profilaxis',
     startAt: '2026-10-10T08:30:00-05:00',
     endAt: '2026-10-10T09:00:00-05:00',
@@ -83,7 +83,7 @@ export const mockAppointmentsDay: Appointment[] = [
     professionalId: 'prof-2',
     professionalName: 'Dra. Sofía Mendoza',
     colorTag: '#9A5B1C',
-    specialtyId: 'spec-2',
+    specialtyId: 2,
     specialtyName: 'Endodoncia',
     startAt: '2026-10-10T10:00:00-05:00',
     endAt: '2026-10-10T11:00:00-05:00',
@@ -98,7 +98,7 @@ export const mockAppointmentsDay: Appointment[] = [
     professionalId: 'prof-1',
     professionalName: 'Dr. Daniel Vargas',
     colorTag: '#2C5F8A',
-    specialtyId: 'spec-1',
+    specialtyId: 1,
     specialtyName: 'Profilaxis',
     startAt: '2026-10-10T11:30:00-05:00',
     endAt: '2026-10-10T12:00:00-05:00',
@@ -112,4 +112,27 @@ export const mockAppointmentsApiResponse: ApiResponse<Appointment[]> = {
   success: true,
   message: 'Citas obtenidas',
   data: mockAppointmentsDay,
+};
+
+export const mockSpecialties: Specialty[] = [
+  { id: 1, name: 'Profilaxis', defaultDurationMinutes: 30 },
+  { id: 2, name: 'Endodoncia', defaultDurationMinutes: 60 },
+];
+
+export const mockSpecialtiesApiResponse: ApiResponse<Specialty[]> = {
+  success: true,
+  message: 'Especialidades obtenidas',
+  data: mockSpecialties,
+};
+
+export const mockAvailableSlots: AvailableSlot[] = [
+  { startAt: '2026-10-10T10:30:00-05:00', endAt: '2026-10-10T11:00:00-05:00' },
+  { startAt: '2026-10-10T11:00:00-05:00', endAt: '2026-10-10T11:30:00-05:00' },
+  { startAt: '2026-10-10T15:00:00-05:00', endAt: '2026-10-10T15:30:00-05:00' },
+];
+
+export const mockAvailableSlotsApiResponse: ApiResponse<AvailableSlot[]> = {
+  success: true,
+  message: 'Huecos obtenidos',
+  data: mockAvailableSlots,
 };

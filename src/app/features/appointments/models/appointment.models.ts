@@ -19,7 +19,7 @@ export interface Appointment {
   professionalId: string;
   professionalName: string;
   colorTag?: string;
-  specialtyId: string;
+  specialtyId: number;
   specialtyName: string;
   startAt: string;
   endAt: string;
@@ -29,4 +29,19 @@ export interface Appointment {
   notes?: string | null;
   checkedInAt?: string | null;
   rescheduledFromId?: string | null;
+}
+
+export interface AvailableSlot {
+  startAt: string;
+  endAt: string;
+}
+
+export interface CreateAppointmentRequest {
+  patientId: string;
+  professionalId: string;
+  specialtyId: number;
+  startAt: string;
+  endAt?: string;
+  reason?: string;
+  notes?: string;
 }

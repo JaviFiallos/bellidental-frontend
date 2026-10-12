@@ -2,7 +2,7 @@ import { HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
-import { Appointment } from '../models/appointment.models';
+import { Appointment, CreateAppointmentRequest } from '../models/appointment.models';
 
 export interface ListAppointmentsParams {
   from: string;
@@ -42,5 +42,9 @@ export class AppointmentsApi {
 
   cancel(id: string): Observable<string> {
     return this.api.post<string>(`/api/v1/appointments/${id}/cancel`, {});
+  }
+
+  create(body: CreateAppointmentRequest): Observable<Appointment> {
+    return this.api.post<Appointment>('/api/v1/appointments', body);
   }
 }

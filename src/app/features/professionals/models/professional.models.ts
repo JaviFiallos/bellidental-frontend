@@ -1,5 +1,5 @@
 export interface Specialty {
-  id: string;
+  id: number;
   name: string;
   defaultDurationMinutes: number;
 }

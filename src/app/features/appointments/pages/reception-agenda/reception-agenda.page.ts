@@ -3,26 +3,32 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CalendarX } from 'lucide-angular';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { LucideIconData } from '../../../../shared/components/icon/icon.component';
 import { SideSheetComponent } from '../../../../shared/components/side-sheet';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
+import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
+import { Patient, PatientSearchStore } from '../../../patients';
 import { AgendaByStatusComponent } from '../../components/agenda-by-status/agenda-by-status.component';
 import { AgendaDayListComponent } from '../../components/agenda-day-list/agenda-day-list.component';
 import { AgendaGridComponent } from '../../components/agenda-grid/agenda-grid.component';
 import { AgendaSummaryComponent } from '../../components/agenda-summary/agenda-summary.component';
 import { AgendaToolbarComponent } from '../../components/agenda-toolbar/agenda-toolbar.component';
+import { AppointmentFormComponent } from '../../components/appointment-form/appointment-form.component';
 import { AppointmentPanelComponent } from '../../components/appointment-panel/appointment-panel.component';
 import {
   availableActions,
@@ -31,6 +37,7 @@ import {
 } from '../../domain/appointment-state';
 import { Appointment } from '../../models/appointment.models';
 import { AgendaStore } from '../../services/agenda.store';
+import { AppointmentFormStore } from '../../services/appointment-form.store';
 
 @Component({
   selector: 'bd-reception-agenda-page',
@@ -41,18 +48,19 @@ import { AgendaStore } from '../../services/agenda.store';
     SkeletonComponent,
     SideSheetComponent,
     AppointmentPanelComponent,
+    AppointmentFormComponent,
     AgendaToolbarComponent,
     AgendaSummaryComponent,
     AgendaGridComponent,
     AgendaByStatusComponent,
     AgendaDayListComponent,
   ],
-  providers: [AgendaStore],
+  providers: [AgendaStore, AppointmentFormStore, PatientSearchStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
       class="reception-agenda-page"
-      [class.reception-agenda-page--panel-open]="!!store.selectedAppointment()"
+      [class.reception-agenda-page--panel-open]="isPanelOpen()"
     >
       <!-- Barra superior / Toolbar -->
       <bd-agenda-toolbar
@@ -61,9 +69,11 @@ import { AgendaStore } from '../../services/agenda.store';
         [showCancelled]="store.showCancelled()"
         [lastUpdatedAt]="store.lastUpdatedAt()"
         [refreshError]="store.refreshError()"
+        [canCreate]="canCreate()"
         (dateChange)="onDateChange($event)"
         (viewChange)="onViewChange($event)"
         (toggleCancelled)="store.setShowCancelled($event)"
+        (create)="onCreateAppointment()"
       />
 
       <!-- Contadores / Leyenda (solo si no hay error de carga principal) -->
@@ -145,10 +155,12 @@ import { AgendaStore } from '../../services/agenda.store';
               [effectiveDays]="store.effectiveDays()"
               [appointmentsByProf]="store.appointmentsByProfessional()"
               [selectedId]="selectedId()"
+              [canCreate]="canCreate()"
               [quickCheckInIds]="quickCheckInIds()"
               [pendingCheckInId]="pendingCheckInId()"
               (opened)="onOpenAppointment($event)"
               (checkIn)="onQuickCheckIn($event)"
+              (slotSelected)="onSlotSelected($event)"
             />
           </div>
 
@@ -180,7 +192,7 @@ import { AgendaStore } from '../../services/agenda.store';
 
       <!-- Panel lateral / Hoja inferior con detalle de la cita -->
       <bd-side-sheet
-        [isOpen]="!!store.selectedAppointment()"
+        [isOpen]="isDetailOpen()"
         [titleId]="'appointment-panel-title'"
         (closed)="onClosePanel()"
       >
@@ -195,10 +207,71 @@ import { AgendaStore } from '../../services/agenda.store';
           />
         }
       </bd-side-sheet>
+
+      <!-- Panel lateral / Hoja inferior con formulario de nueva cita -->
+      <bd-side-sheet
+        [isOpen]="activePanel() === 'create'"
+        [titleId]="'appointment-form-title'"
+        [fullscreenBelowMd]="true"
+        (closed)="onCloseCreatePanel()"
+      >
+        <div class="appointment-form-panel">
+          <div class="appointment-form-panel__header">
+            <h2 id="appointment-form-title" class="appointment-form-panel__title">Nueva cita</h2>
+          </div>
+          <bd-appointment-form
+            [patient]="formStore.patient()"
+            [patientQuery]="patientSearchStore.query()"
+            [patientResults]="patientSearchStore.results()"
+            [patientLoading]="patientSearchStore.isLoading()"
+            [patientError]="patientSearchStore.errorMessage()"
+            [availableSpecialties]="formStore.availableSpecialties()"
+            [selectedSpecialtyId]="formStore.selectedSpecialtyId()"
+            [durationText]="formStore.durationText()"
+            [availableProfessionals]="formStore.availableProfessionals()"
+            [selectedProfessionalId]="formStore.selectedProfessionalId()"
+            [minDate]="minDate()"
+            [date]="formStore.date()"
+            [slots]="formStore.slots()"
+            [selectedSlot]="formStore.selectedSlot()"
+            [slotsLoading]="formStore.slotsLoading()"
+            [slotsError]="formStore.slotsError()"
+            [isSlotPickerReady]="formStore.isSlotPickerReady()"
+            [notice]="formStore.notice()"
+            [canSubmit]="formStore.canSubmit()"
+            [saving]="formStore.saving()"
+            [errorMessage]="formStore.error()"
+            (patientQueryChange)="patientSearchStore.setQuery($event)"
+            (patientSelected)="onPatientSelected($event)"
+            (patientClear)="onPatientClear()"
+            (specialtyChange)="formStore.setSpecialtyId($event)"
+            (professionalChange)="formStore.setProfessionalId($event)"
+            (dateChange)="formStore.setDate($event)"
+            (todayClick)="onFormToday()"
+            (tomorrowClick)="onFormTomorrow()"
+            (slotSelected)="formStore.setSelectedSlot($event)"
+            (nextDayClicked)="formStore.nextDay()"
+            (retrySlots)="formStore.reloadSlots()"
+            (save)="onSaveAppointment($event)"
+          />
+        </div>
+      </bd-side-sheet>
     </div>
   `,
   styles: `
     @use '../../../../shared/styles/breakpoints' as bp;
+
+    .appointment-form-panel__header {
+      padding: 1.25rem 1.25rem 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--slate-100);
+    }
+
+    .appointment-form-panel__title {
+      margin: 0;
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      color: var(--blue-950);
+    }
 
     .reception-agenda-page {
       display: flex;
@@ -277,15 +350,34 @@ import { AgendaStore } from '../../services/agenda.store';
 })
 export class ReceptionAgendaPage implements OnInit {
   readonly store = inject(AgendaStore);
+  readonly formStore = inject(AppointmentFormStore);
+  readonly patientSearchStore = inject(PatientSearchStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly clinicClock = inject(ClinicClock);
   private readonly destroyRef = inject(DestroyRef);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly sessionStore = inject(SessionStore);
+  private readonly notificationService = inject(NotificationService);
 
   readonly calendarXIcon: LucideIconData = CalendarX;
   private readonly clinicTimePipe = new ClinicTimePipe();
+  private readonly clinicDatePipe = new ClinicDatePipe();
+
+  readonly activePanel = signal<'detail' | 'create' | null>(null);
+
+  readonly canCreate = computed(() => this.sessionStore.hasPermission('APPOINTMENT_CREATE'));
+  readonly isDetailOpen = computed(() => this.activePanel() === 'detail' && !!this.store.selectedAppointment());
+  readonly isPanelOpen = computed(() => this.isDetailOpen() || this.activePanel() === 'create');
+
+  constructor() {
+    effect(() => {
+      if (this.activePanel() === 'detail' && !this.store.selectedAppointment()) {
+        this.activePanel.set(null);
+      }
+    });
+  }
+  readonly minDate = computed(() => this.clinicClock.todayDateString());
 
   readonly isToday = computed(() => this.store.date() === this.clinicClock.todayDateString());
 
@@ -359,11 +451,74 @@ export class ReceptionAgendaPage implements OnInit {
   }
 
   onOpenAppointment(appt: Appointment): void {
+    this.activePanel.set('detail');
     this.store.selectAppointment(appt.id);
   }
 
   onClosePanel(): void {
     this.store.selectAppointment(null);
+    this.activePanel.set(null);
+  }
+
+  onCreateAppointment(): void {
+    this.store.selectAppointment(null);
+    this.formStore.setProfessionals(this.store.professionals());
+    this.formStore.openNew(this.store.date());
+    this.patientSearchStore.clear();
+    this.activePanel.set('create');
+  }
+
+  onSlotSelected(event: { professionalId: string; startAt: string }): void {
+    this.formStore.setProfessionals(this.store.professionals());
+    if (this.activePanel() === 'create') {
+      this.formStore.updateSlotSelection(event.professionalId, this.store.date(), event.startAt);
+    } else {
+      this.store.selectAppointment(null);
+      this.formStore.openFromSlot(event.professionalId, this.store.date(), event.startAt);
+      this.patientSearchStore.clear();
+      this.activePanel.set('create');
+    }
+  }
+
+  onCloseCreatePanel(): void {
+    this.activePanel.set(null);
+  }
+
+  onPatientSelected(patient: Patient): void {
+    this.formStore.setPatient(patient);
+  }
+
+  onPatientClear(): void {
+    this.formStore.setPatient(null);
+    this.patientSearchStore.clear();
+  }
+
+  onFormToday(): void {
+    this.formStore.setDate(this.clinicClock.todayDateString());
+  }
+
+  onFormTomorrow(): void {
+    this.formStore.setDate(this.clinicClock.addDays(this.clinicClock.todayDateString(), 1));
+  }
+
+  onSaveAppointment(reason?: string): void {
+    this.formStore.submit(reason).subscribe({
+      next: (appt) => {
+        this.activePanel.set(null);
+        const apptDate = appt.startAt.slice(0, 10);
+        const dateFormatted = this.clinicDatePipe.transform(appt.startAt);
+        const timeFormatted = this.clinicTimePipe.transform(appt.startAt);
+        this.notificationService.success(
+          `Cita agendada: ${appt.patientName}, ${dateFormatted} · ${timeFormatted}`
+        );
+        if (apptDate !== this.store.date()) {
+          this.onDateChange(apptDate);
+        } else {
+          this.store.refreshAppointments();
+        }
+      },
+      error: () => {},
+    });
   }
 
   onQuickCheckIn(appt: Appointment): void {

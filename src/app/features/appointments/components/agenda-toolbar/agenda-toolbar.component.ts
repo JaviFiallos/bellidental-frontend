@@ -6,7 +6,7 @@ import {
   input,
   output,
 } from '@angular/core';
-import { AlertCircle, Clock } from 'lucide-angular';
+import { AlertCircle, Clock, Plus } from 'lucide-angular';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { DateNavComponent } from '../../../../shared/components/date-nav/date-nav.component';
 import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
@@ -56,6 +56,17 @@ import {
             />
             <span class="agenda-toolbar__checkbox-label">Ver canceladas</span>
           </label>
+
+          @if (canCreate()) {
+            <button
+              type="button"
+              class="btn btn-accent agenda-toolbar__create-btn"
+              (click)="create.emit()"
+            >
+              <bd-icon [name]="plusIcon" [size]="18" />
+              <span>Nueva cita</span>
+            </button>
+          }
 
           <div class="agenda-toolbar__updated" aria-live="polite">
             @if (refreshError()) {
@@ -147,13 +158,16 @@ export class AgendaToolbarComponent {
   readonly showCancelled = input.required<boolean>();
   readonly lastUpdatedAt = input<Date | null>(null);
   readonly refreshError = input<boolean>(false);
+  readonly canCreate = input<boolean>(false);
 
   readonly dateChange = output<string>();
   readonly viewChange = output<'professional' | 'status'>();
   readonly toggleCancelled = output<boolean>();
+  readonly create = output<void>();
 
   readonly clockIcon: LucideIconData = Clock;
   readonly alertIcon: LucideIconData = AlertCircle;
+  readonly plusIcon: LucideIconData = Plus;
 
   readonly viewOptions: SegmentedOption<'professional' | 'status'>[] = [
     { value: 'professional', label: 'Por profesional' },

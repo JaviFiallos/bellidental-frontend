@@ -18,6 +18,7 @@ import {
   minutesToHoursOffset,
   PositionedAppointment,
   ShadedInterval,
+  slotAtOffset,
 } from '../../domain/agenda-layout';
 import { Appointment } from '../../models/appointment.models';
 import { EffectiveDay, Shift } from '../../models/schedule.models';
@@ -85,7 +86,9 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
             @for (prof of professionals(); track prof.id) {
               <div
                 class="agenda-grid__prof-col"
+                [class.agenda-grid__prof-col--clickable]="canCreate()"
                 [attr.data-professional-id]="prof.id"
+                (click)="onColumnClick($event, prof.id)"
               >
                 <!-- Líneas horarias de fondo -->
                 @for (h of hourSlots(); track h) {
@@ -270,6 +273,10 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
       position: relative;
       border-right: 1px solid var(--slate-200);
       height: var(--total-height);
+
+      &.agenda-grid__prof-col--clickable {
+        cursor: pointer;
+      }
     }
 
     .agenda-grid__bg-hour-cell {
@@ -294,7 +301,8 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
       left: 0;
       right: 0;
       background-color: color-mix(in srgb, var(--slate-100) 80%, transparent);
-      pointer-events: none;
+      cursor: default;
+      pointer-events: auto;
       z-index: 1;
     }
 
@@ -341,11 +349,13 @@ export class AgendaGridComponent implements AfterViewInit {
   readonly effectiveDays = input.required<Record<string, EffectiveDay[]>>();
   readonly appointmentsByProf = input.required<Record<string, Appointment[]>>();
   readonly selectedId = input<string | null>(null);
+  readonly canCreate = input<boolean>(false);
   readonly quickCheckInIds = input<Set<string>>(new Set());
   readonly pendingCheckInId = input<string | null>(null);
 
   readonly opened = output<Appointment>();
   readonly checkIn = output<Appointment>();
+  readonly slotSelected = output<{ professionalId: string; startAt: string }>();
 
   readonly isToday = computed(() => this.date() === this.clinicClock.todayDateString());
 
@@ -445,5 +455,48 @@ export class AgendaGridComponent implements AfterViewInit {
 
   formatHour(h: number): string {
     return `${h.toString().padStart(2, '0')}:00`;
+  }
+
+  onColumnClick(event: MouseEvent, professionalId: string): void {
+    if (!this.canCreate()) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (target.closest('bd-appointment-card')) {
+      return;
+    }
+    if (target.closest('.agenda-grid__shade-block')) {
+      return;
+    }
+
+    const colElement = event.currentTarget as HTMLElement | null;
+    if (!colElement) return;
+
+    const rect = colElement.getBoundingClientRect();
+    const offsetY = event.clientY - rect.top;
+    const columnHeight = colElement.clientHeight;
+
+    const effDays = this.effectiveDays()[professionalId] || [];
+    const shifts: Shift[] = [];
+    for (const d of effDays) {
+      if (d.shifts) shifts.push(...d.shifts);
+    }
+
+    const startAt = slotAtOffset(
+      offsetY,
+      columnHeight,
+      this.timeRange(),
+      shifts,
+      this.now(),
+      this.isToday(),
+      (t) => this.clinicClock.minutesOfDay(t),
+      this.date(),
+      this.clinicClock.todayDateString()
+    );
+
+    if (startAt) {
+      this.slotSelected.emit({ professionalId, startAt });
+    }
   }
 }

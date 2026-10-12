@@ -165,3 +165,59 @@ export function calculatePositionedAppointment(
     heightHours: durationToHours(startMin, endMin),
   };
 }
+
+export function slotAtOffset(
+  offsetY: number,
+  columnHeight: number,
+  timeRange: AgendaTimeRange,
+  shifts: Shift[],
+  now: Date,
+  isToday: boolean,
+  minutesOfDayFn: (time: string) => number,
+  date: string,
+  todayDateString?: string
+): string | null {
+  if (offsetY < 0 || columnHeight <= 0 || timeRange.totalHours <= 0) {
+    return null;
+  }
+
+  if (todayDateString && date && date < todayDateString) {
+    return null;
+  }
+
+  const hoursFromTop = offsetY / (columnHeight / timeRange.totalHours);
+  const totalMinutes = timeRange.startHour * 60 + hoursFromTop * 60;
+  const slotMinutes = Math.floor(totalMinutes / 15) * 15;
+
+  if (slotMinutes < timeRange.startHour * 60 || slotMinutes >= timeRange.endHour * 60) {
+    return null;
+  }
+
+  if (isToday) {
+    const nowMinutes = minutesOfDayFn(now.toISOString());
+    if (slotMinutes <= nowMinutes) {
+      return null;
+    }
+  }
+
+  if (!shifts || shifts.length === 0) {
+    return null;
+  }
+
+  const insideShift = shifts.some((s) => {
+    const start = minutesOfDayFn(s.startTime);
+    const end = minutesOfDayFn(s.endTime);
+    return slotMinutes >= start && slotMinutes < end;
+  });
+
+  if (!insideShift) {
+    return null;
+  }
+
+  const h = Math.floor(slotMinutes / 60)
+    .toString()
+    .padStart(2, '0');
+  const m = (slotMinutes % 60).toString().padStart(2, '0');
+
+  return date ? `${date}T${h}:${m}:00` : `${h}:${m}`;
+}
