@@ -145,7 +145,7 @@ interface StatusColumnDef {
       font-size: var(--fs-xs);
       font-weight: 700;
       background-color: var(--slate-200);
-      color: var(--slate-700);
+      color: var(--slate-600);
       padding: 0.15rem 0.5rem;
       border-radius: var(--radius-sm);
     }
@@ -160,7 +160,7 @@ interface StatusColumnDef {
       text-align: center;
       padding: var(--space-lg) var(--space-sm);
       font-size: var(--fs-xs);
-      color: var(--slate-400);
+      color: var(--slate-500);
       font-style: italic;
     }
 

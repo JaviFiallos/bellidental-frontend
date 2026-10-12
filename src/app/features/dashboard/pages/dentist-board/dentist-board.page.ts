@@ -216,7 +216,7 @@ import { DentistBoardStore } from '../../services/dentist-board.store';
       font-size: var(--fs-xs);
       color: var(--coral-700);
       background-color: var(--coral-100);
-      border: 1px solid var(--coral-400);
+      border: 1px solid color-mix(in srgb, var(--coral-500) 45%, var(--coral-100));
       padding: 0.2rem 0.6rem;
       border-radius: var(--radius-sm);
       align-self: flex-start;
@@ -226,14 +226,15 @@ import { DentistBoardStore } from '../../services/dentist-board.store';
       background: none;
       border: none;
       padding: 0;
-      color: var(--coral-800);
+      color: var(--coral-700);
       text-decoration: underline;
       font-size: inherit;
       font-weight: 600;
       cursor: pointer;
 
       &:hover {
-        color: var(--coral-900);
+        color: var(--coral-700);
+        text-decoration: none;
       }
     }
 

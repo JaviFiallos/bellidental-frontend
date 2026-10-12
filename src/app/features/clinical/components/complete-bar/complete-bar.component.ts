@@ -49,16 +49,15 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
     @use '../../../../shared/styles/breakpoints' as bp;
 
     .complete-bar {
-      position: fixed;
+      position: sticky;
       bottom: 0;
-      left: 0;
-      right: 0;
       z-index: 100;
       background-color: var(--white);
       border-top: 1px solid var(--slate-300);
-      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 -2px 10px color-mix(in srgb, var(--blue-950) 6%, transparent);
       padding: var(--space-sm) var(--space-md);
       box-sizing: border-box;
+      width: 100%;
     }
 
     .complete-bar__content {
@@ -84,9 +83,10 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
     }
 
     .status-msg--warning {
-      color: var(--gold-800);
+      color: var(--gold-700);
       font-weight: 600;
     }
+
 
     .status-msg--saving {
       color: var(--slate-600);

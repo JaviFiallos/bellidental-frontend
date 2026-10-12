@@ -100,7 +100,7 @@ import { Appointment } from '../../models/appointment.models';
           <div class="appointment-panel__pro-row">
             <span
               class="appointment-panel__pro-dot"
-              [style.background-color]="appointment().colorTag || 'var(--slate-400)'"
+              [style.background-color]="appointment().colorTag || 'var(--slate-500)'"
               aria-hidden="true"
             ></span>
             <span class="appointment-panel__value">
@@ -315,7 +315,7 @@ import { Appointment } from '../../models/appointment.models';
     .appointment-panel__notes {
       margin: 0;
       font-size: var(--fs-sm);
-      color: var(--slate-700);
+      color: var(--slate-600);
       line-height: 1.5;
       background-color: var(--slate-50);
       padding: var(--space-sm) var(--space-md);
@@ -332,7 +332,7 @@ import { Appointment } from '../../models/appointment.models';
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);
-      box-shadow: 0 -4px 12px color-mix(in srgb, var(--slate-900) 5%, transparent);
+      box-shadow: 0 -4px 12px color-mix(in srgb, var(--blue-950) 5%, transparent);
       z-index: 5;
     }
 

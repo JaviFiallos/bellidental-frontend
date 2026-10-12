@@ -570,6 +570,8 @@ features/clinical/
 - **Hecho (008b):** panel de antecedentes en `bd-side-sheet` (`fullscreenBelowMd`) con `HistoryPanelStore` (provisto por la
   página), que escribe en `EncounterStore.clinicalRecord`. Componentes `history-panel`, `history-condition-row` y
   `history-entry-form`. Audit de la pantalla: 12/20; los P1 van en la 008c.
+- **Hecho (008c):** sin tokens de paleta inexistentes en `src/` (se reemplazan por los de §2.3 o `color-mix`; la
+  paleta no crece). La barra de completar es `sticky` y no tapa el sidebar. El ✕ de los chips tiene un área táctil de 44 px.
 
 ### 5.9 Odontograma: dibujo y lectura — tarea 009 (P10, parte 1)
 - **Depende de:** 008. **API:** `GET /odontogram/catalog` (cache de sesión) · `GET /patients/{id}/odontogram`.
@@ -800,8 +802,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Commit `5975e18` |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | Commit `eae126f` |
 | 008a | Atención: cabecera, motivo, diagnósticos, completar | 007 | Commit `c220096` |
-| 008b | Atención: panel de antecedentes (033) | 008a · G-9 | Aprobada (commit pendiente) |
-| 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | — |
+| 008b | Atención: panel de antecedentes (033) | 008a · G-9 | Commit `dc6099c` |
+| 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | Aprobada (commit pendiente) |
 | 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
 | 010 | Odontograma: registro | 009 | — |
 | 011 | Más del 033 | 008 | — |

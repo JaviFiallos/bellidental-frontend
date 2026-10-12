@@ -114,11 +114,11 @@ import { SaveStatus } from '../../services/encounter.store';
     .encounter-notes__label {
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .required-mark {
-      color: var(--coral-600);
+      color: var(--coral-500);
     }
 
     .encounter-notes__save-status {
@@ -141,21 +141,28 @@ import { SaveStatus } from '../../services/encounter.store';
     }
 
     .btn-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
       background: none;
       border: none;
-      padding: 0;
-      color: var(--coral-800);
+      padding: 0 var(--space-xs);
+      color: var(--coral-700);
       text-decoration: underline;
       cursor: pointer;
       font-size: inherit;
       font-weight: inherit;
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+      }
     }
 
     .encounter-notes__readonly-text {
       margin: 0;
       padding: 0.5rem 0;
       font-size: var(--fs-sm);
-      color: var(--slate-900);
+      color: var(--slate-800);
       line-height: var(--lh-normal);
     }
 
@@ -163,6 +170,7 @@ import { SaveStatus } from '../../services/encounter.store';
       font-size: var(--fs-xs);
       color: var(--coral-700);
       font-weight: 500;
+
     }
   `,
 })

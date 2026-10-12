@@ -38,7 +38,7 @@ interface SummaryChip {
       flex-wrap: wrap;
       gap: 0.5rem;
       font-size: var(--fs-sm);
-      color: var(--slate-700);
+      color: var(--slate-600);
       padding: 0.4rem 0;
       margin-bottom: var(--space-sm);
     }
@@ -74,7 +74,7 @@ interface SummaryChip {
     }
 
     .agenda-summary__separator {
-      color: var(--slate-400);
+      color: var(--slate-500);
       font-weight: bold;
     }
   `,

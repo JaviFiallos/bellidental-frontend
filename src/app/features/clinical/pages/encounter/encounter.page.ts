@@ -210,12 +210,13 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
       flex-direction: column;
       gap: var(--space-md);
       padding: var(--space-md);
-      padding-bottom: 5.5rem; /* Espacio para que la barra fija no tape el contenido */
+      padding-bottom: var(--space-md);
       max-width: 1366px;
       margin: 0 auto;
       box-sizing: border-box;
       min-height: 100%;
     }
+
 
     .encounter-page__nav {
       display: flex;

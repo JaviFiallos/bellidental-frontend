@@ -50,7 +50,7 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
             <div class="agenda-grid__col-header">
               <span
                 class="agenda-grid__pro-dot"
-                [style.background-color]="prof.colorTag || 'var(--slate-400)'"
+                [style.background-color]="prof.colorTag || 'var(--slate-500)'"
                 aria-hidden="true"
               ></span>
               <span class="agenda-grid__pro-name">{{ prof.fullName }}</span>

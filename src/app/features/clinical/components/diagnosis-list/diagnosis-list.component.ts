@@ -156,7 +156,7 @@ import { Icd10Code } from '../../models/icd10.models';
     }
 
     .icd10-option__desc {
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .diagnosis-list__error {
@@ -236,8 +236,8 @@ import { Icd10Code } from '../../models/icd10.models';
 
     .diagnosis-item__certainty-badge--pre {
       background-color: var(--gold-100);
-      color: var(--gold-900);
-      border: 1px solid var(--gold-300);
+      color: var(--gold-700);
+      border: 1px solid color-mix(in srgb, var(--gold-400) 40%, var(--gold-100));
     }
 
     .certainty-full {
@@ -263,11 +263,11 @@ import { Icd10Code } from '../../models/icd10.models';
 
     .btn-danger-text {
       color: var(--coral-700);
-      border-color: var(--coral-300);
+      border-color: color-mix(in srgb, var(--coral-500) 45%, var(--coral-100));
 
       &:hover {
         background-color: var(--coral-100);
-        color: var(--coral-800);
+        color: var(--coral-700);
       }
     }
   `,

@@ -232,7 +232,7 @@ interface SlotItem {
 
       &:hover {
         background-color: var(--slate-100);
-        border-color: var(--slate-400);
+        border-color: var(--slate-500);
       }
     }
 

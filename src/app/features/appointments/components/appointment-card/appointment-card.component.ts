@@ -32,7 +32,7 @@ import { Appointment } from '../../models/appointment.models';
       [style.--card-tone-bar]="toneBar()"
       [style.--card-tone-bg]="toneBg()"
       [style.--card-tone-text]="toneText()"
-      [style.--card-pro-color]="appointment().colorTag || 'var(--slate-400)'"
+      [style.--card-pro-color]="appointment().colorTag || 'var(--slate-500)'"
     >
       <button
         type="button"
@@ -88,7 +88,7 @@ import { Appointment } from '../../models/appointment.models';
               <div class="appointment-card__professional">
                 <span
                   class="appointment-card__pro-dot"
-                  [style.background-color]="appointment().colorTag || 'var(--slate-400)'"
+                  [style.background-color]="appointment().colorTag || 'var(--slate-500)'"
                   aria-hidden="true"
                 ></span>
                 <span class="appointment-card__pro-name">{{ appointment().professionalName }}</span>
@@ -255,7 +255,7 @@ import { Appointment } from '../../models/appointment.models';
       gap: 0.35rem;
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
       margin-top: 0.15rem;
     }
 

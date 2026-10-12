@@ -114,7 +114,7 @@ import { HistoryEntryFormComponent } from '../history-entry-form/history-entry-f
     }
 
     .condition-row--has-error {
-      background-color: var(--coral-50, #fef2f2);
+      background-color: var(--coral-100);
       border-radius: var(--radius-sm);
       padding: var(--space-sm);
     }
@@ -128,7 +128,7 @@ import { HistoryEntryFormComponent } from '../history-entry-form/history-entry-f
     .condition-row__title {
       font-size: var(--fs-sm);
       font-weight: 600;
-      color: var(--slate-900);
+      color: var(--slate-800);
     }
 
     .condition-row__chips {
@@ -138,6 +138,7 @@ import { HistoryEntryFormComponent } from '../history-entry-form/history-entry-f
     }
 
     .condition-chip {
+      position: relative;
       display: inline-flex;
       align-items: center;
       gap: 0.25rem;
@@ -146,11 +147,12 @@ import { HistoryEntryFormComponent } from '../history-entry-form/history-entry-f
       font-size: var(--fs-xs);
       font-weight: 500;
       background-color: var(--coral-100);
-      color: var(--coral-900);
-      border: 1px solid var(--coral-300);
+      color: var(--coral-700);
+      border: 1px solid color-mix(in srgb, var(--coral-500) 45%, var(--coral-100));
     }
 
     .condition-chip__void-btn {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -159,15 +161,27 @@ import { HistoryEntryFormComponent } from '../history-entry-form/history-entry-f
       padding: 0 2px;
       border: none;
       background: transparent;
-      color: var(--coral-800);
+      color: var(--coral-700);
       font-size: 0.8rem;
       font-weight: 700;
       cursor: pointer;
       border-radius: 50%;
 
+      &::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-width: 44px;
+        min-height: 44px;
+        width: 100%;
+        height: 100%;
+      }
+
       &:hover {
-        background-color: var(--coral-200);
-        color: var(--coral-950);
+        background-color: color-mix(in srgb, var(--coral-500) 15%, var(--coral-100));
+        color: var(--coral-700);
       }
 
       &:focus-visible {

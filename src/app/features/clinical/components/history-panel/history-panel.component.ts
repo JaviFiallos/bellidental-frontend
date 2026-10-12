@@ -150,7 +150,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
       gap: var(--space-md);
       padding: var(--space-md);
       box-sizing: border-box;
-      color: var(--slate-900);
+      color: var(--slate-800);
     }
 
     .history-panel__header {
@@ -174,7 +174,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
     .history-panel__label {
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -214,7 +214,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
     }
 
     .status-text--saved {
-      color: var(--teal-700, #047857);
+      color: var(--teal-700);
       font-weight: 600;
     }
 
@@ -241,7 +241,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
     .no-history-badge {
       font-size: var(--fs-sm);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .btn-unmark-no-history {
@@ -252,14 +252,14 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
       padding: 0 var(--space-sm);
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--coral-800);
+      color: var(--coral-700);
       background: transparent;
-      border: 1px solid var(--coral-300);
+      border: 1px solid color-mix(in srgb, var(--coral-500) 45%, var(--coral-100));
       border-radius: var(--radius-sm);
       cursor: pointer;
 
       &:hover {
-        background-color: var(--coral-50);
+        background-color: var(--coral-100);
       }
 
       &:focus-visible {
@@ -278,10 +278,11 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
       font-weight: 600;
       background-color: var(--slate-100);
       color: var(--slate-800);
-      border: 1px dashed var(--slate-400);
+      border: 1px dashed var(--slate-300);
       border-radius: var(--radius-sm);
       cursor: pointer;
       transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
 
       &:hover {
         background-color: var(--slate-200);

@@ -123,7 +123,7 @@ export interface OpenEncounterDialogData {
     .open-encounter-dialog__label {
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .open-encounter-dialog__footer {

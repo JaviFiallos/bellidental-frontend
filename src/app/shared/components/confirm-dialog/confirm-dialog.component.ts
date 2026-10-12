@@ -110,7 +110,7 @@ let nextDialogId = 0;
 
     .confirm-dialog__message {
       font-size: var(--fs-sm);
-      color: var(--slate-700);
+      color: var(--slate-600);
       margin: 0;
       line-height: 1.5;
     }
@@ -124,7 +124,7 @@ let nextDialogId = 0;
     .confirm-dialog__label {
       font-size: var(--fs-xs);
       font-weight: 600;
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .confirm-dialog__textarea {

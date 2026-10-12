@@ -86,7 +86,7 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       align-items: baseline;
       gap: var(--space-xs);
       font-size: var(--fs-sm);
-      color: var(--slate-700);
+      color: var(--slate-600);
     }
 
     .patient-clinical-header__name {
@@ -96,7 +96,7 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
     }
 
     .patient-clinical-header__sep {
-      color: var(--slate-400);
+      color: var(--slate-500);
     }
 
     .patient-clinical-header__record {
@@ -125,8 +125,8 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       font-size: var(--fs-xs);
       font-weight: 600;
       background-color: var(--coral-100);
-      color: var(--coral-800);
-      border: 1px solid var(--coral-300);
+      color: var(--coral-700);
+      border: 1px solid color-mix(in srgb, var(--coral-500) 45%, var(--coral-100));
     }
 
     .chip-alert__icon {
@@ -154,8 +154,8 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       font-size: var(--fs-xs);
       font-weight: 600;
       background-color: var(--gold-100);
-      color: var(--gold-800);
-      border: 1px solid var(--gold-300);
+      color: var(--gold-700);
+      border: 1px solid color-mix(in srgb, var(--gold-400) 40%, var(--gold-100));
     }
 
     .chip-medication {
@@ -180,14 +180,14 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       font-size: var(--fs-xs);
       font-weight: 600;
       background-color: var(--gold-100);
-      color: var(--gold-900);
+      color: var(--gold-700);
       border: 1px solid var(--gold-400);
       cursor: pointer;
       transition: background-color var(--transition-fast), border-color var(--transition-fast);
 
       &:hover {
-        background-color: var(--gold-200);
-        border-color: var(--gold-500);
+        background-color: color-mix(in srgb, var(--gold-400) 30%, var(--gold-100));
+        border-color: var(--gold-600);
       }
 
       &:focus-visible {
@@ -205,14 +205,14 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       font-size: var(--fs-xs);
       font-weight: 600;
       background-color: var(--white);
-      color: var(--slate-700);
+      color: var(--slate-600);
       border: 1px solid var(--slate-300);
       cursor: pointer;
       transition: background-color var(--transition-fast), border-color var(--transition-fast);
 
       &:hover {
         background-color: var(--slate-50);
-        border-color: var(--slate-400);
+        border-color: var(--slate-500);
       }
 
       &:focus-visible {
@@ -220,6 +220,7 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       }
     }
   `,
+
 })
 export class PatientClinicalHeaderComponent {
   readonly patient = input.required<Patient>();
