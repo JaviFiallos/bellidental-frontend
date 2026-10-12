@@ -53,8 +53,9 @@ export const routes: Routes = [
         path: 'consultorio',
         canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Mis citas de hoy', task: 'tarea 007' },
+          import('./features/dashboard/pages/dentist-board/dentist-board.page').then(
+            (m) => m.DentistBoardPage
+          ),
       },
       {
         path: 'consultorio/atencion/:encounterId',

@@ -1,4 +1,4 @@
-import { AppointmentStatus } from '../models/appointment.models';
+import { AppointmentStatus, EncounterStatus } from '../models/appointment.models';
 
 export type AppointmentDisplayTone =
   | 'scheduled'
@@ -18,29 +18,12 @@ export interface AppointmentDisplayState {
 export function appointmentDisplayState(appointment: {
   status: AppointmentStatus;
   checkedInAt?: string | null;
+  encounterId?: string | null;
+  encounterStatus?: EncounterStatus | null;
+  encounterVoided?: boolean;
 }): AppointmentDisplayState {
-  if (appointment.checkedInAt) {
-    return {
-      key: 'waiting',
-      label: 'En espera',
-      tone: 'waiting',
-    };
-  }
-
+  // 1. ATTENDED, CANCELLED, NO_SHOW y RESCHEDULED dan su estado de siempre, haya o no checkedInAt
   switch (appointment.status) {
-    case 'PENDING':
-      return {
-        key: 'scheduled',
-        label: 'Agendada',
-        tone: 'scheduled',
-      };
-    case 'CONFIRMED':
-      return {
-        key: 'confirmed',
-        label: 'Confirmada',
-        tone: 'scheduled',
-        isConfirmed: true,
-      };
     case 'ATTENDED':
       return {
         key: 'attended',
@@ -65,13 +48,45 @@ export function appointmentDisplayState(appointment: {
         label: 'Reprogramada',
         tone: 'cancelled',
       };
-    default:
-      return {
-        key: 'scheduled',
-        label: 'Agendada',
-        tone: 'scheduled',
-      };
   }
+
+  // 2. encounterId con encounterStatus === 'OPEN' y encounterVoided !== true → En atención
+  if (
+    appointment.encounterId &&
+    appointment.encounterStatus === 'OPEN' &&
+    appointment.encounterVoided !== true
+  ) {
+    return {
+      key: 'in-progress',
+      label: 'En atención',
+      tone: 'in-progress',
+    };
+  }
+
+  // 3. checkedInAt → En espera
+  if (appointment.checkedInAt) {
+    return {
+      key: 'waiting',
+      label: 'En espera',
+      tone: 'waiting',
+    };
+  }
+
+  // 4. PENDING y CONFIRMED
+  if (appointment.status === 'CONFIRMED') {
+    return {
+      key: 'confirmed',
+      label: 'Confirmada',
+      tone: 'scheduled',
+      isConfirmed: true,
+    };
+  }
+
+  return {
+    key: 'scheduled',
+    label: 'Agendada',
+    tone: 'scheduled',
+  };
 }
 
 export type AppointmentActionType = 'check-in' | 'confirm' | 'no-show' | 'cancel' | 'reschedule';

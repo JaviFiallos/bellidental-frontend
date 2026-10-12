@@ -335,7 +335,7 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
 - **Decisiones (redacción de 003, brief de `/impeccable shape` aprobado):** dividida en 003a (lectura) y 003b (panel
   y acciones). "Llegó" va directo en la tarjeta (1 clic; citas de hoy de ≥ 30 min), porque es la acción más frecuente
   según el usuario. Contadores en una línea que también sirve de leyenda, en vez de cajas. 1 h = 8 rem. Columnas: con
-  turno o con citas ese día. Sin "En atención" hasta G-1. "No asistió" solo cuando ya pasó la hora de inicio. Cancelar
+  turno o con citas ese día. "En atención" desde la 007 (G-1: `encounterStatus` OPEN sin anular). "No asistió" solo cuando ya pasó la hora de inicio. Cancelar
   no lleva motivo (el backend no lo recibe). `< md`: lista por hora (§5.3 manda sobre §4). Volumen típico: 2–4
   profesionales y 20–40 citas al día. Contexto de producto en `PRODUCT.md`.
 - **Hecho (003a):** `AgendaStore` (provisto por la página) carga con `loadTrigger$` + `switchMap` y expone `now`
@@ -474,7 +474,9 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
 - **Perfil:** ODONTOLOGO, DIRECTOR. **Ruta:** `/consultorio`.
 - **API:** `GET /appointments?professionalId={me}&from&to` · `POST /appointments/{id}/check-in` ·
   `POST /appointments/{id}/encounter { chiefComplaint }` → `EncounterResponse`.
-- **Estructura:** `features/dashboard/pages/dentist-board`, `components/{board-column,open-encounter-dialog}`.
+- **Estructura:** `features/dashboard/pages/dentist-board`, `components/{board-column,board-item,open-encounter-dialog}`,
+  `domain/board-columns.ts`, `services/dentist-board.store.ts`; `features/clinical/services/encounters.api.ts`
+  (`EncountersApi`, un API por recurso; la 008 lo amplía).
 ```
 Mis citas · sáb 10 oct                                     12 hoy · 2 en espera · 1 en atención · 7 atendidas
 ┌──────────────────┬──────────────────┬──────────────────┬───────────────────────────┐
@@ -495,6 +497,11 @@ Mis citas · sáb 10 oct                                     12 hoy · 2 en espe
 - **Test:** `dentist-board.page.spec.ts` — carga con `professionalId` del `/me` → tarjetas por columna; "Atender"
   con motivo → `POST …/encounter` → navega a la atención.
 - **Prueba manual:** 1366, 1024 y 768 en tablet; director ve lo mismo con sus citas.
+- **Hecho (007):** `/consultorio` con `DentistBoardPage` y `DentistBoardStore` (provisto por la página).
+  - `boardColumn()` en `dashboard/domain`; cancelada, reprogramada y no asistió no se muestran.
+  - Componentes `board-column`, `board-item` y `open-encounter-dialog` (CDK Dialog; recibe `submit` por `DIALOG_DATA`).
+  - `EncountersApi.open` en `features/clinical`. `appointmentDisplayState`: los estados finales mandan sobre
+    `checkedInAt` (antes una cita atendida salía "En espera") y "En atención" sale de G-1.
 
 ### 5.8 Atención: cabecera, antecedentes, motivo, diagnósticos y completar — tarea 008 (P9)
 - **Depende de:** 007. **Perfil:** ODONTOLOGO, DIRECTOR. **Ruta:** `/consultorio/atencion/:encounterId`.
@@ -506,7 +513,7 @@ Mis citas · sáb 10 oct                                     12 hoy · 2 en espe
 - **Estructura:**
 ```
 features/clinical/
-  index.ts                         PatientClinicalHeaderComponent, ClinicalApi, Encounter models
+  index.ts                         PatientClinicalHeaderComponent, EncountersApi (007), Encounter models
   clinical.routes.ts
   pages/encounter/                 orquesta: carga, formulario de cabecera, barra de completar
   components/patient-clinical-header/   identidad + chips de antecedentes + medicación
@@ -712,7 +719,7 @@ quedaría en ~20 px, demasiado pequeña para el dedo.
 | `GET /professionals/{id}/schedules` | `[{ id, weekday 1–7, specificDate, startTime, endTime, available }]` |
 | `GET …/schedules/effective?from&to` | `[{ date, shifts[{startTime,endTime}] }]` |
 | `GET /availability?professionalId&specialtyId&date` | `[{ startAt, endAt }]` |
-| `GET /appointments?professionalId?&from&to`, `GET /appointments/{id}` | `Appointment { id, patientId, patientName, professionalId, professionalName, colorTag, specialtyId, specialtyName, startAt, endAt, status, source, reason, notes, checkedInAt, rescheduledFromId }` (+ `encounterId`, `encounterStatus` [G-1]) |
+| `GET /appointments?professionalId?&from&to`, `GET /appointments/{id}` | `Appointment { id, patientId, patientName, professionalId, professionalName, colorTag, specialtyId, specialtyName, startAt, endAt, status, source, reason, notes, checkedInAt, rescheduledFromId }` (+ `encounterId`, `encounterStatus`, `encounterVoided` [G-1]) |
 | `POST /appointments` | body `{ patientId, professionalId, specialtyId, startAt, endAt?, reason?, notes? }` → `Appointment` |
 | `POST /appointments/walk-in` | body `{ patientId, professionalId, specialtyId }` → `Appointment` |
 | `POST /appointments/{id}/reschedule` | body `{ startAt, endAt?, professionalId?, specialtyId? }` → `Appointment` |
@@ -735,7 +742,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 ### 7.2 Faltantes en el backend
 | ID | Falta | Bloquea | Propuesta | Tarea backend |
 |---|---|---|---|---|
-| G-1 | `Appointment` no trae `encounterId` ni `encounterStatus` | "En atención" y "Continuar" (007), ir de la cita a la atención | Añadirlos (null si no hay atención) | pequeña, antes de la 007 |
+| G-1 | `Appointment` no trae `encounterId` ni `encounterStatus` | "En atención" y "Continuar" (007), ir de la cita a la atención | Añadirlos (null si no hay atención) + `encounterVoided` (atención anulada: sin "Continuar") | **Resuelto** (backend 006e `5d7f145`) |
 | G-2 | `/auth/me` sin nombre para mostrar | Sidebar (002) | `displayName` (profesional: nombre; si no, username) | opcional |
 | G-3 | Tratamientos, recetas, cobros, clinical-summary | 012–015 | Tareas backend 010, 011, 012 y clinical-summary (ya planificadas) | 010–012 |
 | G-4 | `GET /appointments` no filtra por paciente | Citas en la ficha (005) | `patientId` opcional; con él, `from/to` opcionales | **Resuelto**: backend 006d (`8a8bf7f`, `PatientRecordApiIT`) |
@@ -773,8 +780,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 005a | Pacientes: alta y edición | 002b · G-5 | Commit `2b80240` |
 | 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Commit `0a63492` |
 | 006a | Horarios: semana tipo por profesional | 002 · G-8 | Commit `417bed3` |
-| 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Aprobada |
-| 007 | Consultorio: mis citas de hoy | 003 · G-1 | — |
+| 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Commit `5975e18` |
+| 007 | Consultorio: mis citas de hoy | 003 · G-1 | Aprobada (commit pendiente) |
 | 008 | Atención: cabecera, antecedentes, diagnósticos, completar | 007 | — |
 | 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
 | 010 | Odontograma: registro | 009 | — |

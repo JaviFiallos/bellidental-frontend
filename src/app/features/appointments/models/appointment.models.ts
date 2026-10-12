@@ -12,6 +12,8 @@ export type AppointmentSource =
   | 'BOT'
   | 'WALK_IN';
 
+export type EncounterStatus = 'OPEN' | 'COMPLETED';
+
 export interface Appointment {
   id: string;
   patientId: string;
@@ -29,6 +31,9 @@ export interface Appointment {
   notes?: string | null;
   checkedInAt?: string | null;
   rescheduledFromId?: string | null;
+  encounterId?: string | null;
+  encounterStatus?: EncounterStatus | null;
+  encounterVoided?: boolean;
 }
 
 export interface AvailableSlot {
