@@ -503,7 +503,7 @@ Mis citas · sáb 10 oct                                     12 hoy · 2 en espe
   - `EncountersApi.open` en `features/clinical`. `appointmentDisplayState`: los estados finales mandan sobre
     `checkedInAt` (antes una cita atendida salía "En espera") y "En atención" sale de G-1.
 
-### 5.8 Atención: cabecera, antecedentes, motivo, diagnósticos y completar — tarea 008 (P9)
+### 5.8 Atención: cabecera, antecedentes, motivo, diagnósticos y completar — tareas 008a y 008b (P9)
 - **Depende de:** 007. **Perfil:** ODONTOLOGO, DIRECTOR. **Ruta:** `/consultorio/atencion/:encounterId`.
 - **API:** `GET /encounters/{id}` · `GET /patients/{id}` · `GET /patients/{id}/clinical-record` ·
   `GET /medical-history-conditions` · `POST /clinical-records/{id}/history-entries` ·
@@ -554,6 +554,17 @@ features/clinical/
 - **Test:** `encounter.page.spec.ts` — carga (encuentro, paciente, historia) → se ven chips de antecedentes;
   agregar diagnóstico → `POST …/diagnoses` → aparece; completar → `POST …/complete` → navega a `/consultorio`.
 - **Prueba manual:** flujo completo con un paciente nuevo; recargar a mitad (el motivo persiste).
+- **Decisiones (008a, `/impeccable shape` confirmado por el usuario el 2026-10-12):**
+  - Se divide en 008a (cabecera de solo lectura, motivo, diagnósticos, completar) y 008b (panel de antecedentes).
+  - El espacio del odontograma va como franja baja al final hasta la 009; en la 009 sube al lugar del boceto.
+  - "Completar atención" sin confirmación: un clic, aviso y vuelta a `/consultorio` (reversible por D-6).
+  - "Anular diagnóstico" con confirmación y sin motivo: `POST /encounter-diagnoses/{id}/void` no recibe body.
+  - Los errores de negocio del backend son 409 (no 403). Si la atención es de otro odontólogo, la pantalla se
+    abre en solo lectura desde el inicio.
+- **Hecho (008a):** `/consultorio/atencion/:encounterId` con `EncounterPage` y `EncounterStore` (provisto por la página).
+  - `EncountersApi.get/update/addDiagnosis/voidDiagnosis/complete`, `ClinicalRecordsApi.getByPatient`, `Icd10Api.search`.
+  - Componentes `patient-clinical-header` (solo lectura), `encounter-notes`, `diagnosis-list` y `complete-bar`.
+  - Guardado automático con versión de cambios (`changeVersion`/`savedVersion`); la búsqueda CIE-10 vive en el store.
 
 ### 5.9 Odontograma: dibujo y lectura — tarea 009 (P10, parte 1)
 - **Depende de:** 008. **API:** `GET /odontogram/catalog` (cache de sesión) · `GET /patients/{id}/odontogram`.
@@ -781,8 +792,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Commit `0a63492` |
 | 006a | Horarios: semana tipo por profesional | 002 · G-8 | Commit `417bed3` |
 | 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Commit `5975e18` |
-| 007 | Consultorio: mis citas de hoy | 003 · G-1 | Aprobada (commit pendiente) |
-| 008 | Atención: cabecera, antecedentes, diagnósticos, completar | 007 | — |
+| 007 | Consultorio: mis citas de hoy | 003 · G-1 | Commit `eae126f` |
+| 008a | Atención: cabecera, motivo, diagnósticos, completar | 007 | Aprobada (commit pendiente) |
+| 008b | Atención: panel de antecedentes (033) | 008a | — |
 | 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
 | 010 | Odontograma: registro | 009 | — |
 | 011 | Más del 033 | 008 | — |

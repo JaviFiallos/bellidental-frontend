@@ -61,8 +61,9 @@ export const routes: Routes = [
         path: 'consultorio/atencion/:encounterId',
         canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Atención', task: 'tarea 008' },
+          import('./features/clinical/pages/encounter/encounter.page').then(
+            (m) => m.EncounterPage
+          ),
       },
       {
         path: 'direccion/estadisticas',
