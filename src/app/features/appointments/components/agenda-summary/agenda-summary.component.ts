@@ -17,7 +17,7 @@ interface SummaryChip {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="agenda-summary" aria-label="Resumen del día">
+    <div class="agenda-summary" role="group" aria-label="Resumen del día">
       @for (item of chips(); track item.id; let last = $last) {
         <span class="agenda-summary__item">
           @if (item.dotClass) {

@@ -15,7 +15,7 @@ import {
   AgendaTimeRange,
   calculatePositionedAppointment,
   calculateShades,
-  minutesToRemOffset,
+  minutesToHoursOffset,
   PositionedAppointment,
   ShadedInterval,
 } from '../../domain/agenda-layout';
@@ -38,7 +38,7 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
 
       <div
         class="agenda-grid"
-        [style.--total-height]="timeRange().totalHeightRem + 'rem'"
+        [style.--total-height]="'calc(var(--hour-height) * ' + timeRange().totalHours + ')'"
         [style.--columns-count]="professionals().length"
       >
         <!-- Encabezados de columnas (sticky arriba) -->
@@ -73,8 +73,9 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
             <!-- Línea de ahora -->
             @if (showNowLine()) {
               <div
+                #nowLine
                 class="agenda-grid__now-line"
-                [style.top]="nowLineOffsetRem() + 'rem'"
+                [style.top]="'calc(var(--hour-height) * ' + nowLineOffsetHours() + ')'"
                 aria-hidden="true"
               >
                 <span class="agenda-grid__now-chip">{{ nowTimeText() }}</span>
@@ -99,8 +100,8 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
                 @for (shade of shadesByProf()[prof.id] || []; track $index) {
                   <div
                     class="agenda-grid__shade-block"
-                    [style.top]="shade.topRem + 'rem'"
-                    [style.height]="shade.heightRem + 'rem'"
+                    [style.top]="'calc(var(--hour-height) * ' + shade.topHours + ')'"
+                    [style.height]="'calc(var(--hour-height) * ' + shade.heightHours + ')'"
                     aria-hidden="true"
                   ></div>
                 }
@@ -109,8 +110,8 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
                 @for (item of positionedApptsByProf()[prof.id] || []; track item.appointment.id) {
                   <bd-appointment-card
                     [appointment]="item.appointment"
-                    [topRem]="item.topRem"
-                    [heightRem]="item.heightRem"
+                    [topHours]="item.topHours"
+                    [heightHours]="item.heightHours"
                     [selected]="selectedId() === item.appointment.id"
                     [checkInAvailable]="quickCheckInIds().has(item.appointment.id)"
                     [checkInPending]="pendingCheckInId() === item.appointment.id"
@@ -156,6 +157,12 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
     }
 
     .agenda-grid {
+      --hour-height: 8rem;
+
+      @media (pointer: coarse) {
+        --hour-height: 11rem;
+      }
+
       display: flex;
       flex-direction: column;
       min-width: fit-content;
@@ -237,7 +244,7 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
     }
 
     .agenda-grid__time-cell {
-      height: 8rem;
+      height: var(--hour-height);
       box-sizing: border-box;
       border-bottom: 1px solid var(--slate-200);
       padding: 0.2rem 0.4rem;
@@ -266,7 +273,7 @@ import { AppointmentCardComponent } from '../appointment-card/appointment-card.c
     }
 
     .agenda-grid__bg-hour-cell {
-      height: 8rem;
+      height: var(--hour-height);
       box-sizing: border-box;
       border-bottom: 1px solid var(--slate-300);
       display: flex;
@@ -372,9 +379,11 @@ export class AgendaGridComponent implements AfterViewInit {
     return min >= range.startHour * 60 && min <= range.endHour * 60;
   });
 
-  readonly nowLineOffsetRem = computed(() => {
+  readonly nowLineElement = viewChild<ElementRef<HTMLElement>>('nowLine');
+
+  readonly nowLineOffsetHours = computed(() => {
     const range = this.timeRange();
-    return minutesToRemOffset(this.nowMinutes(), range.startHour);
+    return minutesToHoursOffset(this.nowMinutes(), range.startHour);
   });
 
   readonly nowTimeText = computed(() => {
@@ -424,9 +433,9 @@ export class AgendaGridComponent implements AfterViewInit {
     if (this.isToday() && this.showNowLine()) {
       setTimeout(() => {
         const container = this.scrollContainer()?.nativeElement;
-        if (container) {
-          const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-          const targetPx = this.nowLineOffsetRem() * remPx;
+        const nowLine = this.nowLineElement()?.nativeElement;
+        if (container && nowLine) {
+          const targetPx = nowLine.offsetTop;
           const containerHeight = container.clientHeight;
           container.scrollTop = Math.max(0, targetPx - containerHeight / 3);
         }

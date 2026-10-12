@@ -49,7 +49,7 @@ export interface SegmentedOption<T = string> {
       background-color: var(--slate-100);
       border: 1px solid var(--slate-200);
       border-radius: var(--radius-sm);
-      padding: 3px;
+      padding: 2px;
       gap: 2px;
     }
 
@@ -66,7 +66,7 @@ export interface SegmentedOption<T = string> {
       font-weight: 500;
       color: var(--slate-600);
       cursor: pointer;
-      min-height: 38px;
+      min-height: 44px;
       transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
       white-space: nowrap;
       user-select: none;

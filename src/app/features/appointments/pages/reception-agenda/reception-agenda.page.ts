@@ -50,7 +50,10 @@ import { AgendaStore } from '../../services/agenda.store';
   providers: [AgendaStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="reception-agenda-page">
+    <div
+      class="reception-agenda-page"
+      [class.reception-agenda-page--panel-open]="!!store.selectedAppointment()"
+    >
       <!-- Barra superior / Toolbar -->
       <bd-agenda-toolbar
         [date]="store.date()"
@@ -201,6 +204,13 @@ import { AgendaStore } from '../../services/agenda.store';
       display: flex;
       flex-direction: column;
       width: 100%;
+      box-sizing: border-box;
+
+      &.reception-agenda-page--panel-open {
+        @include bp.bp-up('lg') {
+          padding-inline-end: 26rem;
+        }
+      }
     }
 
     .reception-agenda-page__error-container {

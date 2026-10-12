@@ -2,8 +2,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
+  ElementRef,
   input,
   output,
+  viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -41,7 +44,12 @@ import { Appointment } from '../../models/appointment.models';
       <!-- Encabezado con datos del paciente -->
       <div class="appointment-panel__header">
         <div class="appointment-panel__title-row">
-          <h2 id="appointment-panel-title" class="appointment-panel__patient-name">
+          <h2
+            #panelTitle
+            id="appointment-panel-title"
+            class="appointment-panel__patient-name"
+            tabindex="-1"
+          >
             {{ appointment().patientName }}
           </h2>
           <a
@@ -204,6 +212,10 @@ import { Appointment } from '../../models/appointment.models';
       font-weight: 700;
       color: var(--blue-950);
       line-height: 1.2;
+
+      &:focus {
+        outline: none;
+      }
     }
 
     .appointment-panel__patient-link {
@@ -394,6 +406,20 @@ export class AppointmentPanelComponent {
 
   readonly action = output<AppointmentActionType>();
   readonly close = output<void>();
+
+  readonly panelTitle = viewChild<ElementRef<HTMLHeadingElement>>('panelTitle');
+
+  // Solo al abrir o cambiar de cita: el refresco de 60 s trae objetos nuevos y no debe robar el foco.
+  private readonly appointmentId = computed(() => this.appointment().id);
+
+  constructor() {
+    effect(() => {
+      this.appointmentId();
+      setTimeout(() => {
+        this.panelTitle()?.nativeElement?.focus();
+      }, 0);
+    });
+  }
 
   readonly externalLinkIcon: LucideIconData = ExternalLink;
   readonly calendarXIcon: LucideIconData = CalendarX;

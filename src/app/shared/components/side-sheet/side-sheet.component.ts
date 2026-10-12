@@ -11,6 +11,7 @@ import {
   effect,
 } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { X } from 'lucide-angular';
 import { IconComponent, LucideIconData } from '../icon/icon.component';
 
@@ -19,24 +20,29 @@ import { IconComponent, LucideIconData } from '../icon/icon.component';
   standalone: true,
   imports: [A11yModule, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.escape)': 'onDocumentEscape($event)',
+  },
   template: `
     @if (isOpen()) {
-      <div
-        class="bd-side-sheet__backdrop"
-        (click)="close()"
-        aria-hidden="true"
-      ></div>
+      @if (!isLg()) {
+        <div
+          class="bd-side-sheet__backdrop"
+          (click)="close()"
+          aria-hidden="true"
+        ></div>
+      }
 
       <div
         #panelElement
         class="bd-side-sheet"
         role="dialog"
-        aria-modal="true"
+        [attr.aria-modal]="!isLg() ? 'true' : null"
         [attr.aria-labelledby]="titleId()"
         [attr.aria-label]="ariaLabel()"
-        cdkTrapFocus
-        cdkTrapFocusAutoCapture
-        (keydown.escape)="close()"
+        [cdkTrapFocus]="!isLg()"
+        [cdkTrapFocusAutoCapture]="!isLg()"
+        (focusin)="onPanelFocusIn($event)"
       >
         <div class="bd-side-sheet__handle" aria-hidden="true"></div>
 
@@ -183,6 +189,9 @@ import { IconComponent, LucideIconData } from '../icon/icon.component';
   `,
 })
 export class SideSheetComponent {
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly isOpen = input<boolean>(false);
   readonly titleId = input<string | undefined>(undefined);
   readonly ariaLabel = input<string | undefined>(undefined);
@@ -192,14 +201,24 @@ export class SideSheetComponent {
   readonly panelRef = viewChild<ElementRef<HTMLDivElement>>('panelElement');
   readonly closeIcon: LucideIconData = X;
 
+  readonly isLg = signal<boolean>(false);
+
   private previouslyFocusedElement: HTMLElement | null = null;
 
   constructor() {
+    this.isLg.set(this.breakpointObserver.isMatched('(min-width: 1200px)'));
+    const sub = this.breakpointObserver.observe('(min-width: 1200px)').subscribe((state) => {
+      this.isLg.set(state.matches);
+    });
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
+
     effect(() => {
       const open = this.isOpen();
       if (open) {
-        if (typeof document !== 'undefined') {
-          this.previouslyFocusedElement = document.activeElement as HTMLElement | null;
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          if (!this.panelRef()?.nativeElement.contains(document.activeElement)) {
+            this.previouslyFocusedElement = document.activeElement;
+          }
         }
       } else {
         if (this.previouslyFocusedElement && typeof this.previouslyFocusedElement.focus === 'function') {
@@ -208,6 +227,24 @@ export class SideSheetComponent {
         }
       }
     });
+  }
+
+  onDocumentEscape(event: Event): void {
+    // Un diálogo o combobox abierto encima ya consumió el Esc (CDK escucha en body, antes que document).
+    if (!this.isOpen() || event.defaultPrevented) {
+      return;
+    }
+    event.preventDefault();
+    this.close();
+  }
+
+  onPanelFocusIn(event: FocusEvent): void {
+    if (
+      event.relatedTarget instanceof HTMLElement &&
+      !this.panelRef()?.nativeElement.contains(event.relatedTarget)
+    ) {
+      this.previouslyFocusedElement = event.relatedTarget;
+    }
   }
 
   close(): void {

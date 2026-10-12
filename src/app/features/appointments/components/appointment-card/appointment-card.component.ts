@@ -10,6 +10,7 @@ import { Bot, Check, Footprints } from 'lucide-angular';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
 import { StatusBadgeComponent } from '../../../../shared/components/status-badge/status-badge.component';
+import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { appointmentDisplayState } from '../../domain/appointment-state';
 import { Appointment } from '../../models/appointment.models';
 
@@ -36,6 +37,8 @@ import { Appointment } from '../../models/appointment.models';
       <button
         type="button"
         class="appointment-card__main-btn"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="selected()"
         [attr.aria-label]="ariaLabel()"
         (click)="onOpen()"
       >
@@ -348,11 +351,12 @@ import { Appointment } from '../../models/appointment.models';
 })
 export class AppointmentCardComponent {
   private readonly clock = inject(ClinicClock);
+  private readonly clinicTimePipe = new ClinicTimePipe();
 
   readonly appointment = input.required<Appointment>();
   readonly showProfessional = input<boolean>(false);
-  readonly topRem = input<number | null>(null);
-  readonly heightRem = input<number | null>(null);
+  readonly topHours = input<number | null>(null);
+  readonly heightHours = input<number | null>(null);
   readonly selected = input<boolean>(false);
   readonly checkInAvailable = input<boolean>(false);
   readonly checkInPending = input<boolean>(false);
@@ -369,9 +373,9 @@ export class AppointmentCardComponent {
     return s === 'CANCELLED' || s === 'RESCHEDULED';
   });
 
-  readonly isPositioned = computed(() => this.topRem() !== null && this.heightRem() !== null);
-  readonly topStyle = computed(() => (this.topRem() !== null ? `${this.topRem()}rem` : null));
-  readonly heightStyle = computed(() => (this.heightRem() !== null ? `${this.heightRem()}rem` : null));
+  readonly isPositioned = computed(() => this.topHours() !== null && this.heightHours() !== null);
+  readonly topStyle = computed(() => (this.topHours() !== null ? `calc(var(--hour-height) * ${this.topHours()})` : null));
+  readonly heightStyle = computed(() => (this.heightHours() !== null ? `calc(var(--hour-height) * ${this.heightHours()})` : null));
 
   readonly startMinutes = computed(() => this.clock.minutesOfDay(this.appointment().startAt));
   readonly endMinutes = computed(() => this.clock.minutesOfDay(this.appointment().endAt));
@@ -379,8 +383,8 @@ export class AppointmentCardComponent {
 
   readonly is15Min = computed(() => this.durationMinutes() <= 15);
 
-  readonly startTimeFormatted = computed(() => this.formatTime(this.appointment().startAt));
-  readonly endTimeFormatted = computed(() => this.formatTime(this.appointment().endAt));
+  readonly startTimeFormatted = computed(() => this.clinicTimePipe.transform(this.appointment().startAt));
+  readonly endTimeFormatted = computed(() => this.clinicTimePipe.transform(this.appointment().endAt));
   readonly timeRangeText = computed(() => `${this.startTimeFormatted()}–${this.endTimeFormatted()}`);
 
   readonly sourceIcon = computed<LucideIconData | null>(() => {
@@ -465,21 +469,5 @@ export class AppointmentCardComponent {
 
   onOpen(): void {
     this.opened.emit(this.appointment());
-  }
-
-  private formatTime(isoOrTime: string): string {
-    if (!isoOrTime) return '';
-    const match = isoOrTime.match(/^(\d{1,2}):(\d{2})/);
-    if (match) return `${match[1].padStart(2, '0')}:${match[2]}`;
-
-    const date = new Date(isoOrTime);
-    if (isNaN(date.getTime())) return '';
-    const formatter = new Intl.DateTimeFormat('es-EC', {
-      timeZone: 'America/Guayaquil',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    return formatter.format(date);
   }
 }

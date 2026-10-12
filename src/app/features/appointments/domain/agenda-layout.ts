@@ -3,25 +3,23 @@ import { Shift } from '../models/schedule.models';
 
 export const DEFAULT_START_HOUR = 8;
 export const DEFAULT_END_HOUR = 20;
-export const REM_PER_HOUR = 8;
 
 export interface AgendaTimeRange {
   startHour: number;
   endHour: number;
   totalHours: number;
-  totalHeightRem: number;
   hours: number[];
 }
 
 export interface ShadedInterval {
-  topRem: number;
-  heightRem: number;
+  topHours: number;
+  heightHours: number;
 }
 
 export interface PositionedAppointment {
   appointment: Appointment;
-  topRem: number;
-  heightRem: number;
+  topHours: number;
+  heightHours: number;
 }
 
 export function calculateAgendaTimeRange(
@@ -58,24 +56,22 @@ export function calculateAgendaTimeRange(
   }
 
   const totalHours = endHour - startHour;
-  const totalHeightRem = totalHours * REM_PER_HOUR;
 
   return {
     startHour,
     endHour,
     totalHours,
-    totalHeightRem,
     hours,
   };
 }
 
-export function minutesToRemOffset(minutes: number, startHour: number): number {
-  return ((minutes - startHour * 60) / 60) * REM_PER_HOUR;
+export function minutesToHoursOffset(minutes: number, startHour: number): number {
+  return (minutes - startHour * 60) / 60;
 }
 
-export function durationToRemHeight(startMinutes: number, endMinutes: number): number {
+export function durationToHours(startMinutes: number, endMinutes: number): number {
   const duration = Math.max(15, endMinutes - startMinutes);
-  return (duration / 60) * REM_PER_HOUR;
+  return duration / 60;
 }
 
 export function calculateShades(
@@ -89,8 +85,8 @@ export function calculateShades(
   if (!shifts || shifts.length === 0) {
     return [
       {
-        topRem: 0,
-        heightRem: timeRange.totalHeightRem,
+        topHours: 0,
+        heightHours: timeRange.totalHours,
       },
     ];
   }
@@ -107,8 +103,8 @@ export function calculateShades(
   if (intervals.length === 0) {
     return [
       {
-        topRem: 0,
-        heightRem: timeRange.totalHeightRem,
+        topHours: 0,
+        heightHours: timeRange.totalHours,
       },
     ];
   }
@@ -138,8 +134,8 @@ export function calculateShades(
       const endMin = Math.min(dayEndMin, shift.start);
       if (endMin > startMin) {
         shades.push({
-          topRem: minutesToRemOffset(startMin, timeRange.startHour),
-          heightRem: ((endMin - startMin) / 60) * REM_PER_HOUR,
+          topHours: minutesToHoursOffset(startMin, timeRange.startHour),
+          heightHours: (endMin - startMin) / 60,
         });
       }
     }
@@ -148,8 +144,8 @@ export function calculateShades(
 
   if (current < dayEndMin) {
     shades.push({
-      topRem: minutesToRemOffset(current, timeRange.startHour),
-      heightRem: ((dayEndMin - current) / 60) * REM_PER_HOUR,
+      topHours: minutesToHoursOffset(current, timeRange.startHour),
+      heightHours: (dayEndMin - current) / 60,
     });
   }
 
@@ -165,7 +161,7 @@ export function calculatePositionedAppointment(
   const endMin = minutesOfDayFn(appointment.endAt);
   return {
     appointment,
-    topRem: minutesToRemOffset(startMin, timeRange.startHour),
-    heightRem: durationToRemHeight(startMin, endMin),
+    topHours: minutesToHoursOffset(startMin, timeRange.startHour),
+    heightHours: durationToHours(startMin, endMin),
   };
 }

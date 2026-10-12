@@ -6,6 +6,20 @@ import { Injectable } from '@angular/core';
 export class ClinicClock {
   readonly timeZone = 'America/Guayaquil';
 
+  private readonly dateStringFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: this.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  private readonly timeMinutesFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: this.timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
   /**
    * Retorna una instancia de Date que representa el momento actual.
    */
@@ -17,13 +31,7 @@ export class ClinicClock {
    * Retorna la fecha de hoy en formato YYYY-MM-DD según America/Guayaquil.
    */
   todayDateString(): string {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: this.timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(this.now());
+    return this.dateStringFormatter.format(this.now());
   }
 
   /**
@@ -65,26 +73,14 @@ export class ClinicClock {
     const date = new Date(isoOrTime);
     if (isNaN(date.getTime())) return 0;
 
-    const formatter = new Intl.DateTimeFormat('en-GB', {
-      timeZone: this.timeZone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    const parts = formatter.format(date).split(':');
+    const parts = this.timeMinutesFormatter.format(date).split(':');
     const hours = parseInt(parts[0], 10);
     const minutes = parseInt(parts[1], 10);
     return hours * 60 + minutes;
   }
 
   private formatDate(date: Date): string {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: this.timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(date);
+    return this.dateStringFormatter.format(date);
   }
 
   /**
