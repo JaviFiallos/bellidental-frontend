@@ -335,6 +335,8 @@ export class AgendaStore implements OnDestroy {
       case 'cancel':
         call$ = this.appointmentsApi.cancel(id);
         break;
+      default:
+        return;
     }
 
     call$.subscribe({

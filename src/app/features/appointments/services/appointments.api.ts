@@ -2,7 +2,12 @@ import { HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
-import { Appointment, CreateAppointmentRequest } from '../models/appointment.models';
+import {
+  Appointment,
+  CreateAppointmentRequest,
+  RescheduleAppointmentRequest,
+  WalkInAppointmentRequest,
+} from '../models/appointment.models';
 
 export interface ListAppointmentsParams {
   from: string;
@@ -46,5 +51,13 @@ export class AppointmentsApi {
 
   create(body: CreateAppointmentRequest): Observable<Appointment> {
     return this.api.post<Appointment>('/api/v1/appointments', body);
+  }
+
+  walkIn(body: WalkInAppointmentRequest): Observable<Appointment> {
+    return this.api.post<Appointment>('/api/v1/appointments/walk-in', body);
+  }
+
+  reschedule(id: string, body: RescheduleAppointmentRequest): Observable<Appointment> {
+    return this.api.post<Appointment>(`/api/v1/appointments/${id}/reschedule`, body);
   }
 }

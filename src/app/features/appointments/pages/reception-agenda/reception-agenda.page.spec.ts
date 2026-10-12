@@ -600,6 +600,260 @@ describe('ReceptionAgendaPage', () => {
     reqRetryAvail.flush(mockAvailableSlotsApiResponse);
     fixture.detectChanges();
   });
+
+  it('atención sin cita: elegir paciente y especialidad → un GET /availability por profesional → queda elegido el del hueco más cercano → Registrar llegada 201 → tarjeta en espera', async () => {
+    sessionStore.setCurrentUser({
+      userId: 'user-sec',
+      email: 'secretaria@bellidental.com',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ', 'APPOINTMENT_UPDATE', 'APPOINTMENT_CANCEL', 'APPOINTMENT_CREATE'],
+    });
+
+    fixture.detectChanges();
+
+    const customProfessionals = {
+      success: true,
+      message: 'Profesionales obtenidos',
+      data: [
+        {
+          id: 'prof-1',
+          userId: 'user-1',
+          fullName: 'Dr. Daniel Vargas',
+          licenseNumber: 'MED-1001',
+          colorTag: '#2C5F8A',
+          specialties: [{ id: 1, name: 'Profilaxis', defaultDurationMinutes: 30 }],
+          active: true,
+        },
+        {
+          id: 'prof-2',
+          userId: 'user-2',
+          fullName: 'Dra. Sofía Mendoza',
+          licenseNumber: 'MED-1002',
+          colorTag: '#9A5B1C',
+          specialties: [
+            { id: 1, name: 'Profilaxis', defaultDurationMinutes: 30 },
+            { id: 2, name: 'Endodoncia', defaultDurationMinutes: 60 },
+          ],
+          active: true,
+        },
+      ],
+    };
+
+    httpMock.expectOne('/api/v1/professionals').flush(customProfessionals);
+    httpMock
+      .expectOne('/api/v1/professionals/prof-1/schedules/effective?from=2026-10-10&to=2026-10-10')
+      .flush(mockEffectiveDaysApiResponseProf1);
+    httpMock
+      .expectOne('/api/v1/professionals/prof-2/schedules/effective?from=2026-10-10&to=2026-10-10')
+      .flush(mockEffectiveDaysApiResponseProf2);
+    httpMock
+      .expectOne((req) => req.url === '/api/v1/appointments')
+      .flush(mockAppointmentsApiResponse);
+
+    fixture.detectChanges();
+
+    // 1. Clic en "Sin cita"
+    const walkInBtn = fixture.nativeElement.querySelector('.agenda-toolbar__walkin-btn') as HTMLButtonElement;
+    expect(walkInBtn).toBeTruthy();
+    walkInBtn.click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/v1/specialties').flush(mockSpecialtiesApiResponse);
+    fixture.detectChanges();
+
+    // 2. Buscar paciente
+    const searchInput = fixture.nativeElement.querySelector('app-patient-search input') as HTMLInputElement;
+    searchInput.value = 'David';
+    searchInput.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne((req) => req.url === '/api/v1/patients' && req.params.get('query') === 'David')
+      .flush({
+        success: true,
+        message: 'Pacientes encontrados',
+        data: {
+          content: [mockPatient],
+          totalElements: 1,
+          totalPages: 1,
+          size: 8,
+          number: 0,
+        },
+      });
+    fixture.detectChanges();
+
+    (document.querySelector('.combobox-option') as HTMLElement).click();
+    fixture.detectChanges();
+
+    // 3. Elegir especialidad
+    const specialtySelect = fixture.nativeElement.querySelector('#appt-specialty-select') as HTMLSelectElement;
+    specialtySelect.value = '1';
+    specialtySelect.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    // Se pide disponibilidad para cada profesional con esa especialidad
+    const reqAvail1 = httpMock.expectOne('/api/v1/availability?professionalId=prof-1&specialtyId=1&date=2026-10-10');
+    const reqAvail2 = httpMock.expectOne('/api/v1/availability?professionalId=prof-2&specialtyId=1&date=2026-10-10');
+
+    // prof-1 tiene hueco a las 11:30, prof-2 a las 10:45 (más cercano)
+    reqAvail1.flush({
+      success: true,
+      message: 'Huecos obtenidos',
+      data: [{ startAt: '2026-10-10T11:30:00-05:00', endAt: '2026-10-10T12:00:00-05:00' }],
+    });
+    reqAvail2.flush({
+      success: true,
+      message: 'Huecos obtenidos',
+      data: [{ startAt: '2026-10-10T10:45:00-05:00', endAt: '2026-10-10T11:15:00-05:00' }],
+    });
+    fixture.detectChanges();
+
+    // Queda elegido el profesional del hueco más cercano (prof-2)
+    const profSelect = fixture.nativeElement.querySelector('#appt-professional-select') as HTMLSelectElement;
+    expect(profSelect.value).toBe('prof-2');
+
+    // 4. Registrar llegada
+    const submitBtn = fixture.nativeElement.querySelector('.appt-form__submit-btn') as HTMLButtonElement;
+    expect(submitBtn.textContent).toContain('Registrar llegada');
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const reqWalkIn = httpMock.expectOne('/api/v1/appointments/walk-in');
+    expect(reqWalkIn.request.method).toBe('POST');
+    expect(reqWalkIn.request.body).toEqual({
+      patientId: 'pat-10',
+      professionalId: 'prof-2',
+      specialtyId: 1,
+    });
+
+    const mockWalkInAppt: Appointment = {
+      id: 'appt-walk-1',
+      patientId: 'pat-10',
+      patientName: 'David Pérez',
+      professionalId: 'prof-2',
+      professionalName: 'Dr. Carlos Mendoza',
+      specialtyId: 1,
+      specialtyName: 'Odontología General',
+      startAt: '2026-10-10T10:45:00-05:00',
+      endAt: '2026-10-10T11:15:00-05:00',
+      status: 'PENDING',
+      source: 'WALK_IN',
+      checkedInAt: '2026-10-10T10:45:00-05:00',
+    };
+
+    reqWalkIn.flush({
+      success: true,
+      message: 'Atención sin cita registrada.',
+      data: mockWalkInAppt,
+    });
+    fixture.detectChanges();
+
+    // 5. Nuevo GET /appointments
+    const reqRefresh = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    reqRefresh.flush({
+      success: true,
+      message: 'Citas encontradas',
+      data: [mockWalkInAppt],
+    });
+    fixture.detectChanges();
+
+    // 6. Tarjeta en espera en la columna de prof-2
+    const colProf2 = fixture.nativeElement.querySelector('[data-professional-id="prof-2"]');
+    expect(colProf2.textContent).toContain('David Pérez');
+    expect(colProf2.textContent).toContain('En espera');
+  });
+
+  it('abrir cita PENDING → "Reprogramar" → elegir otra hora → POST /reschedule con body { startAt } → responde 409 → mensaje visible y se recargan huecos', async () => {
+    sessionStore.setCurrentUser({
+      userId: 'user-sec',
+      email: 'secretaria@bellidental.com',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ', 'APPOINTMENT_UPDATE', 'APPOINTMENT_CANCEL', 'APPOINTMENT_CREATE'],
+    });
+
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/v1/professionals').flush(mockProfessionalsApiResponse);
+    httpMock
+      .expectOne('/api/v1/professionals/prof-1/schedules/effective?from=2026-10-10&to=2026-10-10')
+      .flush(mockEffectiveDaysApiResponseProf1);
+    httpMock
+      .expectOne('/api/v1/professionals/prof-2/schedules/effective?from=2026-10-10&to=2026-10-10')
+      .flush(mockEffectiveDaysApiResponseProf2);
+    httpMock
+      .expectOne((req) => req.url === '/api/v1/appointments')
+      .flush(mockAppointmentsApiResponse);
+
+    fixture.detectChanges();
+
+    // 1. Abrir panel de detalle de la cita PENDING de prof-1 (David Pérez, id appt-1)
+    const cardBtn = fixture.nativeElement.querySelector('.appointment-card__main-btn') as HTMLButtonElement;
+    expect(cardBtn).toBeTruthy();
+    cardBtn.click();
+    fixture.detectChanges();
+
+    // 2. Clic en "Reprogramar"
+    const actionBtns = Array.from(
+      fixture.nativeElement.querySelectorAll('.appointment-panel__action-btn')
+    ) as HTMLButtonElement[];
+    const rescheduleBtn = actionBtns.find((b) => b.textContent?.includes('Reprogramar'));
+    expect(rescheduleBtn).toBeTruthy();
+    rescheduleBtn!.click();
+    fixture.detectChanges();
+
+    // Pide especialidades (si no estaban cargadas) y disponibilidad
+    httpMock.expectOne('/api/v1/specialties').flush(mockSpecialtiesApiResponse);
+    const reqAvail = httpMock.expectOne('/api/v1/availability?professionalId=prof-1&specialtyId=1&date=2026-10-10');
+    reqAvail.flush(mockAvailableSlotsApiResponse);
+    fixture.detectChanges();
+
+    // Título del formulario "Reprogramar cita"
+    const formTitle = fixture.nativeElement.querySelector('#appointment-form-title');
+    expect(formTitle.textContent).toContain('Reprogramar cita');
+
+    // 3. Elegir otra hora (10:30)
+    const slotRadio = fixture.nativeElement.querySelector(
+      'input[value="2026-10-10T10:30:00-05:00"]'
+    ) as HTMLInputElement;
+    slotRadio.click();
+    slotRadio.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    // 4. Clic en "Reprogramar" (botón de submit)
+    const submitBtn = fixture.nativeElement.querySelector('.appt-form__submit-btn') as HTMLButtonElement;
+    expect(submitBtn.textContent).toContain('Reprogramar');
+    submitBtn.click();
+    fixture.detectChanges();
+
+    // 5. POST /appointments/appt-1/reschedule solo con startAt (porque prof y specialty no cambiaron)
+    const reqReschedule = httpMock.expectOne('/api/v1/appointments/appt-1/reschedule');
+    expect(reqReschedule.request.method).toBe('POST');
+    expect(reqReschedule.request.body).toEqual({
+      startAt: '2026-10-10T10:30:00-05:00',
+    });
+
+    reqReschedule.flush(
+      {
+        success: false,
+        message: 'El profesional ya tiene una cita en ese horario.',
+        data: null,
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+
+    // 6. El mensaje se ve en el formulario
+    const alertEl = fixture.nativeElement.querySelector('.appt-form__error-box');
+    expect(alertEl.textContent).toContain('El profesional ya tiene una cita en ese horario.');
+
+    // 7. Se vuelven a pedir los huecos
+    const reqRetryAvail = httpMock.expectOne(
+      '/api/v1/availability?professionalId=prof-1&specialtyId=1&date=2026-10-10'
+    );
+    reqRetryAvail.flush(mockAvailableSlotsApiResponse);
+    fixture.detectChanges();
+  });
 });
 
 

@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  CalendarSync,
   CalendarX,
   Check,
   CheckCheck,
@@ -142,8 +143,8 @@ import { Appointment } from '../../models/appointment.models';
               <button
                 type="button"
                 class="btn appointment-panel__action-btn"
-                [class.btn-primary]="isFirst"
-                [class.btn-outline]="!isFirst"
+                [class.btn-primary]="isFirst && act !== 'reschedule'"
+                [class.btn-outline]="!isFirst || act === 'reschedule'"
                 [disabled]="isAnyActionPending()"
                 (click)="onActionClick(act)"
               >
@@ -423,6 +424,7 @@ export class AppointmentPanelComponent {
 
   readonly externalLinkIcon: LucideIconData = ExternalLink;
   readonly calendarXIcon: LucideIconData = CalendarX;
+  readonly calendarSyncIcon: LucideIconData = CalendarSync;
   readonly checkIcon: LucideIconData = Check;
   readonly checkCheckIcon: LucideIconData = CheckCheck;
   readonly userXIcon: LucideIconData = UserX;
@@ -462,6 +464,8 @@ export class AppointmentPanelComponent {
         return 'Confirmar';
       case 'no-show':
         return 'No asistió';
+      case 'reschedule':
+        return 'Reprogramar';
       case 'cancel':
         return 'Cancelar cita';
     }
@@ -475,6 +479,8 @@ export class AppointmentPanelComponent {
         return this.checkCheckIcon;
       case 'no-show':
         return this.userXIcon;
+      case 'reschedule':
+        return this.calendarSyncIcon;
       case 'cancel':
         return this.calendarXIcon;
     }

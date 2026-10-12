@@ -11,9 +11,12 @@ import {
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { FieldComponent } from '../../../../shared/components/field/field.component';
+import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
+import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { Patient } from '../../../patients';
 import { Professional, Specialty } from '../../../professionals';
-import { AvailableSlot } from '../../models/appointment.models';
+import { Appointment, AvailableSlot } from '../../models/appointment.models';
+import { AppointmentFormMode, WalkInAvailability } from '../../services/appointment-form.store';
 import { AppointmentPatientFieldComponent } from '../appointment-patient-field/appointment-patient-field.component';
 import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
 
@@ -30,18 +33,28 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form class="appt-form" (submit)="onSubmit($event)">
-      <!-- 1. Paciente -->
-      <bd-appointment-patient-field
-        #patientField
-        [patient]="patient()"
-        [patientQuery]="patientQuery()"
-        [patientResults]="patientResults()"
-        [patientLoading]="patientLoading()"
-        [patientError]="patientError()"
-        (queryChange)="patientQueryChange.emit($event)"
-        (selected)="patientSelected.emit($event)"
-        (clear)="onPatientClear()"
-      />
+      <!-- 1. Paciente o Cita original (en reprogramar) -->
+      @if (mode() === 'reschedule' && originalAppointment(); as orig) {
+        <div class="appt-form__orig-summary" role="group" aria-labelledby="appt-orig-patient">
+          <span class="appt-form__section-label">Cita original</span>
+          <div class="appt-form__orig-card">
+            <h3 id="appt-orig-patient" class="appt-form__orig-patient">{{ orig.patientName }}</h3>
+            <p class="appt-form__orig-details">{{ originalDetailsText(orig) }}</p>
+          </div>
+        </div>
+      } @else {
+        <bd-appointment-patient-field
+          #patientField
+          [patient]="patient()"
+          [patientQuery]="patientQuery()"
+          [patientResults]="patientResults()"
+          [patientLoading]="patientLoading()"
+          [patientError]="patientError()"
+          (queryChange)="patientQueryChange.emit($event)"
+          (selected)="patientSelected.emit($event)"
+          (clear)="onPatientClear()"
+        />
+      }
 
       <!-- 2. Especialidad -->
       <bd-field
@@ -75,75 +88,79 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
           class="input"
           [value]="selectedProfessionalId()"
           (change)="onProfessionalChange($event)"
-          [disabled]="selectedSpecialtyId() === null || availableProfessionals().length === 0"
+          [disabled]="selectedSpecialtyId() === null || availableProfessionals().length === 0 || (mode() === 'walk-in' && walkInLoading())"
         >
           <option value="" disabled [selected]="!selectedProfessionalId()">
-            {{ selectedSpecialtyId() !== null ? 'Selecciona un profesional' : 'Elige una especialidad primero' }}
+            {{ professionalPlaceholderText() }}
           </option>
           @for (prof of availableProfessionals(); track prof.id) {
-            <option [value]="prof.id" [selected]="prof.id === selectedProfessionalId()">{{ prof.fullName }}</option>
+            <option [value]="prof.id" [selected]="prof.id === selectedProfessionalId()">
+              {{ profOptionLabel(prof) }}
+            </option>
           }
         </select>
       </bd-field>
 
-      <!-- 4. Fecha -->
-      <bd-field label="Fecha" fieldId="appt-date-input">
-        <div class="appt-form__date-row">
-          <input
-            type="date"
-            id="appt-date-input"
-            class="input appt-form__date-input"
-            [min]="minDate()"
-            [value]="date()"
-            (change)="onDateChange($event)"
+      @if (mode() !== 'walk-in') {
+        <!-- 4. Fecha -->
+        <bd-field label="Fecha" fieldId="appt-date-input">
+          <div class="appt-form__date-row">
+            <input
+              type="date"
+              id="appt-date-input"
+              class="input appt-form__date-input"
+              [min]="minDate()"
+              [value]="date()"
+              (change)="onDateChange($event)"
+            />
+            <button
+              type="button"
+              class="btn btn-outline appt-form__quick-btn"
+              (click)="todayClick.emit()"
+            >
+              Hoy
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline appt-form__quick-btn"
+              (click)="tomorrowClick.emit()"
+            >
+              Mañana
+            </button>
+          </div>
+        </bd-field>
+
+        <!-- 5. Hora -->
+        <div class="appt-form__slot-section">
+          <span id="appt-slot-label" class="appt-form__section-label">Hora</span>
+          @if (notice()) {
+            <p class="appt-form__notice" role="status">{{ notice() }}</p>
+          }
+          <bd-slot-picker
+            [ariaLabelledby]="'appt-slot-label'"
+            [slots]="slots()"
+            [selectedSlot]="selectedSlot()"
+            [loading]="slotsLoading()"
+            [error]="slotsError()"
+            [ready]="isSlotPickerReady()"
+            (slotChange)="slotSelected.emit($event)"
+            (nextDay)="nextDayClicked.emit()"
+            (retry)="retrySlots.emit()"
           />
-          <button
-            type="button"
-            class="btn btn-outline appt-form__quick-btn"
-            (click)="todayClick.emit()"
-          >
-            Hoy
-          </button>
-          <button
-            type="button"
-            class="btn btn-outline appt-form__quick-btn"
-            (click)="tomorrowClick.emit()"
-          >
-            Mañana
-          </button>
         </div>
-      </bd-field>
 
-      <!-- 5. Hora -->
-      <div class="appt-form__slot-section">
-        <span id="appt-slot-label" class="appt-form__section-label">Hora</span>
-        @if (notice()) {
-          <p class="appt-form__notice" role="status">{{ notice() }}</p>
-        }
-        <bd-slot-picker
-          [ariaLabelledby]="'appt-slot-label'"
-          [slots]="slots()"
-          [selectedSlot]="selectedSlot()"
-          [loading]="slotsLoading()"
-          [error]="slotsError()"
-          [ready]="isSlotPickerReady()"
-          (slotChange)="slotSelected.emit($event)"
-          (nextDay)="nextDayClicked.emit()"
-          (retry)="retrySlots.emit()"
-        />
-      </div>
-
-      <!-- 6. Motivo (opcional) -->
-      <bd-field label="Motivo (opcional)" fieldId="appt-reason-input">
-        <input
-          type="text"
-          id="appt-reason-input"
-          class="input"
-          maxlength="255"
-          placeholder="Ej. Control de ortodoncia, dolor..."
-          [formControl]="reasonControl"
-        />
-      </bd-field>
+        <!-- 6. Motivo (opcional) -->
+        <bd-field label="Motivo (opcional)" fieldId="appt-reason-input">
+          <input
+            type="text"
+            id="appt-reason-input"
+            class="input"
+            maxlength="255"
+            placeholder="Ej. Control de ortodoncia, dolor..."
+            [formControl]="reasonControl"
+          />
+        </bd-field>
+      }
 
       <!-- Errores de API -->
       @if (errorMessage()) {
@@ -160,9 +177,9 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
           [disabled]="!canSubmit() || saving()"
         >
           @if (saving()) {
-            <span>Agendando...</span>
+            <span>{{ savingText() }}</span>
           } @else {
-            <span>Agendar cita</span>
+            <span>{{ submitText() }}</span>
           }
         </button>
       </div>
@@ -178,6 +195,35 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
       padding: var(--space-md);
       padding-bottom: 5.5rem;
       position: relative;
+    }
+
+    .appt-form__orig-summary {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    .appt-form__orig-card {
+      background-color: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius-sm);
+      padding: var(--space-sm) var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .appt-form__orig-patient {
+      margin: 0;
+      font-size: var(--fs-md);
+      font-weight: 700;
+      color: var(--blue-950);
+    }
+
+    .appt-form__orig-details {
+      margin: 0;
+      font-size: var(--fs-xs);
+      color: var(--slate-600);
     }
 
     .appt-form__date-row {
@@ -242,6 +288,13 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
 })
 export class AppointmentFormComponent implements AfterViewInit {
   private readonly fb = inject(FormBuilder).nonNullable;
+  private readonly clinicDatePipe = new ClinicDatePipe();
+  private readonly clinicTimePipe = new ClinicTimePipe();
+
+  readonly mode = input<AppointmentFormMode>('create');
+  readonly originalAppointment = input<Appointment | null>(null);
+  readonly walkInAvailability = input<Record<string, WalkInAvailability>>({});
+  readonly walkInLoading = input<boolean>(false);
 
   readonly patient = input<Patient | null>(null);
   readonly patientQuery = input<string>('');
@@ -300,8 +353,42 @@ export class AppointmentFormComponent implements AfterViewInit {
     return prof ? prof.licenseNumber : null;
   });
 
+  readonly professionalPlaceholderText = computed(() => {
+    if (this.mode() === 'walk-in' && this.walkInLoading()) {
+      return 'Buscando huecos…';
+    }
+    if (this.selectedSpecialtyId() !== null) {
+      return 'Selecciona un profesional';
+    }
+    return 'Elige una especialidad primero';
+  });
+
+  readonly submitText = computed(() => {
+    switch (this.mode()) {
+      case 'walk-in':
+        return 'Registrar llegada';
+      case 'reschedule':
+        return 'Reprogramar';
+      default:
+        return 'Agendar cita';
+    }
+  });
+
+  readonly savingText = computed(() => {
+    switch (this.mode()) {
+      case 'walk-in':
+        return 'Registrando...';
+      case 'reschedule':
+        return 'Reprogramando...';
+      default:
+        return 'Agendando...';
+    }
+  });
+
   ngAfterViewInit(): void {
-    this.focusPatientSearch();
+    if (this.mode() !== 'reschedule') {
+      this.focusPatientSearch();
+    }
   }
 
   focusPatientSearch(): void {
@@ -311,6 +398,22 @@ export class AppointmentFormComponent implements AfterViewInit {
   onPatientClear(): void {
     this.patientClear.emit();
     this.reasonControl.setValue('');
+  }
+
+  originalDetailsText(orig: Appointment): string {
+    const dateFormatted = this.clinicDatePipe.transform(orig.startAt);
+    const timeFormatted = this.clinicTimePipe.transform(orig.startAt);
+    return `${dateFormatted} · ${timeFormatted} con ${orig.professionalName} · ${orig.specialtyName}`;
+  }
+
+  profOptionLabel(prof: Professional): string {
+    if (this.mode() === 'walk-in') {
+      const info = this.walkInAvailability()[prof.id];
+      if (info) {
+        return `${prof.fullName} (${info.label})`;
+      }
+    }
+    return prof.fullName;
   }
 
   onSpecialtyChange(event: Event): void {

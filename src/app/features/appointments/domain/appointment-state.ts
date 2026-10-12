@@ -74,7 +74,7 @@ export function appointmentDisplayState(appointment: {
   }
 }
 
-export type AppointmentActionType = 'check-in' | 'confirm' | 'no-show' | 'cancel';
+export type AppointmentActionType = 'check-in' | 'confirm' | 'no-show' | 'cancel' | 'reschedule';
 
 export function availableActions(
   appointment: {
@@ -114,7 +114,12 @@ export function availableActions(
     actions.push('no-show');
   }
 
-  // 4. Cancelar: PENDING o CONFIRMED (con o sin llegada)
+  // 4. Reprogramar: PENDING o CONFIRMED sin check-in
+  if (canUpdate && !checkedInAt) {
+    actions.push('reschedule');
+  }
+
+  // 5. Cancelar: PENDING o CONFIRMED (con o sin llegada)
   if (canCancel) {
     actions.push('cancel');
   }

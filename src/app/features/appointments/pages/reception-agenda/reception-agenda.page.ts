@@ -74,6 +74,7 @@ import { AppointmentFormStore } from '../../services/appointment-form.store';
         (viewChange)="onViewChange($event)"
         (toggleCancelled)="store.setShowCancelled($event)"
         (create)="onCreateAppointment()"
+        (walkIn)="onWalkInAppointment()"
       />
 
       <!-- Contadores / Leyenda (solo si no hay error de carga principal) -->
@@ -208,18 +209,22 @@ import { AppointmentFormStore } from '../../services/appointment-form.store';
         }
       </bd-side-sheet>
 
-      <!-- Panel lateral / Hoja inferior con formulario de nueva cita -->
+      <!-- Panel lateral / Hoja inferior con formulario (nueva cita, sin cita, reprogramar) -->
       <bd-side-sheet
-        [isOpen]="activePanel() === 'create'"
+        [isOpen]="isFormOpen()"
         [titleId]="'appointment-form-title'"
         [fullscreenBelowMd]="true"
-        (closed)="onCloseCreatePanel()"
+        (closed)="onCloseFormPanel()"
       >
         <div class="appointment-form-panel">
           <div class="appointment-form-panel__header">
-            <h2 id="appointment-form-title" class="appointment-form-panel__title">Nueva cita</h2>
+            <h2 id="appointment-form-title" class="appointment-form-panel__title">{{ formPanelTitle() }}</h2>
           </div>
           <bd-appointment-form
+            [mode]="formStore.mode()"
+            [originalAppointment]="formStore.originalAppointment()"
+            [walkInAvailability]="formStore.walkInAvailabilityByProf()"
+            [walkInLoading]="formStore.walkInLoading()"
             [patient]="formStore.patient()"
             [patientQuery]="patientSearchStore.query()"
             [patientResults]="patientSearchStore.results()"
@@ -364,11 +369,25 @@ export class ReceptionAgendaPage implements OnInit {
   private readonly clinicTimePipe = new ClinicTimePipe();
   private readonly clinicDatePipe = new ClinicDatePipe();
 
-  readonly activePanel = signal<'detail' | 'create' | null>(null);
+  readonly activePanel = signal<'detail' | 'create' | 'walk-in' | 'reschedule' | null>(null);
 
   readonly canCreate = computed(() => this.sessionStore.hasPermission('APPOINTMENT_CREATE'));
   readonly isDetailOpen = computed(() => this.activePanel() === 'detail' && !!this.store.selectedAppointment());
-  readonly isPanelOpen = computed(() => this.isDetailOpen() || this.activePanel() === 'create');
+  readonly isFormOpen = computed(() => {
+    const p = this.activePanel();
+    return p === 'create' || p === 'walk-in' || p === 'reschedule';
+  });
+  readonly formPanelTitle = computed(() => {
+    switch (this.activePanel()) {
+      case 'walk-in':
+        return 'Atención sin cita';
+      case 'reschedule':
+        return 'Reprogramar cita';
+      default:
+        return 'Nueva cita';
+    }
+  });
+  readonly isPanelOpen = computed(() => this.isDetailOpen() || this.isFormOpen());
 
   constructor() {
     effect(() => {
@@ -468,6 +487,14 @@ export class ReceptionAgendaPage implements OnInit {
     this.activePanel.set('create');
   }
 
+  onWalkInAppointment(): void {
+    this.store.selectAppointment(null);
+    this.formStore.setProfessionals(this.store.professionals());
+    this.formStore.openWalkIn(this.store.date());
+    this.patientSearchStore.clear();
+    this.activePanel.set('walk-in');
+  }
+
   onSlotSelected(event: { professionalId: string; startAt: string }): void {
     this.formStore.setProfessionals(this.store.professionals());
     if (this.activePanel() === 'create') {
@@ -480,8 +507,12 @@ export class ReceptionAgendaPage implements OnInit {
     }
   }
 
-  onCloseCreatePanel(): void {
-    this.activePanel.set(null);
+  onCloseFormPanel(): void {
+    if (this.activePanel() === 'reschedule') {
+      this.activePanel.set('detail');
+    } else {
+      this.activePanel.set(null);
+    }
   }
 
   onPatientSelected(patient: Patient): void {
@@ -502,19 +533,38 @@ export class ReceptionAgendaPage implements OnInit {
   }
 
   onSaveAppointment(reason?: string): void {
+    const currentMode = this.formStore.mode();
     this.formStore.submit(reason).subscribe({
       next: (appt) => {
         this.activePanel.set(null);
         const apptDate = appt.startAt.slice(0, 10);
         const dateFormatted = this.clinicDatePipe.transform(appt.startAt);
         const timeFormatted = this.clinicTimePipe.transform(appt.startAt);
-        this.notificationService.success(
-          `Cita agendada: ${appt.patientName}, ${dateFormatted} · ${timeFormatted}`
-        );
-        if (apptDate !== this.store.date()) {
-          this.onDateChange(apptDate);
-        } else {
+
+        if (currentMode === 'walk-in') {
+          this.notificationService.success(
+            `${appt.patientName} en espera · ${timeFormatted} con ${appt.professionalName}`
+          );
           this.store.refreshAppointments();
+        } else if (currentMode === 'reschedule') {
+          this.store.selectAppointment(null);
+          this.notificationService.success(
+            `Cita reprogramada: ${dateFormatted} · ${timeFormatted}`
+          );
+          if (apptDate !== this.store.date()) {
+            this.onDateChange(apptDate);
+          } else {
+            this.store.refreshAppointments();
+          }
+        } else {
+          this.notificationService.success(
+            `Cita agendada: ${appt.patientName}, ${dateFormatted} · ${timeFormatted}`
+          );
+          if (apptDate !== this.store.date()) {
+            this.onDateChange(apptDate);
+          } else {
+            this.store.refreshAppointments();
+          }
         }
       },
       error: () => {},
@@ -529,7 +579,11 @@ export class ReceptionAgendaPage implements OnInit {
     const appt = this.store.selectedAppointment();
     if (!appt) return;
 
-    if (action === 'cancel') {
+    if (action === 'reschedule') {
+      this.formStore.setProfessionals(this.store.professionals());
+      this.formStore.openReschedule(appt);
+      this.activePanel.set('reschedule');
+    } else if (action === 'cancel') {
       const timeText = this.clinicTimePipe.transform(appt.startAt);
       this.confirmDialog
         .open({

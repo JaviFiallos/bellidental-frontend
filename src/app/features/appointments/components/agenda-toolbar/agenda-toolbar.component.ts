@@ -6,7 +6,7 @@ import {
   input,
   output,
 } from '@angular/core';
-import { AlertCircle, Clock, Plus } from 'lucide-angular';
+import { AlertCircle, Clock, Footprints, Plus } from 'lucide-angular';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { DateNavComponent } from '../../../../shared/components/date-nav/date-nav.component';
 import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
@@ -58,6 +58,17 @@ import {
           </label>
 
           @if (canCreate()) {
+            <button
+              type="button"
+              class="btn btn-outline agenda-toolbar__walkin-btn"
+              [disabled]="!isToday()"
+              [title]="!isToday() ? 'Solo para hoy' : ''"
+              (click)="walkIn.emit()"
+            >
+              <bd-icon [name]="footprintsIcon" [size]="18" />
+              <span>Sin cita</span>
+            </button>
+
             <button
               type="button"
               class="btn btn-accent agenda-toolbar__create-btn"
@@ -164,10 +175,12 @@ export class AgendaToolbarComponent {
   readonly viewChange = output<'professional' | 'status'>();
   readonly toggleCancelled = output<boolean>();
   readonly create = output<void>();
+  readonly walkIn = output<void>();
 
   readonly clockIcon: LucideIconData = Clock;
   readonly alertIcon: LucideIconData = AlertCircle;
   readonly plusIcon: LucideIconData = Plus;
+  readonly footprintsIcon: LucideIconData = Footprints;
 
   readonly viewOptions: SegmentedOption<'professional' | 'status'>[] = [
     { value: 'professional', label: 'Por profesional' },

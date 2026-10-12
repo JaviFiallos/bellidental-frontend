@@ -45,3 +45,16 @@ export interface CreateAppointmentRequest {
   reason?: string;
   notes?: string;
 }
+
+export interface WalkInAppointmentRequest {
+  patientId: string;
+  professionalId: string;
+  specialtyId: number;
+}
+
+export interface RescheduleAppointmentRequest {
+  startAt: string;
+  endAt?: string;
+  professionalId?: string;
+  specialtyId?: number;
+}

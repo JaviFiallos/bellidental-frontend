@@ -6,19 +6,29 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable, of, Subject, throwError } from 'rxjs';
+import { forkJoin, Observable, of, Subject, throwError } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { ApiError } from '../../../core/api/api.models';
 import { ClinicClock } from '../../../core/services/clinic-clock.service';
+import { ClinicTimePipe } from '../../../shared/pipes/clinic-time.pipe';
 import { Patient } from '../../patients';
 import { Professional, Specialty, SpecialtiesApi } from '../../professionals';
 import {
   Appointment,
   AvailableSlot,
   CreateAppointmentRequest,
+  RescheduleAppointmentRequest,
+  WalkInAppointmentRequest,
 } from '../models/appointment.models';
 import { AppointmentsApi } from './appointments.api';
 import { AvailabilityApi } from './availability.api';
+
+export type AppointmentFormMode = 'create' | 'walk-in' | 'reschedule';
+
+export interface WalkInAvailability {
+  firstSlot: AvailableSlot | null;
+  label: string;
+}
 
 @Injectable()
 export class AppointmentFormStore {
@@ -27,6 +37,11 @@ export class AppointmentFormStore {
   private readonly appointmentsApi = inject(AppointmentsApi);
   private readonly clinicClock = inject(ClinicClock);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly clinicTimePipe = new ClinicTimePipe();
+
+  // Mode & context
+  readonly mode = signal<AppointmentFormMode>('create');
+  readonly originalAppointment = signal<Appointment | null>(null);
 
   // External data
   readonly allProfessionals = signal<Professional[]>([]);
@@ -43,6 +58,10 @@ export class AppointmentFormStore {
   readonly pendingStartAt = signal<string | null>(null);
   readonly notice = signal<string | null>(null);
 
+  // Walk-in availability per professional & loading
+  readonly walkInAvailabilityByProf = signal<Record<string, WalkInAvailability>>({});
+  readonly walkInLoading = signal<boolean>(false);
+
   // Slots state
   readonly slots = signal<AvailableSlot[]>([]);
   readonly slotsLoading = signal<boolean>(false);
@@ -56,6 +75,12 @@ export class AppointmentFormStore {
     professionalId: string;
     specialtyId: number;
     date: string;
+  }>();
+
+  private readonly walkInTrigger$ = new Subject<{
+    specialtyId: number;
+    profs: Professional[];
+    today: string;
   }>();
 
   constructor() {
@@ -116,6 +141,104 @@ export class AppointmentFormStore {
           }
         }
       });
+
+    this.walkInTrigger$
+      .pipe(
+        switchMap(({ specialtyId, profs, today }) => {
+          if (profs.length === 0) {
+            this.walkInLoading.set(false);
+            this.walkInAvailabilityByProf.set({});
+            this.selectedProfessionalId.set('');
+            return of(null);
+          }
+
+          this.walkInLoading.set(true);
+          this.walkInAvailabilityByProf.set({});
+          this.selectedProfessionalId.set('');
+          this.notice.set(null);
+
+          const requests = profs.map((p) =>
+            this.availabilityApi.slots(p.id, specialtyId, today).pipe(
+              map((slots) => ({
+                profId: p.id,
+                slots,
+                error: false,
+                errorMessage: null as string | null,
+              })),
+              catchError((err: ApiError) =>
+                of({
+                  profId: p.id,
+                  slots: [] as AvailableSlot[],
+                  error: true,
+                  errorMessage: err.message || 'Error de disponibilidad',
+                })
+              )
+            )
+          );
+
+          return forkJoin(requests).pipe(
+            map((results) => ({ results, profs }))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((data) => {
+        if (!data) return;
+        const { results } = data;
+        this.walkInLoading.set(false);
+
+        const mapData: Record<string, WalkInAvailability> = {};
+        let bestProfId: string | null = null;
+        let earliestMin = Infinity;
+        let allFailed = results.length > 0;
+        let firstErrorMessage: string | null = null;
+
+        for (const { profId, slots, error, errorMessage } of results) {
+          if (error) {
+            mapData[profId] = {
+              firstSlot: null,
+              label: 'no disponible',
+            };
+            if (!firstErrorMessage && errorMessage) {
+              firstErrorMessage = errorMessage;
+            }
+          } else {
+            allFailed = false;
+            if (slots && slots.length > 0) {
+              const first = slots[0];
+              const timeStr = this.clinicTimePipe.transform(first.startAt);
+              mapData[profId] = {
+                firstSlot: first,
+                label: `libre ${timeStr}`,
+              };
+              const min = this.clinicClock.minutesOfDay(first.startAt);
+              if (min < earliestMin) {
+                earliestMin = min;
+                bestProfId = profId;
+              }
+            } else {
+              mapData[profId] = {
+                firstSlot: null,
+                label: 'sin hueco hoy',
+              };
+            }
+          }
+        }
+
+        this.walkInAvailabilityByProf.set(mapData);
+
+        if (allFailed) {
+          this.error.set(firstErrorMessage || 'No se pudo obtener la disponibilidad.');
+          this.selectedProfessionalId.set('');
+          this.notice.set(null);
+        } else if (bestProfId) {
+          this.selectedProfessionalId.set(bestProfId);
+          this.notice.set(null);
+        } else {
+          this.selectedProfessionalId.set('');
+          this.notice.set('Ningún profesional tiene hueco hoy para esta especialidad.');
+        }
+      });
   }
 
   readonly availableSpecialties = computed<Specialty[]>(() => {
@@ -159,6 +282,7 @@ export class AppointmentFormStore {
 
   readonly isSlotPickerReady = computed<boolean>(() => {
     return (
+      this.mode() !== 'walk-in' &&
       !!this.selectedProfessionalId() &&
       this.selectedSpecialtyId() !== null &&
       !!this.date()
@@ -166,13 +290,34 @@ export class AppointmentFormStore {
   });
 
   readonly canSubmit = computed<boolean>(() => {
+    if (this.saving()) {
+      return false;
+    }
+
+    if (this.mode() === 'walk-in') {
+      return (
+        !!this.patient() &&
+        this.selectedSpecialtyId() !== null &&
+        !!this.selectedProfessionalId() &&
+        !this.walkInLoading()
+      );
+    }
+
+    if (this.mode() === 'reschedule') {
+      return (
+        this.selectedSpecialtyId() !== null &&
+        !!this.selectedProfessionalId() &&
+        !!this.date() &&
+        !!this.selectedSlot()
+      );
+    }
+
     return (
       !!this.patient() &&
       this.selectedSpecialtyId() !== null &&
       !!this.selectedProfessionalId() &&
       !!this.date() &&
-      !!this.selectedSlot() &&
-      !this.saving()
+      !!this.selectedSlot()
     );
   });
 
@@ -192,6 +337,8 @@ export class AppointmentFormStore {
   }
 
   openNew(agendaDate: string): void {
+    this.mode.set('create');
+    this.originalAppointment.set(null);
     this.initSpecialties();
     this.patient.set(null);
     this.selectedSpecialtyId.set(null);
@@ -205,13 +352,62 @@ export class AppointmentFormStore {
     this.slotsLoading.set(false);
     this.slotsError.set(null);
     this.openedFromSlot.set(false);
+    this.walkInAvailabilityByProf.set({});
+    this.walkInLoading.set(false);
 
     const today = this.clinicClock.todayDateString();
     const effectiveDate = agendaDate >= today ? agendaDate : today;
     this.date.set(effectiveDate);
   }
 
+  openWalkIn(agendaDate: string): void {
+    this.mode.set('walk-in');
+    this.originalAppointment.set(null);
+    this.initSpecialties();
+    this.patient.set(null);
+    this.selectedSpecialtyId.set(null);
+    this.selectedProfessionalId.set('');
+    this.selectedSlot.set(null);
+    this.pendingStartAt.set(null);
+    this.notice.set(null);
+    this.error.set(null);
+    this.saving.set(false);
+    this.slots.set([]);
+    this.slotsLoading.set(false);
+    this.slotsError.set(null);
+    this.openedFromSlot.set(false);
+    this.walkInAvailabilityByProf.set({});
+    this.walkInLoading.set(false);
+    this.date.set(this.clinicClock.todayDateString());
+  }
+
+  openReschedule(appointment: Appointment): void {
+    this.mode.set('reschedule');
+    this.originalAppointment.set(appointment);
+    this.initSpecialties();
+    this.patient.set(null);
+    this.selectedSpecialtyId.set(appointment.specialtyId);
+    this.selectedProfessionalId.set(appointment.professionalId);
+    this.selectedSlot.set(null);
+    this.pendingStartAt.set(null);
+    this.notice.set(null);
+    this.error.set(null);
+    this.saving.set(false);
+    this.openedFromSlot.set(false);
+    this.walkInAvailabilityByProf.set({});
+    this.walkInLoading.set(false);
+
+    const today = this.clinicClock.todayDateString();
+    const apptDate = appointment.startAt.slice(0, 10);
+    const effectiveDate = apptDate >= today ? apptDate : today;
+    this.date.set(effectiveDate);
+
+    this.triggerAvailability();
+  }
+
   openFromSlot(professionalId: string, slotDate: string, startAt: string): void {
+    this.mode.set('create');
+    this.originalAppointment.set(null);
     this.initSpecialties();
     this.patient.set(null);
     this.openedFromSlot.set(true);
@@ -221,12 +417,13 @@ export class AppointmentFormStore {
     this.notice.set(null);
     this.error.set(null);
     this.saving.set(false);
+    this.walkInAvailabilityByProf.set({});
+    this.walkInLoading.set(false);
 
     const today = this.clinicClock.todayDateString();
     const effectiveDate = slotDate >= today ? slotDate : today;
     this.date.set(effectiveDate);
 
-    // Auto-elegir especialidad si el profesional solo tiene 1
     const prof = this.allProfessionals().find((p) => p.id === professionalId);
     if (prof && prof.specialties.length === 1) {
       this.selectedSpecialtyId.set(prof.specialties[0].id);
@@ -238,12 +435,16 @@ export class AppointmentFormStore {
   }
 
   updateSlotSelection(professionalId: string, slotDate: string, startAt: string): void {
+    this.mode.set('create');
+    this.originalAppointment.set(null);
     this.openedFromSlot.set(true);
     this.selectedProfessionalId.set(professionalId);
     this.pendingStartAt.set(startAt);
     this.selectedSlot.set(null);
     this.notice.set(null);
     this.error.set(null);
+    this.walkInAvailabilityByProf.set({});
+    this.walkInLoading.set(false);
 
     const today = this.clinicClock.todayDateString();
     const effectiveDate = slotDate >= today ? slotDate : today;
@@ -254,7 +455,6 @@ export class AppointmentFormStore {
 
     if (prof) {
       if (currentSpecId !== null && prof.specialties.some((s) => s.id === currentSpecId)) {
-        // Mantiene la especialidad actual
         this.triggerAvailability();
       } else if (prof.specialties.length === 1) {
         this.selectedSpecialtyId.set(prof.specialties[0].id);
@@ -273,6 +473,12 @@ export class AppointmentFormStore {
   setSpecialtyId(specialtyId: number | null): void {
     this.selectedSpecialtyId.set(specialtyId);
     this.notice.set(null);
+    this.error.set(null);
+
+    if (this.mode() === 'walk-in') {
+      this.loadWalkInAvailability(specialtyId);
+      return;
+    }
 
     const profsWithSpec = specialtyId !== null
       ? this.allProfessionals().filter((p) =>
@@ -295,11 +501,30 @@ export class AppointmentFormStore {
     this.triggerAvailability();
   }
 
+  private loadWalkInAvailability(specialtyId: number | null): void {
+    if (specialtyId === null) {
+      this.selectedProfessionalId.set('');
+      this.walkInAvailabilityByProf.set({});
+      this.walkInLoading.set(false);
+      this.notice.set(null);
+      return;
+    }
+
+    const profs = this.allProfessionals().filter((p) =>
+      p.specialties.some((s) => s.id === specialtyId)
+    );
+
+    const today = this.clinicClock.todayDateString();
+    this.walkInTrigger$.next({ specialtyId, profs, today });
+  }
+
   setProfessionalId(professionalId: string): void {
     this.selectedProfessionalId.set(professionalId);
-    this.selectedSlot.set(null);
-    this.notice.set(null);
-    this.triggerAvailability();
+    if (this.mode() !== 'walk-in') {
+      this.selectedSlot.set(null);
+      this.notice.set(null);
+      this.triggerAvailability();
+    }
   }
 
   setDate(newDate: string): void {
@@ -315,7 +540,11 @@ export class AppointmentFormStore {
   }
 
   reloadSlots(): void {
-    this.triggerAvailability();
+    if (this.mode() === 'walk-in') {
+      this.loadWalkInAvailability(this.selectedSpecialtyId());
+    } else {
+      this.triggerAvailability();
+    }
   }
 
   nextDay(): void {
@@ -347,23 +576,47 @@ export class AppointmentFormStore {
       return throwError(() => new Error('Formulario incompleto'));
     }
 
-    const slot = this.selectedSlot()!;
-    const body: CreateAppointmentRequest = {
-      patientId: this.patient()!.id,
-      professionalId: this.selectedProfessionalId(),
-      specialtyId: this.selectedSpecialtyId()!,
-      startAt: slot.startAt,
-    };
-
-    const trimmed = reason?.trim();
-    if (trimmed) {
-      body.reason = trimmed;
-    }
-
     this.saving.set(true);
     this.error.set(null);
 
-    return this.appointmentsApi.create(body).pipe(
+    let request$: Observable<Appointment>;
+
+    if (this.mode() === 'walk-in') {
+      const body: WalkInAppointmentRequest = {
+        patientId: this.patient()!.id,
+        professionalId: this.selectedProfessionalId(),
+        specialtyId: this.selectedSpecialtyId()!,
+      };
+      request$ = this.appointmentsApi.walkIn(body);
+    } else if (this.mode() === 'reschedule') {
+      const orig = this.originalAppointment()!;
+      const slot = this.selectedSlot()!;
+      const body: RescheduleAppointmentRequest = {
+        startAt: slot.startAt,
+      };
+      if (this.selectedProfessionalId() !== orig.professionalId) {
+        body.professionalId = this.selectedProfessionalId();
+      }
+      if (this.selectedSpecialtyId() !== orig.specialtyId) {
+        body.specialtyId = this.selectedSpecialtyId()!;
+      }
+      request$ = this.appointmentsApi.reschedule(orig.id, body);
+    } else {
+      const slot = this.selectedSlot()!;
+      const body: CreateAppointmentRequest = {
+        patientId: this.patient()!.id,
+        professionalId: this.selectedProfessionalId(),
+        specialtyId: this.selectedSpecialtyId()!,
+        startAt: slot.startAt,
+      };
+      const trimmed = reason?.trim();
+      if (trimmed) {
+        body.reason = trimmed;
+      }
+      request$ = this.appointmentsApi.create(body);
+    }
+
+    return request$.pipe(
       map((appt) => {
         this.saving.set(false);
         return appt;
@@ -379,8 +632,12 @@ export class AppointmentFormStore {
         this.error.set(message);
 
         if (err.status === 409) {
-          this.selectedSlot.set(null);
-          this.reloadSlots();
+          if (this.mode() === 'walk-in') {
+            this.reloadSlots();
+          } else {
+            this.selectedSlot.set(null);
+            this.reloadSlots();
+          }
         }
         return throwError(() => err);
       })
