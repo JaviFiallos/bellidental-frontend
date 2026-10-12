@@ -565,6 +565,11 @@ features/clinical/
   - `EncountersApi.get/update/addDiagnosis/voidDiagnosis/complete`, `ClinicalRecordsApi.getByPatient`, `Icd10Api.search`.
   - Componentes `patient-clinical-header` (solo lectura), `encounter-notes`, `diagnosis-list` y `complete-bar`.
   - Guardado automático con versión de cambios (`changeVersion`/`savedVersion`); la búsqueda CIE-10 vive en el store.
+  - Contra el backend real la cabecera no recibía la historia clínica hasta G-9 (resuelto en backend 005b `6fd4ab5`).
+    El test no lo detectó porque el fixture usa `ApiResponse`, que es la forma correcta.
+- **Hecho (008b):** panel de antecedentes en `bd-side-sheet` (`fullscreenBelowMd`) con `HistoryPanelStore` (provisto por la
+  página), que escribe en `EncounterStore.clinicalRecord`. Componentes `history-panel`, `history-condition-row` y
+  `history-entry-form`. Audit de la pantalla: 12/20; los P1 van en la 008c.
 
 ### 5.9 Odontograma: dibujo y lectura — tarea 009 (P10, parte 1)
 - **Depende de:** 008. **API:** `GET /odontogram/catalog` (cache de sesión) · `GET /patients/{id}/odontogram`.
@@ -761,6 +766,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | G-6 | No hay estadísticas | 016 | `GET /stats/summary?from&to` (ADMIN) con las cifras de §5.16 | nueva, tras backend 012 |
 | G-7 | Auditoría solo por registro (`GET /audit/{entity}/{id}`) | Lista de la 017 | `GET /audit?from&to&userId&entity&page` (ADMIN) | ampliar backend 013 |
 | G-8 | Ningún endpoint de `ScheduleController` usa `ApiResponse` (GET y POST `/professionals/{id}/schedules`, `…/effective`, `PUT /schedules/{id}`, `POST /schedules/{id}/deactivate`) | Agenda (003a), horarios (006) | Envolver en `ApiResponse` como el resto (decisión del usuario: corregir el backend) | **Resuelto**: backend 006c (`ScheduleApiIT`) |
+| G-9 | `ClinicalRecordController` no usa `ApiResponse` (clinical-record, PUT, conditions, history-entries, void); `currentMedication` vacía no se puede borrar | Cabecera clínica (008a: recibe `undefined` contra el backend real) y antecedentes (008b) | Envolver en `ApiResponse` y que `currentMedication` vacía pase a `null` | **Resuelto** (backend 005b `6fd4ab5`) |
 
 ## 8. Decisiones
 | ID | Decisión | Estado |
@@ -793,8 +799,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 006a | Horarios: semana tipo por profesional | 002 · G-8 | Commit `417bed3` |
 | 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Commit `5975e18` |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | Commit `eae126f` |
-| 008a | Atención: cabecera, motivo, diagnósticos, completar | 007 | Aprobada (commit pendiente) |
-| 008b | Atención: panel de antecedentes (033) | 008a | — |
+| 008a | Atención: cabecera, motivo, diagnósticos, completar | 007 | Commit `c220096` |
+| 008b | Atención: panel de antecedentes (033) | 008a · G-9 | Aprobada (commit pendiente) |
+| 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | — |
 | 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
 | 010 | Odontograma: registro | 009 | — |
 | 011 | Más del 033 | 008 | — |

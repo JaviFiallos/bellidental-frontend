@@ -7,12 +7,15 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { SessionStore } from '../../../../core/auth/session.store';
 import {
   mockClinicalRecordApiResponse,
+  mockClinicalRecordPat1,
+  mockConditionsApiResponse,
   mockDiagnosisApiResponse,
   mockEncounterApiResponse,
   mockEncounterCompletedApiResponse,
   mockIcd10SearchApiResponse,
   mockPatientApiResponse,
 } from '../../testing/fixtures';
+
 import { EncounterPage } from './encounter.page';
 
 @Component({ template: '' })
@@ -251,4 +254,199 @@ describe('EncounterPage', () => {
     // La URL del router es /consultorio
     expect(router.url).toBe('/consultorio');
   });
+
+  it('registra un antecedente familiar → POST y aparece en la cabecera', async () => {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+
+    // Carga inicial con historia clínica sin antecedentes activos y sin noKnownHistory
+    const clinicalRecordEmpty = {
+      ...mockClinicalRecordPat1,
+      noKnownHistory: false,
+      historyEntries: [],
+    };
+
+    const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    encReq.flush(mockEncounterApiResponse);
+
+    const patReq = httpMock.expectOne('/api/v1/patients/pat-1');
+    patReq.flush(mockPatientApiResponse);
+
+    const recordReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
+    recordReq.flush({
+      success: true,
+      message: 'OK',
+      data: clinicalRecordEmpty,
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Con la atención cargada y la historia sin antecedentes, se pulsa "Registrar antecedentes"
+    const registerBtn = fixture.nativeElement.querySelector('.btn-history-warning') as HTMLButtonElement;
+    expect(registerBtn).toBeTruthy();
+    expect(registerBtn.textContent?.trim()).toContain('Registrar antecedentes');
+    registerBtn.click();
+    fixture.detectChanges();
+
+    // expectOne GET /api/v1/medical-history-conditions, que se responde con las 10 condiciones
+    const condReq = httpMock.expectOne('/api/v1/medical-history-conditions');
+    expect(condReq.request.method).toBe('GET');
+    condReq.flush(mockConditionsApiResponse);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // En la fila "Diabetes" se pulsa "+ Familiar"
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('.condition-row')) as HTMLElement[];
+    const diabetesRow = rows.find((r) => r.textContent?.includes('Diabetes'));
+    expect(diabetesRow).toBeTruthy();
+
+    const addFamilyBtn = Array.from(diabetesRow!.querySelectorAll('.btn-row-action')).find((b) =>
+      b.textContent?.includes('+ Familiar')
+    ) as HTMLButtonElement;
+    expect(addFamilyBtn).toBeTruthy();
+    addFamilyBtn.click();
+    fixture.detectChanges();
+
+    // Se escribe "madre" y se presiona Enter
+    const familyInput = diabetesRow!.querySelector('input[name="relative"]') as HTMLInputElement;
+    expect(familyInput).toBeTruthy();
+    familyInput.value = 'madre';
+    familyInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    familyInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+
+    // expectOne POST /api/v1/clinical-records/{id}/history-entries con body { conditionId: 7, scope: 'FAMILY', relative: 'madre' }
+    const addEntryReq = httpMock.expectOne('/api/v1/clinical-records/rec-1/history-entries');
+
+
+
+    expect(addEntryReq.request.method).toBe('POST');
+    expect(addEntryReq.request.body).toEqual({
+      conditionId: 7,
+      scope: 'FAMILY',
+      relative: 'madre',
+    });
+    addEntryReq.flush({
+      success: true,
+      message: 'Antecedente registrado',
+      data: {
+        id: 'hist-fam-1',
+        conditionId: 7,
+        conditionName: 'Diabetes',
+        scope: 'FAMILY',
+        relative: 'madre',
+        description: null,
+        active: true,
+      },
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // La cabecera muestra el chip "Diabetes (madre)"
+    const headerEl = fixture.nativeElement.querySelector('bd-patient-clinical-header') as HTMLElement;
+    expect(headerEl.textContent).toContain('Diabetes (madre)');
+  });
+
+  it('marcar "no refiere" cuando otra sesión registró un antecedente → 409, mensaje y recarga', async () => {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+
+    // Con la historia sin entradas activas y noKnownHistory: false
+    const clinicalRecordEmpty = {
+      ...mockClinicalRecordPat1,
+      noKnownHistory: false,
+      historyEntries: [],
+    };
+
+    const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    encReq.flush(mockEncounterApiResponse);
+
+    const patReq = httpMock.expectOne('/api/v1/patients/pat-1');
+    patReq.flush(mockPatientApiResponse);
+
+    const recordReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
+    recordReq.flush({
+      success: true,
+      message: 'OK',
+      data: clinicalRecordEmpty,
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Abrir el panel
+    const registerBtn = fixture.nativeElement.querySelector('.btn-history-warning') as HTMLButtonElement;
+    expect(registerBtn).toBeTruthy();
+    registerBtn.click();
+    fixture.detectChanges();
+
+    // Responder el catálogo
+    const condReq = httpMock.expectOne('/api/v1/medical-history-conditions');
+    condReq.flush(mockConditionsApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Pulsar "El paciente no refiere antecedentes"
+    const markBtn = fixture.nativeElement.querySelector('.btn-mark-no-history') as HTMLButtonElement;
+    expect(markBtn).toBeTruthy();
+    markBtn.click();
+    fixture.detectChanges();
+
+    // expectOne PUT /api/v1/clinical-records/{id} con body { noKnownHistory: true }, que responde 409
+    const putReq = httpMock.expectOne('/api/v1/clinical-records/rec-1');
+    expect(putReq.request.method).toBe('PUT');
+    expect(putReq.request.body).toEqual({ noKnownHistory: true });
+    putReq.flush(
+      {
+        success: false,
+        message: 'No se puede marcar como sin antecedentes mientras haya antecedentes activos.',
+      },
+      {
+        status: 409,
+        statusText: 'Conflict',
+      }
+    );
+
+    fixture.detectChanges();
+
+    // El mensaje es visible
+    expect(fixture.nativeElement.textContent).toContain(
+      'No se puede marcar como sin antecedentes mientras haya antecedentes activos.'
+    );
+
+    // expectOne GET /api/v1/patients/{patientId}/clinical-record, que se responde con "Asma" personal activa
+    const reloadReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
+    expect(reloadReq.request.method).toBe('GET');
+    reloadReq.flush({
+      success: true,
+      message: 'OK',
+      data: {
+        ...mockClinicalRecordPat1,
+        noKnownHistory: false,
+        historyEntries: [
+          {
+            id: 'hist-asma',
+            conditionId: 6,
+            conditionName: 'Asma',
+            scope: 'PERSONAL',
+            active: true,
+          },
+        ],
+      },
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // La cabecera muestra el chip "Asma"
+    const headerEl = fixture.nativeElement.querySelector('bd-patient-clinical-header') as HTMLElement;
+    expect(headerEl.textContent).toContain('Asma');
+  });
+
 });

@@ -114,3 +114,23 @@ export const mockEncounterCompletedApiResponse: ApiResponse<Encounter> = {
   message: 'Atención completada',
   data: mockEncounterCompleted,
 };
+
+export const mockConditions = [
+  { id: 1, name: 'Alergia a antibióticos', displayOrder: 1 },
+  { id: 2, name: 'Alergia a anestesia', displayOrder: 2 },
+  { id: 3, name: 'Hemorragias', displayOrder: 3 },
+  { id: 4, name: 'VIH/SIDA', displayOrder: 4 },
+  { id: 5, name: 'Tuberculosis', displayOrder: 5 },
+  { id: 6, name: 'Asma', displayOrder: 6 },
+  { id: 7, name: 'Diabetes', displayOrder: 7 },
+  { id: 8, name: 'Hipertensión', displayOrder: 8 },
+  { id: 9, name: 'Enfermedad cardíaca', displayOrder: 9 },
+  { id: 10, name: 'Otro', displayOrder: 10 },
+];
+
+export const mockConditionsApiResponse: ApiResponse<typeof mockConditions> = {
+  success: true,
+  message: 'Catálogo de condiciones obtenido',
+  data: mockConditions,
+};
+

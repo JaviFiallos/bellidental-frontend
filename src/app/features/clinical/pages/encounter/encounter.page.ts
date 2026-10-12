@@ -8,15 +8,25 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
+import { SideSheetComponent } from '../../../../shared/components/side-sheet/side-sheet.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { CompleteBarComponent } from '../../components/complete-bar/complete-bar.component';
 import { DiagnosisListComponent } from '../../components/diagnosis-list/diagnosis-list.component';
 import { EncounterNotesComponent } from '../../components/encounter-notes/encounter-notes.component';
+import { HistoryPanelComponent } from '../../components/history-panel/history-panel.component';
 import { PatientClinicalHeaderComponent } from '../../components/patient-clinical-header/patient-clinical-header.component';
+import {
+  CreateHistoryEntryRequest,
+  HistoryEntry,
+  MedicalHistoryCondition,
+} from '../../models/clinical-record.models';
 import { Diagnosis, DiagnosisCertainty } from '../../models/encounter.models';
 import { EncounterStore } from '../../services/encounter.store';
+
+import { HistoryPanelStore } from '../../services/history-panel.store';
+
 
 @Component({
   selector: 'bd-encounter-page',
@@ -29,10 +39,12 @@ import { EncounterStore } from '../../services/encounter.store';
     EncounterNotesComponent,
     DiagnosisListComponent,
     CompleteBarComponent,
+    SideSheetComponent,
+    HistoryPanelComponent,
     ClinicDatePipe,
     ClinicTimePipe,
   ],
-  providers: [EncounterStore],
+  providers: [EncounterStore, HistoryPanelStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="encounter-page">
@@ -107,6 +119,7 @@ import { EncounterStore } from '../../services/encounter.store';
           <bd-patient-clinical-header
             [patient]="store.patient()!"
             [clinicalRecord]="store.clinicalRecord()"
+            (openHistory)="historyStore.open()"
           />
 
           <!-- 2. Motivo y enfermedad actual -->
@@ -154,9 +167,43 @@ import { EncounterStore } from '../../services/encounter.store';
           [errorMessage]="store.completeError()"
           (complete)="onComplete()"
         />
+
+        <!-- 6. Panel lateral de antecedentes con bd-side-sheet -->
+        <bd-side-sheet
+          [isOpen]="historyStore.isOpen()"
+          [fullscreenBelowMd]="true"
+          titleId="history-panel-title"
+          (closed)="historyStore.close()"
+        >
+          @if (historyStore.generalError()) {
+            <bd-alert variant="error" [message]="historyStore.generalError()" />
+          }
+          <bd-history-panel
+            [patientName]="store.patient()?.fullName || ''"
+            [conditions]="historyStore.conditions()"
+            [conditionsLoading]="historyStore.conditionsLoading()"
+            [conditionsError]="historyStore.conditionsError()"
+            [entries]="historyStore.clinicalRecord()?.historyEntries || []"
+            [currentMedication]="historyStore.currentMedication()"
+            [medicationStatus]="historyStore.medicationStatus()"
+            [medicationError]="historyStore.medicationError()"
+            [noKnownHistory]="historyStore.noKnownHistory()"
+            [noKnownHistoryError]="historyStore.noKnownHistoryError()"
+            [isReadOnly]="historyStore.isReadOnly()"
+            [rowErrors]="historyStore.rowErrors()"
+            [lastSuccessEntry]="historyStore.lastRegisteredEntry()"
+            (addEntry)="onAddHistoryEntry($event)"
+            (voidEntry)="onVoidHistoryEntry($event)"
+            (medicationChange)="onMedicationChange($event)"
+            (noKnownHistoryChange)="onNoKnownHistoryChange($event)"
+            (retryConditions)="historyStore.loadConditionsIfNeeded()"
+          />
+        </bd-side-sheet>
       }
     </div>
   `,
+
+
   styles: `
     .encounter-page {
       display: flex;
@@ -236,10 +283,12 @@ import { EncounterStore } from '../../services/encounter.store';
 })
 export class EncounterPage implements OnInit {
   readonly store = inject(EncounterStore);
+  readonly historyStore = inject(HistoryPanelStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly notificationService = inject(NotificationService);
+
 
   ngOnInit(): void {
     const encounterId = this.route.snapshot.paramMap.get('encounterId');
@@ -293,4 +342,48 @@ export class EncounterPage implements OnInit {
       error: () => {},
     });
   }
+
+  onAddHistoryEntry(event: { conditionId: number; request: CreateHistoryEntryRequest }): void {
+    this.historyStore.addEntry(event.conditionId, event.request).subscribe({
+      error: () => {},
+    });
+  }
+
+  onVoidHistoryEntry(event: { condition: MedicalHistoryCondition; entry: HistoryEntry }): void {
+    const { condition, entry } = event;
+    const scopeLabel =
+      entry.scope === 'PERSONAL'
+        ? condition.name === 'Otro' && entry.description
+          ? entry.description
+          : 'Personal'
+        : `Familiar (${entry.relative || 'pariente'})`;
+
+    this.confirmDialog
+      .open({
+        title: 'Anular antecedente',
+        message: `¿Deseas anular el antecedente "${condition.name}: ${scopeLabel}"? Esta acción no se puede deshacer.`,
+        tone: 'danger',
+        confirmLabel: 'Anular',
+      })
+      .subscribe((res) => {
+        if (res.confirmed) {
+          this.historyStore.voidEntry(condition.id, entry.id).subscribe({
+            error: () => {},
+          });
+        }
+      });
+  }
+
+  onMedicationChange(val: string): void {
+    this.historyStore.updateMedication(val).subscribe({
+      error: () => {},
+    });
+  }
+
+  onNoKnownHistoryChange(val: boolean): void {
+    this.historyStore.setNoKnownHistory(val).subscribe({
+      error: () => {},
+    });
+  }
 }
+

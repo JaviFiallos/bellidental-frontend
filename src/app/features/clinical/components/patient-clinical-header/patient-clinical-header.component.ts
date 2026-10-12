@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { Patient } from '../../../patients';
 import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.models';
 
@@ -43,10 +43,32 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
               Medicación: {{ clinicalRecord()?.currentMedication }}
             </span>
           }
+
+          <!-- Botón de antecedentes -->
+          @if (isUnregistered()) {
+            <button
+              type="button"
+              class="btn-history-warning"
+              aria-haspopup="dialog"
+              (click)="openHistory.emit()"
+            >
+              Registrar antecedentes
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="btn-history-secondary"
+              aria-haspopup="dialog"
+              (click)="openHistory.emit()"
+            >
+              Antecedentes
+            </button>
+          }
         </div>
       </div>
     </header>
   `,
+
   styles: `
     .patient-clinical-header {
       display: flex;
@@ -147,11 +169,70 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       color: var(--blue-900);
       border: 1px solid var(--blue-300);
     }
+
+    .btn-history-warning {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 var(--space-sm);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      background-color: var(--gold-100);
+      color: var(--gold-900);
+      border: 1px solid var(--gold-400);
+      cursor: pointer;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+      &:hover {
+        background-color: var(--gold-200);
+        border-color: var(--gold-500);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+      }
+    }
+
+    .btn-history-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 var(--space-sm);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      background-color: var(--white);
+      color: var(--slate-700);
+      border: 1px solid var(--slate-300);
+      cursor: pointer;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+      &:hover {
+        background-color: var(--slate-50);
+        border-color: var(--slate-400);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+      }
+    }
   `,
 })
 export class PatientClinicalHeaderComponent {
   readonly patient = input.required<Patient>();
   readonly clinicalRecord = input<ClinicalRecord | null>(null);
+
+  readonly openHistory = output<void>();
+
+  readonly isUnregistered = computed<boolean>(() => {
+    const rec = this.clinicalRecord();
+    if (!rec) return true;
+    const hasActive = (rec.historyEntries || []).some((e) => e.active);
+    return !hasActive && !rec.noKnownHistory;
+  });
 
   readonly ageText = computed(() => {
     const age = this.patient().age;
@@ -183,3 +264,4 @@ export class PatientClinicalHeaderComponent {
       : entry.conditionName;
   }
 }
+

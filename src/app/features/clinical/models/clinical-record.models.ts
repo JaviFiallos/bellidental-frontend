@@ -6,6 +6,26 @@ export interface HistoryEntry {
   relative?: string | null;
   description?: string | null;
   active: boolean;
+  recordedAt?: string;
+  voidedAt?: string | null;
+}
+
+export interface MedicalHistoryCondition {
+  id: number;
+  name: string;
+  displayOrder: number;
+}
+
+export interface CreateHistoryEntryRequest {
+  conditionId: number;
+  scope: 'PERSONAL' | 'FAMILY';
+  relative?: string | null;
+  description?: string | null;
+}
+
+export interface UpdateClinicalRecordRequest {
+  noKnownHistory?: boolean;
+  currentMedication?: string | null;
 }
 
 export interface ClinicalRecord {
@@ -17,3 +37,4 @@ export interface ClinicalRecord {
   currentMedication?: string | null;
   historyEntries: HistoryEntry[];
 }
+
