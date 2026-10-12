@@ -21,13 +21,6 @@ export const routes: Routes = [
         children: [],
       },
       {
-        path: 'recepcion/horarios',
-        canActivate: [profileGuard('SECRETARIA')],
-        loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Horarios', task: 'tarea 006' },
-      },
-      {
         path: 'recepcion',
         canActivate: [profileGuard('SECRETARIA')],
         loadChildren: () =>

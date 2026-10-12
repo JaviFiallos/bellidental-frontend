@@ -3,6 +3,11 @@ import { ReceptionAgendaPage } from './pages/reception-agenda/reception-agenda.p
 
 export const appointmentsRoutes: Routes = [
   {
+    path: 'horarios',
+    loadComponent: () =>
+      import('./pages/schedules/schedules.page').then((m) => m.SchedulesPage),
+  },
+  {
     path: '',
     component: ReceptionAgendaPage,
   },

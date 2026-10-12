@@ -460,6 +460,10 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   efectivo. "Desactivar" en lugar de borrar.
 - **Test:** `schedules.page.spec.ts` — añadir turno → `POST …/schedules` → aparece en la semana; 409/400 → mensaje.
 - **Prueba manual:** endodoncista solo martes; excepción de feriado; ver la agenda (003) de ese día.
+- **Hecho (006a):** `/recepcion/horarios` con `SchedulesPage` y `SchedulesStore` (provisto por la página).
+  - Componentes dumb `weekly-schedule` (domingo en `<details>`) y `shift-editor`.
+  - `SchedulesApi.list/create/update/deactivate`; la hora se normaliza a `HH:mm`.
+  - Sin `SCHEDULE_MANAGE` la página es solo de lectura.
 
 ### 5.7 Consultorio: mis citas de hoy — tarea 007 (P8)
 - **Depende de:** 002, 003 (reutiliza `AppointmentCard` y `appointmentDisplayState`) · [G-1].
@@ -763,8 +767,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 004a | Nueva cita (formulario, slot-picker, clic en hueco de la grilla) | 003c | Commit `a11593e` |
 | 004b | Sin cita (walk-in) y reprogramar | 004a | Commit `266d779` |
 | 005a | Pacientes: alta y edición | 002b · G-5 | Commit `2b80240` |
-| 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Aprobada |
-| 006a | Horarios: semana tipo por profesional | 002 · G-8 | Redactada |
+| 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Commit `0a63492` |
+| 006a | Horarios: semana tipo por profesional | 002 · G-8 | Aprobada |
 | 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Redactada |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | — |
 | 008 | Atención: cabecera, antecedentes, diagnósticos, completar | 007 | — |
