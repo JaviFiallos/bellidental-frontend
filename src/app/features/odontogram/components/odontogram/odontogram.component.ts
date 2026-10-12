@@ -11,6 +11,7 @@ import {
   output,
   QueryList,
   signal,
+  ViewChild,
   ViewChildren,
 } from '@angular/core';
 import {
@@ -20,6 +21,7 @@ import {
   LO_TEETH,
   OdontogramLayout,
   OdontogramView,
+  PeriodontalRowType,
   toPermanentHomologue,
   UP_TEETH,
 } from '../../domain/odontogram-layout';
@@ -39,17 +41,21 @@ import {
   NavKey,
 } from '../../domain/tooth-navigation';
 import {
+  CreateFindingRequest,
   DentalIndices,
   Finding,
+  FindingStatus,
   OdontogramCatalog,
+  SurfaceCode,
   Tooth,
 } from '../../models/odontogram.models';
 import { DentalIndicesComponent } from '../dental-indices/dental-indices.component';
 import { PeriodontalRowComponent } from '../periodontal-row/periodontal-row.component';
 import { ToothComponent } from '../tooth/tooth.component';
 import { SpanBandComponent } from '../span-band/span-band.component';
+import { ToothPanelComponent } from '../tooth-panel/tooth-panel.component';
 import { OdontogramLegendComponent } from '../odontogram-legend/odontogram-legend.component';
-import { SegmentedComponent, SegmentedOption } from '../../../../shared/components/segmented/segmented.component';
+import { OdontogramQuadrantBarComponent } from './odontogram-quadrant-bar.component';
 
 interface RenderedToothItem {
   tooth: Tooth;
@@ -73,135 +79,160 @@ interface RenderedSpanItem {
     DentalIndicesComponent,
     SpanBandComponent,
     OdontogramLegendComponent,
-    SegmentedComponent,
+    ToothPanelComponent,
+    OdontogramQuadrantBarComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="odontogram-container">
-      <!-- Selector de cuadrantes si el contenedor mide menos de 720 px -->
-      @if (isNarrow()) {
-        <div class="odontogram-quadrant-bar">
-          <bd-segmented
-            [options]="quadrantOptions"
-            label="Cuadrante"
-            [value]="selectedQuadrant()"
-            (valueChange)="onQuadrantChange($event)"
+    <div class="odontogram-wrapper" [class.odontogram-wrapper--editable]="editable()">
+      <div class="odontogram-container">
+        <!-- Selector de cuadrantes si el contenedor mide menos de 720 px -->
+        @if (isNarrow()) {
+          <bd-odontogram-quadrant-bar
+            [selectedQuadrant]="selectedQuadrant()"
+            [orientationText]="orientationText()"
+            (quadrantChange)="onQuadrantChange($event)"
           />
-          <p class="odontogram-orientation">{{ orientationText() }}</p>
-        </div>
+        }
+
+        <svg
+          [attr.viewBox]="viewBox()"
+          role="group"
+          aria-label="Odontograma"
+          class="odontogram-svg"
+        >
+          <!-- Etiquetas laterales o superiores de fila -->
+          @for (lbl of layout().labels; track lbl.text + lbl.y) {
+            <svg:text
+              [attr.x]="lbl.x"
+              [attr.y]="lbl.y"
+              [attr.text-anchor]="lbl.anchor || 'end'"
+              dominant-baseline="central"
+              class="odontogram-label"
+            >
+              {{ lbl.text }}
+            </svg:text>
+          }
+
+          <!-- Línea media (vertical discontinua, solo en vista completa) -->
+          @if (layout().view === 'full') {
+            <svg:line
+              [attr.x1]="layout().midlineX"
+              y1="2"
+              [attr.x2]="layout().midlineX"
+              [attr.y2]="layout().height - 2"
+              stroke="var(--slate-300)"
+              stroke-dasharray="3 3"
+            />
+
+            <!-- Separador horizontal (arcada superior / inferior) -->
+            <svg:line
+              [attr.x1]="layout().separatorX1"
+              [attr.y1]="layout().separatorY"
+              [attr.x2]="layout().separatorX2"
+              [attr.y2]="layout().separatorY"
+              stroke="var(--slate-200)"
+            />
+          }
+
+          <!-- Filas periodontales -->
+          <svg:g bdPeriodontalRow rowType="recU" [cells]="recUCells()" [marksByTooth]="marksMap().byTooth" [editable]="editable()" (cellClick)="onPeriodontalCellClick($event)" />
+          <svg:g bdPeriodontalRow rowType="movU" [cells]="movUCells()" [marksByTooth]="marksMap().byTooth" [editable]="editable()" (cellClick)="onPeriodontalCellClick($event)" />
+          <svg:g bdPeriodontalRow rowType="movL" [cells]="movLCells()" [marksByTooth]="marksMap().byTooth" [editable]="editable()" (cellClick)="onPeriodontalCellClick($event)" />
+          <svg:g bdPeriodontalRow rowType="recL" [cells]="recLCells()" [marksByTooth]="marksMap().byTooth" [editable]="editable()" (cellClick)="onPeriodontalCellClick($event)" />
+
+          <!-- Bandas de prótesis en rango -->
+          @for (band of renderedSpans(); track band.span.startCode + '-' + band.span.endCode + '-' + band.span.conditionName) {
+            <svg:g
+              bdSpanBand
+              [span]="band.span"
+              [view]="activeView()"
+              [offset]="band.offset"
+              [label]="band.label"
+            />
+          }
+
+          <!-- Piezas dentales con foco itinerante y selección -->
+          @for (item of renderedTeeth(); track item.tooth.code) {
+            <svg:g
+              bdTooth
+              [tooth]="item.tooth"
+              [x]="item.layout.x"
+              [y]="item.layout.y"
+              [size]="item.layout.size"
+              [shape]="item.layout.shape"
+              [numberX]="item.layout.numberX"
+              [numberY]="item.layout.numberY"
+              [marks]="item.marks"
+              [label]="item.label"
+              [tabIndex]="focusedToothCode() === item.tooth.code ? 0 : -1"
+              [editable]="editable()"
+              [isSelectedTooth]="selectedToothCode() === item.tooth.code"
+              [selectedFace]="selectedToothCode() === item.tooth.code ? selectedFace() : null"
+              (toothActivate)="onToothActivate($event)"
+              (keyNav)="onKeyNav($event)"
+              (faceClick)="onFaceClick($event)"
+              (toothNumberClick)="onToothNumberClick($event)"
+            />
+          }
+        </svg>
+
+        <!-- Índices CPO y ceo -->
+        <bd-dental-indices
+          [indices]="indices()"
+          [hasFindings]="findings().length > 0"
+        />
+
+        <!-- Leyenda plegable del catálogo -->
+        <bd-odontogram-legend [catalog]="catalog()" />
+      </div>
+
+      <!-- Panel de la pieza (solo en modo editable) -->
+      @if (editable()) {
+        <aside class="odontogram-sidebar">
+          <bd-tooth-panel
+            #toothPanel
+            [selectedToothCode]="selectedToothCode()"
+            [selectedFace]="selectedFace()"
+            [selectedStatus]="selectedStatus()"
+            [catalog]="catalog()"
+            [findings]="findings()"
+            [currentMarks]="selectedToothMarks()"
+            [encounterFindingIds]="encounterFindingIds()"
+            [canVoid]="canVoid()"
+            [saving]="saving()"
+            [actionError]="actionError()"
+            [lastAction]="lastAction()"
+            (faceChange)="onFaceChange($event)"
+            (statusChange)="onStatusChange($event)"
+            (clearSelection)="onClearSelection()"
+            (registerFinding)="registerFinding.emit($event)"
+            (voidFinding)="voidFinding.emit($event)"
+          />
+        </aside>
       }
-
-      <svg
-        [attr.viewBox]="viewBox()"
-        role="group"
-        aria-label="Odontograma"
-        class="odontogram-svg"
-      >
-        <!-- Etiquetas laterales o superiores de fila -->
-        @for (lbl of layout().labels; track lbl.text + lbl.y) {
-          <svg:text
-            [attr.x]="lbl.x"
-            [attr.y]="lbl.y"
-            [attr.text-anchor]="lbl.anchor || 'end'"
-            dominant-baseline="central"
-            class="odontogram-label"
-          >
-            {{ lbl.text }}
-          </svg:text>
-        }
-
-        <!-- Línea media (vertical discontinua, solo en vista completa) -->
-        @if (layout().view === 'full') {
-          <svg:line
-            [attr.x1]="layout().midlineX"
-            y1="2"
-            [attr.x2]="layout().midlineX"
-            [attr.y2]="layout().height - 2"
-            stroke="var(--slate-300)"
-            stroke-dasharray="3 3"
-          />
-
-          <!-- Separador horizontal (arcada superior / inferior) -->
-          <svg:line
-            [attr.x1]="layout().separatorX1"
-            [attr.y1]="layout().separatorY"
-            [attr.x2]="layout().separatorX2"
-            [attr.y2]="layout().separatorY"
-            stroke="var(--slate-200)"
-          />
-        }
-
-        <!-- Filas periodontales -->
-        <svg:g
-          bdPeriodontalRow
-          rowType="recU"
-          [cells]="recUCells()"
-          [marksByTooth]="marksMap().byTooth"
-        />
-        <svg:g
-          bdPeriodontalRow
-          rowType="movU"
-          [cells]="movUCells()"
-          [marksByTooth]="marksMap().byTooth"
-        />
-        <svg:g
-          bdPeriodontalRow
-          rowType="movL"
-          [cells]="movLCells()"
-          [marksByTooth]="marksMap().byTooth"
-        />
-        <svg:g
-          bdPeriodontalRow
-          rowType="recL"
-          [cells]="recLCells()"
-          [marksByTooth]="marksMap().byTooth"
-        />
-
-        <!-- Bandas de prótesis en rango -->
-        @for (band of renderedSpans(); track band.span.startCode + '-' + band.span.endCode + '-' + band.span.conditionName) {
-          <svg:g
-            bdSpanBand
-            [span]="band.span"
-            [view]="activeView()"
-            [offset]="band.offset"
-            [label]="band.label"
-          />
-        }
-
-        <!-- Piezas dentales con foco itinerante -->
-        @for (item of renderedTeeth(); track item.tooth.code) {
-          <svg:g
-            bdTooth
-            [tooth]="item.tooth"
-            [x]="item.layout.x"
-            [y]="item.layout.y"
-            [size]="item.layout.size"
-            [shape]="item.layout.shape"
-            [numberX]="item.layout.numberX"
-            [numberY]="item.layout.numberY"
-            [marks]="item.marks"
-            [label]="item.label"
-            [tabIndex]="focusedToothCode() === item.tooth.code ? 0 : -1"
-            (toothActivate)="toothActivate.emit($event)"
-            (keyNav)="onKeyNav($event)"
-          />
-        }
-      </svg>
-
-      <!-- Índices CPO y ceo -->
-      <bd-dental-indices
-        [indices]="indices()"
-        [hasFindings]="findings().length > 0"
-      />
-
-      <!-- Leyenda plegable del catálogo -->
-      <bd-odontogram-legend [catalog]="catalog()" />
     </div>
   `,
   styles: `
     :host {
       display: block;
       width: 100%;
+    }
+
+    .odontogram-wrapper {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: var(--space-md);
+    }
+
+    @media (min-width: 1200px) {
+      .odontogram-wrapper--editable {
+        display: grid;
+        grid-template-columns: 1fr minmax(18rem, 22rem);
+        align-items: start;
+        gap: var(--space-md);
+      }
     }
 
     .odontogram-container {
@@ -211,21 +242,12 @@ interface RenderedSpanItem {
       max-width: 56rem;
       margin: 0 auto;
       gap: 0.5rem;
+      min-width: 0;
     }
 
-    .odontogram-quadrant-bar {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.35rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .odontogram-orientation {
-      margin: 0;
-      font-size: var(--fs-xs);
-      color: var(--slate-500);
-      text-align: center;
+    .odontogram-sidebar {
+      width: 100%;
+      min-width: 0;
     }
 
     .odontogram-svg {
@@ -252,23 +274,30 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   private hasUserNavigated = false;
 
   @ViewChildren(ToothComponent) toothComponents!: QueryList<ToothComponent>;
+  @ViewChild('toothPanel') toothPanel?: ToothPanelComponent;
 
   readonly catalog = input.required<OdontogramCatalog>();
   readonly findings = input<Finding[]>([]);
   readonly indices = input<DentalIndices | null>(null);
 
+  readonly editable = input<boolean>(false);
+  readonly canVoid = input<boolean>(false);
+  readonly encounterFindingIds = input<Set<string>>(new Set());
+  readonly saving = input<boolean>(false);
+  readonly actionError = input<string | null>(null);
+  readonly lastAction = input<string | null>(null);
+
   readonly toothActivate = output<number>();
+  readonly registerFinding = output<CreateFindingRequest>();
+  readonly voidFinding = output<Finding>();
 
   readonly isNarrow = signal<boolean>(false);
   readonly selectedQuadrant = signal<1 | 2 | 4 | 3>(1);
   readonly focusedToothCode = signal<number>(18);
 
-  readonly quadrantOptions: SegmentedOption<1 | 2 | 4 | 3>[] = [
-    { value: 1, label: '18–11' },
-    { value: 2, label: '21–28' },
-    { value: 4, label: '48–41' },
-    { value: 3, label: '31–38' },
-  ];
+  readonly selectedToothCode = signal<number | null>(null);
+  readonly selectedFace = signal<SurfaceCode | null>(null);
+  readonly selectedStatus = signal<FindingStatus>('PENDING');
 
   readonly orientationText = computed<string>(() => {
     switch (this.selectedQuadrant()) {
@@ -300,6 +329,12 @@ export class OdontogramComponent implements OnInit, OnDestroy {
 
   readonly marksMap = computed<MarksMap>(() => {
     return buildMarks(this.findings(), this.catalog());
+  });
+
+  readonly selectedToothMarks = computed<ToothMarks | null>(() => {
+    const code = this.selectedToothCode();
+    if (!code) return null;
+    return this.marksMap().byTooth[code] || null;
   });
 
   readonly recUCells = computed<LayoutPeriodontalCell[]>(() => {
@@ -380,11 +415,8 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   });
 
   constructor() {
-    // Garantiza que la pieza enfocada esté siempre entre las visibles y recalcula
-    // cuando activeView o findings cambian (accesibilidad con Tab en cuadrantes y recarga).
     effect(() => {
       const view = this.activeView();
-      // Leer findings para reaccionar a recargas (ej. tras registrar en 010)
       this.findings();
       const marks = this.marksMap();
       const visibleTeeth = getReadingOrderTeeth(view);
@@ -451,6 +483,57 @@ export class OdontogramComponent implements OnInit, OnDestroy {
       this.focusedToothCode.set(next);
       setTimeout(() => {
         const tc = this.toothComponents.find((c) => c.tooth().code === next);
+        tc?.focus();
+      });
+    }
+  }
+
+  onFaceClick(event: { toothCode: number; surface: SurfaceCode }): void {
+    this.selectedToothCode.set(event.toothCode);
+    this.selectedFace.set(event.surface);
+    this.focusedToothCode.set(event.toothCode);
+  }
+
+  onToothNumberClick(toothCode: number): void {
+    this.selectedToothCode.set(toothCode);
+    this.selectedFace.set(null);
+    this.focusedToothCode.set(toothCode);
+  }
+
+  onPeriodontalCellClick(event: { permanentCode: number; rowType: PeriodontalRowType }): void {
+    this.selectedToothCode.set(event.permanentCode);
+    this.selectedFace.set(null);
+    this.focusedToothCode.set(event.permanentCode);
+    setTimeout(() => {
+      this.toothPanel?.focusPeriodontal();
+    });
+  }
+
+  onToothActivate(code: number): void {
+    this.selectedToothCode.set(code);
+    this.selectedFace.set(null);
+    this.focusedToothCode.set(code);
+    this.toothActivate.emit(code);
+    setTimeout(() => {
+      this.toothPanel?.focusFirstFace();
+    });
+  }
+
+  onFaceChange(face: SurfaceCode): void {
+    this.selectedFace.set(face);
+  }
+
+  onStatusChange(status: FindingStatus): void {
+    this.selectedStatus.set(status);
+  }
+
+  onClearSelection(): void {
+    const code = this.selectedToothCode();
+    this.selectedToothCode.set(null);
+    this.selectedFace.set(null);
+    if (code) {
+      setTimeout(() => {
+        const tc = this.toothComponents?.find((c) => c.tooth().code === code);
         tc?.focus();
       });
     }

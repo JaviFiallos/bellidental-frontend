@@ -1,11 +1,13 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   OnInit,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { SessionStore } from '../../../../core/auth/session.store';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
@@ -13,7 +15,14 @@ import { SideSheetComponent } from '../../../../shared/components/side-sheet/sid
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
-import { OdontogramComponent, OdontogramStore } from '../../../odontogram';
+import {
+  CreateFindingRequest,
+  Finding,
+  getConditionName,
+  getFindingWhere,
+  OdontogramComponent,
+  OdontogramStore,
+} from '../../../odontogram';
 import { CompleteBarComponent } from '../../components/complete-bar/complete-bar.component';
 import { DiagnosisListComponent } from '../../components/diagnosis-list/diagnosis-list.component';
 import { EncounterNotesComponent } from '../../components/encounter-notes/encounter-notes.component';
@@ -129,9 +138,9 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
               <h3 class="encounter-page__odontogram-title">Odontograma</h3>
             </div>
 
-            @if (odontogramStore.loading()) {
+            @if (odontogramStore.loading() && !odontogramStore.odontogram()) {
               <bd-skeleton height="24rem" width="100%" />
-            } @else if (odontogramStore.error()) {
+            } @else if (odontogramStore.error() && !odontogramStore.odontogram()) {
               <bd-alert variant="error" [message]="odontogramStore.error()!">
                 <button
                   type="button"
@@ -146,6 +155,14 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
                 [catalog]="odontogramStore.catalog()!"
                 [findings]="odontogramStore.findings()"
                 [indices]="odontogramStore.indices()"
+                [editable]="odontogramEditable()"
+                [canVoid]="odontogramCanVoid()"
+                [encounterFindingIds]="odontogramStore.encounterFindingIds()"
+                [saving]="odontogramStore.saving()"
+                [actionError]="odontogramStore.actionError()"
+                [lastAction]="odontogramStore.lastAction()"
+                (registerFinding)="onRegisterFinding($event)"
+                (voidFinding)="onVoidFinding($event)"
               />
             }
           </section>
@@ -308,19 +325,29 @@ export class EncounterPage implements OnInit {
   readonly store = inject(EncounterStore);
   readonly historyStore = inject(HistoryPanelStore);
   readonly odontogramStore = inject(OdontogramStore);
+  private readonly sessionStore = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly notificationService = inject(NotificationService);
 
+  readonly odontogramEditable = computed<boolean>(() => {
+    return !this.store.isReadOnly() && this.sessionStore.hasPermission('RECORD_CREATE');
+  });
+
+  readonly odontogramCanVoid = computed<boolean>(() => {
+    return this.sessionStore.hasPermission('RECORD_UPDATE');
+  });
+
   private lastLoadedPatientId: string | null = null;
 
   constructor() {
     effect(() => {
-      const patientId = this.store.encounter()?.patientId;
+      const enc = this.store.encounter();
+      const patientId = enc?.patientId;
       if (patientId && patientId !== this.lastLoadedPatientId) {
         this.lastLoadedPatientId = patientId;
-        this.odontogramStore.load(patientId);
+        this.odontogramStore.load(patientId, enc.id);
       }
     });
   }
@@ -422,6 +449,28 @@ export class EncounterPage implements OnInit {
     this.historyStore.setNoKnownHistory(val).subscribe({
       error: () => {},
     });
+  }
+
+  onRegisterFinding(req: CreateFindingRequest): void {
+    this.odontogramStore.register(req);
+  }
+
+  onVoidFinding(finding: Finding): void {
+    const condName = getConditionName(finding, this.odontogramStore.catalog());
+    const where = getFindingWhere(finding);
+
+    this.confirmDialog
+      .open({
+        title: 'Anular hallazgo',
+        message: `${condName} · ${where} quedará anulado en esta atención.`,
+        tone: 'danger',
+        confirmLabel: 'Anular',
+      })
+      .subscribe((res) => {
+        if (res.confirmed) {
+          this.odontogramStore.void(finding);
+        }
+      });
   }
 }
 

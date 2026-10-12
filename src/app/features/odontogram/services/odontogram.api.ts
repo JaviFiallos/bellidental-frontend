@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, shareReplay } from 'rxjs/operators';
 import { ApiClient } from '../../../core/api/api-client';
-import { OdontogramCatalog, PatientOdontogram } from '../models/odontogram.models';
+import { CreateFindingRequest, Finding, OdontogramCatalog, PatientOdontogram } from '../models/odontogram.models';
 
 @Injectable({
   providedIn: 'root',
@@ -27,4 +27,17 @@ export class OdontogramApi {
   getByPatient(patientId: string): Observable<PatientOdontogram> {
     return this.api.get<PatientOdontogram>(`/api/v1/patients/${patientId}/odontogram`);
   }
+
+  createFinding(encounterId: string, req: CreateFindingRequest): Observable<Finding> {
+    return this.api.post<Finding>(`/api/v1/encounters/${encounterId}/findings`, req);
+  }
+
+  encounterFindings(encounterId: string): Observable<Finding[]> {
+    return this.api.get<Finding[]>(`/api/v1/encounters/${encounterId}/findings`);
+  }
+
+  voidFinding(findingId: string): Observable<void> {
+    return this.api.post<void>(`/api/v1/findings/${findingId}/void`, {});
+  }
 }
+

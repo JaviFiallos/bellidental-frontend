@@ -66,7 +66,7 @@ import { SpanGlyphComponent } from './span-glyph.component';
 export class SymbolGlyphComponent {
   readonly shape = input.required<SymbolShape>();
   readonly scope = input.required<ConditionScope>();
-  readonly color = input<string>('var(--slate-700)');
+  readonly color = input<string>('var(--slate-600)');
   readonly secondaryColor = input<string | null>(null);
   readonly filled = input<boolean>(false);
   readonly lineStyle = input<'SOLID' | 'DOTTED'>('SOLID');

@@ -11,6 +11,7 @@ import {
 import {
   buildAsteriskPath,
   buildRegionPaths,
+  getFaceRegion,
   getRegionFace,
   getSurfaceName,
   RegionPosition,
@@ -18,6 +19,8 @@ import {
 import { ToothMarkItem, ToothMarks } from '../../domain/finding-symbol';
 import { FindingStatus, SurfaceCode, Tooth } from '../../models/odontogram.models';
 import { NavKey } from '../../domain/tooth-navigation';
+
+import { ToothMarksComponent, RenderedToothMarkViewModel } from './tooth-marks.component';
 
 interface RegionViewModel {
   position: RegionPosition;
@@ -34,6 +37,7 @@ interface RegionViewModel {
 @Component({
   selector: 'g[bdTooth]',
   standalone: true,
+  imports: [ToothMarksComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[attr.role]': '"img"',
@@ -51,8 +55,10 @@ interface RegionViewModel {
         <svg:path
           [attr.d]="region.path"
           [attr.fill]="region.fill"
-          stroke="var(--slate-500)"
-          stroke-width="1"
+          [attr.stroke]="isFaceSelected(region.surface) ? 'var(--blue-800)' : 'var(--slate-500)'"
+          [attr.stroke-width]="isFaceSelected(region.surface) ? 2.2 : 1"
+          [style.cursor]="editable() ? 'pointer' : null"
+          (click)="onRegionClick(region.surface, $event)"
           [attr.data-tooth]="tooth().code"
           [attr.data-surface]="region.surface"
           [attr.data-condition]="region.conditionCode"
@@ -72,6 +78,17 @@ interface RegionViewModel {
         }
       }
 
+      <!-- Cara seleccionada dibujada encima de las demás (Criterio 5) -->
+      @if (selectedFaceOverlayPath(); as overlayPath) {
+        <svg:path
+          [attr.d]="overlayPath"
+          fill="none"
+          stroke="var(--blue-800)"
+          stroke-width="2.2"
+          pointer-events="none"
+        />
+      }
+
       <svg:text
         [attr.x]="numberX()"
         [attr.y]="numberY()"
@@ -79,85 +96,29 @@ interface RegionViewModel {
         fill="var(--slate-600)"
         font-weight="500"
         font-size="15"
+        [style.cursor]="editable() ? 'pointer' : null"
+        (click)="onNumberClick($event)"
       >
         {{ tooth().code }}
       </svg:text>
     </svg:g>
 
     <!-- Marcas de pieza completa (opacidad 100%, ordenadas de abajo a arriba) -->
-    @for (mark of renderedToothMarks(); track mark.conditionCode + mark.shape + mark.status) {
-      @switch (mark.shape) {
-        @case ('RECTANGLE') {
-          <svg:rect
-            [attr.x]="mark.rectX"
-            [attr.y]="mark.rectY"
-            [attr.width]="mark.rectW"
-            [attr.height]="mark.rectH"
-            [attr.fill]="mark.filled ? mark.color : 'none'"
-            [attr.stroke]="mark.color"
-            stroke-width="1.8"
-            pointer-events="none"
-          />
-        }
-        @case ('DOUBLE_SQUARE') {
-          <svg:rect
-            [attr.x]="mark.outerX"
-            [attr.y]="mark.outerY"
-            [attr.width]="mark.outerSize"
-            [attr.height]="mark.outerSize"
-            fill="none"
-            [attr.stroke]="mark.color"
-            stroke-width="1.8"
-            pointer-events="none"
-          />
-          <svg:rect
-            [attr.x]="mark.innerX"
-            [attr.y]="mark.innerY"
-            [attr.width]="mark.innerSize"
-            [attr.height]="mark.innerSize"
-            fill="none"
-            [attr.stroke]="mark.color"
-            stroke-width="1.8"
-            pointer-events="none"
-          />
-        }
-        @case ('TRIANGLE') {
-          <svg:path
-            [attr.d]="mark.trianglePath"
-            fill="none"
-            [attr.stroke]="mark.color"
-            stroke-width="2.5"
-            pointer-events="none"
-          />
-        }
-        @case ('CIRCLE_CROSS') {
-          <svg:circle
-            [attr.cx]="mark.cx"
-            [attr.cy]="mark.cy"
-            [attr.r]="mark.circleR"
-            fill="none"
-            [attr.stroke]="mark.color"
-            stroke-width="2.5"
-            pointer-events="none"
-          />
-          <svg:path
-            [attr.d]="mark.circleXPath"
-            [attr.stroke]="mark.secondaryColor || mark.color"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            pointer-events="none"
-          />
-        }
-        @case ('CROSS') {
-          <svg:path
-            [attr.d]="mark.crossPath"
-            [attr.stroke]="mark.color"
-            stroke-width="3.5"
-            stroke-linecap="round"
-            pointer-events="none"
-          />
-        }
-      }
+    <svg:g bdToothMarks [marks]="renderedToothMarks()" />
+
+    <!-- Anillo dorado de selección de pieza (x-3, y-3, s+6; redondeado si es temporal) (Criterio 5) -->
+    @if (isSelectedTooth()) {
+      <svg:rect
+        [attr.x]="x() - 3"
+        [attr.y]="y() - 3"
+        [attr.width]="size() + 6"
+        [attr.height]="size() + 6"
+        [attr.rx]="shape() === 'circle' ? (size() + 6) / 2 : 0"
+        fill="none"
+        stroke="var(--gold-400)"
+        stroke-width="2.5"
+        pointer-events="none"
+      />
     }
 
     <!-- Anillo de foco visible (x-4, y-4, s+8, rx 6 o circular) -->
@@ -190,8 +151,14 @@ export class ToothComponent {
   readonly label = input.required<string>();
   readonly tabIndex = input<number>(-1);
 
+  readonly editable = input<boolean>(false);
+  readonly isSelectedTooth = input<boolean>(false);
+  readonly selectedFace = input<SurfaceCode | null>(null);
+
   readonly toothActivate = output<number>();
   readonly keyNav = output<{ key: NavKey; code: number; event: KeyboardEvent }>();
+  readonly faceClick = output<{ toothCode: number; surface: SurfaceCode }>();
+  readonly toothNumberClick = output<number>();
 
   readonly isFocused = signal<boolean>(false);
 
@@ -237,7 +204,21 @@ export class ToothComponent {
     });
   });
 
-  readonly renderedToothMarks = computed(() => {
+  readonly selectedFaceOverlayPath = computed<string | null>(() => {
+    if (!this.isSelectedTooth()) return null;
+    const face = this.selectedFace();
+    if (!face) return null;
+
+    const geoms = buildRegionPaths(this.x(), this.y(), this.size(), this.shape());
+    const pos = getFaceRegion(this.tooth().code, face);
+    return geoms[pos]?.path ?? null;
+  });
+
+  isFaceSelected(surface: SurfaceCode): boolean {
+    return this.isSelectedTooth() && this.selectedFace() === surface;
+  }
+
+  readonly renderedToothMarks = computed<RenderedToothMarkViewModel[]>(() => {
     const m = this.marks();
     if (!m || !m.toothMarks) {
       return [];
@@ -310,6 +291,18 @@ export class ToothComponent {
 
   onBlur(): void {
     this.isFocused.set(false);
+  }
+
+  onRegionClick(surface: SurfaceCode, event: MouseEvent): void {
+    if (!this.editable()) return;
+    event.stopPropagation();
+    this.faceClick.emit({ toothCode: this.tooth().code, surface });
+  }
+
+  onNumberClick(event: MouseEvent): void {
+    if (!this.editable()) return;
+    event.stopPropagation();
+    this.toothNumberClick.emit(this.tooth().code);
   }
 
   onKeydown(event: KeyboardEvent): void {

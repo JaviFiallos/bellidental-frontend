@@ -16,8 +16,10 @@ import {
   mockIcd10SearchApiResponse,
   mockOdontogramCatalog,
   mockPatientApiResponse,
+  mockPatientOdontogramEmpty,
   mockPatientOdontogramWithFindings,
 } from '../../testing/fixtures';
+import { Finding, PatientOdontogram } from '../../../odontogram';
 
 import { EncounterPage } from './encounter.page';
 
@@ -491,6 +493,13 @@ describe('EncounterPage', () => {
       data: mockPatientOdontogramWithFindings,
     });
 
+    const encFindingsReq = httpMock.expectOne('/api/v1/encounters/enc-1/findings');
+    encFindingsReq.flush({
+      success: true,
+      message: 'Hallazgos de la atención obtenidos',
+      data: [],
+    });
+
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -518,6 +527,122 @@ describe('EncounterPage', () => {
 
     // el texto "CPO 2" es visible
     expect(compiled.textContent).toContain('CPO 2');
+  });
+
+  it('registrar caries en la cara O de 36 → POST y la cara se pinta', async () => {
+    sessionStore.setSession('token-123', 3600000);
+    sessionStore.setCurrentUser({
+      userId: 'usr-1',
+      email: 'odontologo@example.com',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_READ', 'RECORD_CREATE', 'RECORD_UPDATE'],
+      professionalId: 'prof-1',
+    });
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+
+    // Carga inicial de la atención
+    const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    encReq.flush(mockEncounterApiResponse);
+
+    const patReq = httpMock.expectOne('/api/v1/patients/pat-1');
+    patReq.flush(mockPatientApiResponse);
+
+    const recordReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
+    recordReq.flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+
+    flushOdontogram(httpMock, 'pat-1', mockPatientOdontogramEmpty, 'enc-1', []);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // 1. Clic en [data-tooth="36"][data-surface="O"]
+    const surface36O = compiled.querySelector('[data-tooth="36"][data-surface="O"]') as SVGPathElement;
+    expect(surface36O).toBeTruthy();
+    surface36O.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+
+    // 2. Clic en el botón "Caries" del panel
+    const panel = compiled.querySelector('bd-tooth-panel') as HTMLElement;
+    expect(panel).toBeTruthy();
+    const buttons = Array.from(panel.querySelectorAll('button')) as HTMLButtonElement[];
+    const cariesBtn = buttons.find((btn) => btn.textContent?.includes('Caries'));
+    expect(cariesBtn).toBeTruthy();
+    cariesBtn!.click();
+    fixture.detectChanges();
+
+    // 3. expectOne POST /api/v1/encounters/enc-1/findings con el body exacto
+    const postReq = httpMock.expectOne('/api/v1/encounters/enc-1/findings');
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      toothCode: 36,
+      surfaceCode: 'O',
+      conditionId: 3,
+      status: 'PENDING',
+    });
+
+    const newFinding: Finding = {
+      id: 'f-caries-36',
+      toothCode: 36,
+      endToothCode: null,
+      surfaceCode: 'O',
+      surfaceLabel: 'oclusal',
+      conditionId: 3,
+      status: 'PENDING',
+      grade: null,
+      notes: null,
+      createdAt: '2026-10-12T10:00:00Z',
+      symbol: {
+        id: 3,
+        status: 'PENDING',
+        shape: 'CIRCLE',
+        color: '#D32F2F',
+        secondaryColor: null,
+        filled: true,
+        lineStyle: 'SOLID',
+      },
+    };
+
+    postReq.flush(
+      {
+        success: true,
+        message: 'Hallazgo registrado',
+        data: newFinding,
+      },
+      { status: 201, statusText: 'Created' }
+    );
+
+    fixture.detectChanges();
+
+    // 4. Se atienden la recarga del odontograma (con esa caries) y GET …/encounters/enc-1/findings (con su id)
+    const updatedOdontogram: PatientOdontogram = {
+      ...mockPatientOdontogramEmpty,
+      findings: [newFinding],
+      indices: {
+        ...mockPatientOdontogramEmpty.indices,
+        cpoC: 1,
+        cpoTotal: 1,
+      },
+      cariesSurfaces: { '36': 1 },
+    };
+
+    flushOdontogram(httpMock, 'pat-1', updatedOdontogram, 'enc-1', [newFinding]);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // 5. La región [data-tooth="36"][data-surface="O"] tiene fill="#D32F2F"
+    const updatedRegion = compiled.querySelector('[data-tooth="36"][data-surface="O"]') as SVGPathElement;
+    expect(updatedRegion.getAttribute('fill')).toBe('#D32F2F');
+
+    // 6. El panel muestra "Caries · oclusal · Pendiente" con "Anular"
+    expect(panel.textContent).toContain('Caries · oclusal · Pendiente');
+    expect(panel.textContent).toContain('Anular');
   });
 });
 

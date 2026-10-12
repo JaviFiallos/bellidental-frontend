@@ -90,3 +90,14 @@ export interface PatientOdontogram {
   indices: DentalIndices;
   cariesSurfaces: Record<string, number>;
 }
+
+export interface CreateFindingRequest {
+  toothCode: number;
+  endToothCode?: number | null;
+  surfaceCode?: SurfaceCode | null;
+  conditionId: number;
+  status: FindingStatus;
+  grade?: number | null;
+  notes?: string | null;
+}
+

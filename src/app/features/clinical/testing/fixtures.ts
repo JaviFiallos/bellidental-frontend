@@ -1,6 +1,7 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { ApiResponse } from '../../../core/api/api.models';
 import {
+  Finding,
   OdontogramCatalog,
   PatientOdontogram,
   Tooth,
@@ -600,7 +601,9 @@ export const mockPatientOdontogramWithFindings: PatientOdontogram = {
 export function flushOdontogram(
   httpMock: HttpTestingController,
   patientId = 'pat-1',
-  odontogram: PatientOdontogram = mockPatientOdontogramEmpty
+  odontogram: PatientOdontogram = mockPatientOdontogramEmpty,
+  encounterId = 'enc-1',
+  encounterFindings: Finding[] = []
 ): void {
   const catReqs = httpMock.match('/api/v1/odontogram/catalog');
   catReqs.forEach((req) =>
@@ -610,6 +613,17 @@ export function flushOdontogram(
   const odoReqs = httpMock.match(`/api/v1/patients/${patientId}/odontogram`);
   odoReqs.forEach((req) =>
     req.flush({ success: true, message: 'Odontograma obtenido', data: odontogram })
+  );
+
+  const encReqs = httpMock.match(
+    (req) => req.url === `/api/v1/encounters/${encounterId}/findings` && req.method === 'GET'
+  );
+  encReqs.forEach((req) =>
+    req.flush({
+      success: true,
+      message: 'Hallazgos de la atención obtenidos',
+      data: encounterFindings,
+    })
   );
 }
 

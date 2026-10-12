@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   input,
+  output,
 } from '@angular/core';
 import {
   CELL_HEIGHT,
@@ -27,6 +28,8 @@ interface CellViewModel {
       <svg:g
         [attr.data-row]="rowType()"
         [attr.data-column]="item.cell.permanentCode"
+        [style.cursor]="editable() ? 'pointer' : null"
+        (click)="onCellClick(item.cell)"
       >
         <svg:rect
           [attr.x]="item.cell.x"
@@ -60,6 +63,9 @@ export class PeriodontalRowComponent {
   readonly rowType = input.required<PeriodontalRowType>();
   readonly cells = input.required<LayoutPeriodontalCell[]>();
   readonly marksByTooth = input.required<Record<number, ToothMarks>>();
+  readonly editable = input<boolean>(false);
+
+  readonly cellClick = output<{ permanentCode: number; rowType: PeriodontalRowType }>();
 
   readonly toothWidth = TOOTH;
   readonly cellHeight = CELL_HEIGHT;
@@ -91,4 +97,9 @@ export class PeriodontalRowComponent {
       };
     });
   });
+
+  onCellClick(cell: LayoutPeriodontalCell): void {
+    if (!this.editable()) return;
+    this.cellClick.emit({ permanentCode: cell.permanentCode, rowType: this.rowType() });
+  }
 }
