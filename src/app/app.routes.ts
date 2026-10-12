@@ -52,8 +52,9 @@ export const routes: Routes = [
       {
         path: 'pacientes/:id',
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Ficha del paciente', task: 'tareas 005/014' },
+          import('./features/patients/pages/patient-reception/patient-reception.page').then(
+            (m) => m.PatientReceptionPage
+          ),
       },
       {
         path: 'consultorio',

@@ -443,6 +443,11 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   - El `PUT` es parcial: los opcionales vacíos van como `""` para borrarlos. El tipo de sangre no se puede borrar,
     porque el backend no acepta `""` en un enum.
   - El 409 del alta busca el documento con `GET /patients?query=` para mostrar el enlace a la ficha.
+- **Hecho (005b):** `PatientReceptionPage` en `/pacientes/:id`.
+  - Componentes dumb `patient-identity`, `admin-notes` (edición en línea, se guarda al salir) y
+    `patient-appointments` (próximas y anteriores).
+  - `AppointmentsApi.listByPatient`. La agenda acepta `?cita&accion=reprogramar` desde otras pantallas.
+  - ODONTOLOGO y DIRECTOR ven solo la identificación.
 
 ### 5.6 Horarios de profesionales — tareas 006a (semana tipo) y 006b (excepciones y calendario) (P7)
 - **Depende de:** 002. **Perfil:** SECRETARIA. **Ruta:** `/recepcion/horarios`.
@@ -757,8 +762,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 003c | Agenda: pulido tras la auditoría (panel no modal en lg+, 44 px táctil, a11y) | 003b | Commit `221b5f5` |
 | 004a | Nueva cita (formulario, slot-picker, clic en hueco de la grilla) | 003c | Commit `a11593e` |
 | 004b | Sin cita (walk-in) y reprogramar | 004a | Commit `266d779` |
-| 005a | Pacientes: alta y edición | 002b · G-5 | Aprobada |
-| 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Redactada |
+| 005a | Pacientes: alta y edición | 002b · G-5 | Commit `2b80240` |
+| 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Aprobada |
 | 006a | Horarios: semana tipo por profesional | 002 · G-8 | Redactada |
 | 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Redactada |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | — |

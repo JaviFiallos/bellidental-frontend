@@ -32,7 +32,7 @@ export class PatientsApi {
     return this.api.post<Patient>('/api/v1/patients', body);
   }
 
-  update(id: string, body: UpdatePatientRequest): Observable<Patient> {
+  update(id: string, body: Partial<UpdatePatientRequest>): Observable<Patient> {
     return this.api.put<Patient>(`/api/v1/patients/${id}`, body);
   }
 }

@@ -33,6 +33,11 @@ export class AppointmentsApi {
     return this.api.get<Appointment[]>('/api/v1/appointments', { params: httpParams });
   }
 
+  listByPatient(patientId: string): Observable<Appointment[]> {
+    const params = new HttpParams().set('patientId', patientId);
+    return this.api.get<Appointment[]>('/api/v1/appointments', { params });
+  }
+
   confirm(id: string): Observable<string> {
     return this.api.post<string>(`/api/v1/appointments/${id}/confirm`, {});
   }

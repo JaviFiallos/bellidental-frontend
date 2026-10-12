@@ -7,6 +7,7 @@ import {
   inject,
   OnInit,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -38,6 +39,11 @@ import {
 import { Appointment } from '../../models/appointment.models';
 import { AgendaStore } from '../../services/agenda.store';
 import { AppointmentFormStore } from '../../services/appointment-form.store';
+
+interface DeepLink {
+  appointmentId: string;
+  action: string | null;
+}
 
 @Component({
   selector: 'bd-reception-agenda-page',
@@ -370,6 +376,7 @@ export class ReceptionAgendaPage implements OnInit {
   private readonly clinicDatePipe = new ClinicDatePipe();
 
   readonly activePanel = signal<'detail' | 'create' | 'walk-in' | 'reschedule' | null>(null);
+  readonly pendingDeepLink = signal<DeepLink | null>(null);
 
   readonly canCreate = computed(() => this.sessionStore.hasPermission('APPOINTMENT_CREATE'));
   readonly isDetailOpen = computed(() => this.activePanel() === 'detail' && !!this.store.selectedAppointment());
@@ -394,6 +401,13 @@ export class ReceptionAgendaPage implements OnInit {
       if (this.activePanel() === 'detail' && !this.store.selectedAppointment()) {
         this.activePanel.set(null);
       }
+    });
+
+    // Enlace desde otra pantalla (?cita=&accion=): se aplica cuando la agenda terminó de cargar
+    effect(() => {
+      const link = this.pendingDeepLink();
+      if (!link || this.store.loading()) return;
+      untracked(() => this.openDeepLink(link));
     });
   }
   readonly minDate = computed(() => this.clinicClock.todayDateString());
@@ -441,12 +455,22 @@ export class ReceptionAgendaPage implements OnInit {
           queryView === 'estado' ? 'status' : 'professional';
 
         const needsUrlUpdate = !queryDate || !queryView;
+        const appointmentId = params.get('cita');
+        const dateChanged = this.store.date() !== effectiveDate;
 
-        if (this.store.date() !== effectiveDate) {
+        if (dateChanged) {
           this.store.setDate(effectiveDate);
         }
         if (this.store.view() !== effectiveView) {
           this.store.setView(effectiveView);
+        }
+
+        if (appointmentId) {
+          this.pendingDeepLink.set({ appointmentId, action: params.get('accion') });
+          // Si la fecha no cambió no se dispara carga: se pide para tener citas al día
+          if (!dateChanged) {
+            this.store.loadAgenda(effectiveDate);
+          }
         }
 
         if (needsUrlUpdate) {
@@ -601,6 +625,35 @@ export class ReceptionAgendaPage implements OnInit {
     } else {
       this.store.runAction(appt.id, action);
     }
+  }
+
+  private openDeepLink(link: DeepLink): void {
+    this.pendingDeepLink.set(null);
+    this.clearDeepLinkParams();
+
+    const appointment = this.store.appointments().find((appt) => appt.id === link.appointmentId);
+    if (!appointment) return;
+
+    this.onOpenAppointment(appointment);
+
+    const canReschedule = availableActions(
+      appointment,
+      this.store.now(),
+      this.isToday(),
+      (perm) => this.sessionStore.hasPermission(perm)
+    ).includes('reschedule');
+    if (link.action === 'reprogramar' && canReschedule) {
+      this.onPanelAction('reschedule');
+    }
+  }
+
+  private clearDeepLinkParams(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { cita: null, accion: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private syncUrl(date: string, view: 'professional' | 'status'): void {
