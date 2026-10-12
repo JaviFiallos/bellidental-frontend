@@ -37,8 +37,17 @@ export const routes: Routes = [
         path: 'pacientes/nuevo',
         canActivate: [profileGuard('SECRETARIA')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Nuevo paciente', task: 'tarea 005' },
+          import('./features/patients/pages/patient-form/patient-form.page').then(
+            (m) => m.PatientFormPage
+          ),
+      },
+      {
+        path: 'pacientes/:id/editar',
+        canActivate: [profileGuard('SECRETARIA')],
+        loadComponent: () =>
+          import('./features/patients/pages/patient-form/patient-form.page').then(
+            (m) => m.PatientFormPage
+          ),
       },
       {
         path: 'pacientes/:id',

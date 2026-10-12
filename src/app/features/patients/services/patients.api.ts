@@ -3,7 +3,11 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
 import { Page } from '../../../core/api/page';
-import { Patient } from '../models/patient.models';
+import {
+  CreatePatientRequest,
+  Patient,
+  UpdatePatientRequest,
+} from '../models/patient.models';
 
 @Injectable({
   providedIn: 'root',
@@ -22,5 +26,13 @@ export class PatientsApi {
 
   getById(id: string): Observable<Patient> {
     return this.api.get<Patient>(`/api/v1/patients/${id}`);
+  }
+
+  create(body: CreatePatientRequest): Observable<Patient> {
+    return this.api.post<Patient>('/api/v1/patients', body);
+  }
+
+  update(id: string, body: UpdatePatientRequest): Observable<Patient> {
+    return this.api.put<Patient>(`/api/v1/patients/${id}`, body);
   }
 }

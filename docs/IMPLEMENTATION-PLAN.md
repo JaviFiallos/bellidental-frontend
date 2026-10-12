@@ -396,8 +396,14 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   `appointment-form`, `appointment-patient-field` y `slot-picker` (radiogroup nativo). Los inputs y los selects
   usan la clase global `.input`. `SpecialtiesApi` y `Specialty` (`id: number`) se exportan desde
   `professionals/index.ts`.
+- **Hecho (004b):** `AppointmentFormStore` tiene `mode: 'create' | 'walk-in' | 'reschedule'`.
+  - **Walk-in:** pide `/availability` de hoy para cada profesional con la especialidad (`walkInTrigger$` con
+    `switchMap` y `forkJoin`) y elige al del hueco más cercano. Si ninguno tiene hueco, no elige y avisa.
+  - **Reprogramar:** se abre desde la acción `'reschedule'` de `availableActions()`. Al cerrar sin guardar vuelve
+    al detalle, y al guardar quita la selección y va a la fecha nueva.
+  - `activePanel` en la página: `'detail' | 'create' | 'walk-in' | 'reschedule' | null`.
 
-### 5.5 Pacientes: alta, edición y ficha de recepción — tarea 005 (P5 sin cuenta, P6)
+### 5.5 Pacientes: alta, edición y ficha de recepción — tareas 005a (alta y edición) y 005b (ficha) (P5 sin cuenta, P6)
 - **Depende de:** 002 · [G-4] (citas del paciente) · [G-5] (observaciones). **Perfil:** SECRETARIA; en
   ODONTOLOGO/DIRECTOR `/pacientes/:id` muestra provisionalmente solo identificación hasta la 014.
 - **API:** `GET /patients/{id}` · `POST /patients` · `PUT /patients/{id}` (incluye `adminNotes`) ·
@@ -428,8 +434,17 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
 - **Test:** `patient-form.page.spec.ts` — alta válida → `POST /patients` con teléfono E.164 → navega a la ficha;
   409 → mensaje con enlace.
 - **Prueba manual:** cédula inválida, alta, edición, observaciones; 375 y 1366.
+- **Decisiones (005a/005b):**
+  - La 005 se divide en alta y edición (005a) y ficha (005b).
+  - "Reprogramar" desde la ficha abre la agenda con `?fecha&cita&accion=reprogramar`, para reutilizar el
+    formulario de la 004b.
+- **Hecho (005a):** `PatientFormPage` atiende `/pacientes/nuevo` y `/pacientes/:id/editar`.
+  - Utilidades puras `shared/utils/cedula.ts` y `e164.ts`; el backend guarda los teléfonos como `593…`, sin "+".
+  - El `PUT` es parcial: los opcionales vacíos van como `""` para borrarlos. El tipo de sangre no se puede borrar,
+    porque el backend no acepta `""` en un enum.
+  - El 409 del alta busca el documento con `GET /patients?query=` para mostrar el enlace a la ficha.
 
-### 5.6 Horarios de profesionales — tarea 006 (P7)
+### 5.6 Horarios de profesionales — tareas 006a (semana tipo) y 006b (excepciones y calendario) (P7)
 - **Depende de:** 002. **Perfil:** SECRETARIA. **Ruta:** `/recepcion/horarios`.
 - **API:** `GET /professionals` · `GET /professionals/{id}/schedules` · `POST /professionals/{id}/schedules` ·
   `PUT /schedules/{id}` · `POST /schedules/{id}/deactivate` · `GET /professionals/{id}/schedules/effective`.
@@ -710,8 +725,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | G-1 | `Appointment` no trae `encounterId` ni `encounterStatus` | "En atención" y "Continuar" (007), ir de la cita a la atención | Añadirlos (null si no hay atención) | pequeña, antes de la 007 |
 | G-2 | `/auth/me` sin nombre para mostrar | Sidebar (002) | `displayName` (profesional: nombre; si no, username) | opcional |
 | G-3 | Tratamientos, recetas, cobros, clinical-summary | 012–015 | Tareas backend 010, 011, 012 y clinical-summary (ya planificadas) | 010–012 |
-| G-4 | `GET /appointments` no filtra por paciente | Citas en la ficha (005) | `patientId` opcional; con él, `from/to` opcionales | pequeña, antes de la 005 |
-| G-5 | `PatientResponse` y `CreatePatientRequest` sin `adminNotes` (solo `UpdatePatientRequest` lo tiene) | Observaciones en la ficha (005) | Añadir `adminNotes` a ambos | junto con G-4 |
+| G-4 | `GET /appointments` no filtra por paciente | Citas en la ficha (005) | `patientId` opcional; con él, `from/to` opcionales | **Resuelto**: backend 006d (`8a8bf7f`, `PatientRecordApiIT`) |
+| G-5 | `PatientResponse` y `CreatePatientRequest` sin `adminNotes` (solo `UpdatePatientRequest` lo tiene) | Observaciones en la ficha (005) | Añadir `adminNotes` a ambos | **Resuelto**: backend 006d (`8a8bf7f`) |
 | G-6 | No hay estadísticas | 016 | `GET /stats/summary?from&to` (ADMIN) con las cifras de §5.16 | nueva, tras backend 012 |
 | G-7 | Auditoría solo por registro (`GET /audit/{entity}/{id}`) | Lista de la 017 | `GET /audit?from&to&userId&entity&page` (ADMIN) | ampliar backend 013 |
 | G-8 | Ningún endpoint de `ScheduleController` usa `ApiResponse` (GET y POST `/professionals/{id}/schedules`, `…/effective`, `PUT /schedules/{id}`, `POST /schedules/{id}/deactivate`) | Agenda (003a), horarios (006) | Envolver en `ApiResponse` como el resto (decisión del usuario: corregir el backend) | **Resuelto**: backend 006c (`ScheduleApiIT`) |
@@ -740,10 +755,12 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 003a | Agenda del día (lectura) | 002b · G-8 | Commit `efa8233` |
 | 003b | Agenda: panel y acciones de estado | 003a | Commit `cee09ad` |
 | 003c | Agenda: pulido tras la auditoría (panel no modal en lg+, 44 px táctil, a11y) | 003b | Commit `221b5f5` |
-| 004a | Nueva cita (formulario, slot-picker, clic en hueco de la grilla) | 003c | Aprobada (rev. 2) |
-| 004b | Sin cita (walk-in) y reprogramar | 004a | Redactada |
-| 005 | Pacientes: alta, edición, ficha de recepción | 002 · G-4, G-5 | — |
-| 006 | Horarios de profesionales | 002 | — |
+| 004a | Nueva cita (formulario, slot-picker, clic en hueco de la grilla) | 003c | Commit `a11593e` |
+| 004b | Sin cita (walk-in) y reprogramar | 004a | Commit `266d779` |
+| 005a | Pacientes: alta y edición | 002b · G-5 | Aprobada |
+| 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Redactada |
+| 006a | Horarios: semana tipo por profesional | 002 · G-8 | Redactada |
+| 006b | Horarios: excepciones por fecha y calendario efectivo | 006a | Redactada |
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | — |
 | 008 | Atención: cabecera, antecedentes, diagnósticos, completar | 007 | — |
 | 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
