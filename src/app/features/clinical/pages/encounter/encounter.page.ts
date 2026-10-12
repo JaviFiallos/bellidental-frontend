@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   inject,
   OnInit,
 } from '@angular/core';
@@ -12,6 +13,7 @@ import { SideSheetComponent } from '../../../../shared/components/side-sheet/sid
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
+import { OdontogramComponent, OdontogramStore } from '../../../odontogram';
 import { CompleteBarComponent } from '../../components/complete-bar/complete-bar.component';
 import { DiagnosisListComponent } from '../../components/diagnosis-list/diagnosis-list.component';
 import { EncounterNotesComponent } from '../../components/encounter-notes/encounter-notes.component';
@@ -24,9 +26,7 @@ import {
 } from '../../models/clinical-record.models';
 import { Diagnosis, DiagnosisCertainty } from '../../models/encounter.models';
 import { EncounterStore } from '../../services/encounter.store';
-
 import { HistoryPanelStore } from '../../services/history-panel.store';
-
 
 @Component({
   selector: 'bd-encounter-page',
@@ -36,6 +36,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     AlertComponent,
     SkeletonComponent,
     PatientClinicalHeaderComponent,
+    OdontogramComponent,
     EncounterNotesComponent,
     DiagnosisListComponent,
     CompleteBarComponent,
@@ -44,7 +45,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     ClinicDatePipe,
     ClinicTimePipe,
   ],
-  providers: [EncounterStore, HistoryPanelStore],
+  providers: [EncounterStore, HistoryPanelStore, OdontogramStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="encounter-page">
@@ -122,7 +123,34 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (openHistory)="historyStore.open()"
           />
 
-          <!-- 2. Motivo y enfermedad actual -->
+          <!-- 2. Odontograma vigente (solo lectura) -->
+          <section class="card encounter-page__odontogram-card" aria-label="Odontograma">
+            <div class="encounter-page__odontogram-header">
+              <h3 class="encounter-page__odontogram-title">Odontograma</h3>
+            </div>
+
+            @if (odontogramStore.loading()) {
+              <bd-skeleton height="24rem" width="100%" />
+            } @else if (odontogramStore.error()) {
+              <bd-alert variant="error" [message]="odontogramStore.error()!">
+                <button
+                  type="button"
+                  class="btn btn-outline"
+                  (click)="odontogramStore.reload()"
+                >
+                  Reintentar
+                </button>
+              </bd-alert>
+            } @else if (odontogramStore.catalog() && odontogramStore.odontogram()) {
+              <bd-odontogram
+                [catalog]="odontogramStore.catalog()!"
+                [findings]="odontogramStore.findings()"
+                [indices]="odontogramStore.indices()"
+              />
+            }
+          </section>
+
+          <!-- 3. Motivo y enfermedad actual -->
           <bd-encounter-notes
             [chiefComplaint]="store.chiefComplaint()"
             [currentIllness]="store.currentIllness()"
@@ -134,7 +162,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (retrySave)="store.retrySave()"
           />
 
-          <!-- 3. Diagnósticos -->
+          <!-- 4. Diagnósticos -->
           <bd-diagnosis-list
             [diagnoses]="store.activeDiagnoses()"
             [isReadOnly]="store.isReadOnly()"
@@ -146,14 +174,6 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (addDiagnosis)="onAddDiagnosis($event)"
             (voidDiagnosis)="onVoidDiagnosis($event)"
           />
-
-          <!-- 4. Franja baja reservada para el odontograma -->
-          <section class="encounter-page__odontogram-placeholder" aria-label="Odontograma">
-            <span class="odontogram-placeholder__icon" aria-hidden="true">🦷</span>
-            <span class="odontogram-placeholder__text">
-              El odontograma se agrega en la próxima versión
-            </span>
-          </section>
         </main>
 
         <!-- 5. Barra de completar fija abajo -->
@@ -260,21 +280,23 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
       flex-direction: column;
     }
 
-    .encounter-page__odontogram-placeholder {
+    .encounter-page__odontogram-card {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-xs);
-      padding: var(--space-sm) var(--space-md);
-      background-color: var(--slate-100);
-      border: 1px dashed var(--slate-300);
-      border-radius: var(--radius-md);
-      color: var(--slate-600);
-      font-size: var(--fs-xs);
+      flex-direction: column;
+      gap: var(--space-sm);
     }
 
-    .odontogram-placeholder__icon {
-      font-size: 1rem;
+    .encounter-page__odontogram-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .encounter-page__odontogram-title {
+      font-size: var(--fs-md);
+      font-weight: 600;
+      color: var(--blue-950);
+      margin: 0;
     }
 
     .encounter-page__return-btn {
@@ -285,11 +307,23 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
 export class EncounterPage implements OnInit {
   readonly store = inject(EncounterStore);
   readonly historyStore = inject(HistoryPanelStore);
+  readonly odontogramStore = inject(OdontogramStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly notificationService = inject(NotificationService);
 
+  private lastLoadedPatientId: string | null = null;
+
+  constructor() {
+    effect(() => {
+      const patientId = this.store.encounter()?.patientId;
+      if (patientId && patientId !== this.lastLoadedPatientId) {
+        this.lastLoadedPatientId = patientId;
+        this.odontogramStore.load(patientId);
+      }
+    });
+  }
 
   ngOnInit(): void {
     const encounterId = this.route.snapshot.paramMap.get('encounterId');
@@ -302,6 +336,9 @@ export class EncounterPage implements OnInit {
     const encounterId = this.route.snapshot.paramMap.get('encounterId');
     if (encounterId) {
       this.store.load(encounterId);
+    }
+    if (this.odontogramStore.error()) {
+      this.odontogramStore.reload();
     }
   }
 

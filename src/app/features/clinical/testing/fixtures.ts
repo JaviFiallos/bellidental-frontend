@@ -1,4 +1,11 @@
+import { HttpTestingController } from '@angular/common/http/testing';
 import { ApiResponse } from '../../../core/api/api.models';
+import {
+  OdontogramCatalog,
+  PatientOdontogram,
+  Tooth,
+  ToothType,
+} from '../../odontogram';
 import { Patient } from '../../patients';
 import { ClinicalRecord } from '../models/clinical-record.models';
 import { Diagnosis, Encounter } from '../models/encounter.models';
@@ -133,4 +140,476 @@ export const mockConditionsApiResponse: ApiResponse<typeof mockConditions> = {
   message: 'Catálogo de condiciones obtenido',
   data: mockConditions,
 };
+
+// --- Odontograma Fixtures (009a) ---
+
+function buildTeethCatalog(): Tooth[] {
+  const teeth: Tooth[] = [];
+  const quadrants = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  for (const q of quadrants) {
+    const isDeciduous = q >= 5;
+    const maxPos = isDeciduous ? 5 : 8;
+    const arch = q === 1 || q === 2 || q === 5 || q === 6 ? 'UPPER' : 'LOWER';
+
+    for (let pos = 1; pos <= maxPos; pos++) {
+      let type: ToothType;
+      if (pos <= 2) {
+        type = 'INCISOR';
+      } else if (pos === 3) {
+        type = 'CANINE';
+      } else if (pos <= 5) {
+        type = isDeciduous ? 'MOLAR' : 'PREMOLAR';
+      } else {
+        type = 'MOLAR';
+      }
+
+      teeth.push({
+        code: q * 10 + pos,
+        dentition: isDeciduous ? 'DECIDUOUS' : 'PERMANENT',
+        arch,
+        quadrant: q,
+        position: pos,
+        type,
+      });
+    }
+  }
+
+  return teeth;
+}
+
+export const mockOdontogramCatalog: OdontogramCatalog = {
+  teeth: buildTeethCatalog(),
+  surfaces: [
+    { code: 'O', name: 'Oclusal / Incisal' },
+    { code: 'V', name: 'Vestibular' },
+    { code: 'L', name: 'Lingual / Palatina' },
+    { code: 'M', name: 'Mesial' },
+    { code: 'D', name: 'Distal' },
+  ],
+  conditions: [
+    {
+      id: 1,
+      code: 'MOBILITY',
+      name: 'Movilidad',
+      category: 'PERIODONTAL',
+      scope: 'TOOTH',
+      gradeMin: 0,
+      gradeMax: 3,
+      symbols: [
+        {
+          id: 1,
+          status: 'DONE',
+          shape: 'NUMBER',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 2,
+      code: 'RECESSION',
+      name: 'Recesión',
+      category: 'PERIODONTAL',
+      scope: 'TOOTH',
+      gradeMin: 1,
+      gradeMax: 4,
+      symbols: [
+        {
+          id: 2,
+          status: 'DONE',
+          shape: 'NUMBER',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 3,
+      code: 'CARIES',
+      name: 'Caries',
+      category: 'DENTAL',
+      scope: 'SURFACE',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 3,
+          status: 'PENDING',
+          shape: 'CIRCLE',
+          color: '#D32F2F',
+          secondaryColor: null,
+          filled: true,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 4,
+      code: 'FILLING',
+      name: 'Obturación',
+      category: 'DENTAL',
+      scope: 'SURFACE',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 4,
+          status: 'DONE',
+          shape: 'CIRCLE',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: true,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 5,
+      code: 'SEALANT',
+      name: 'Sellante',
+      category: 'DENTAL',
+      scope: 'SURFACE',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 5,
+          status: 'PENDING',
+          shape: 'ASTERISK',
+          color: '#D32F2F',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+        {
+          id: 6,
+          status: 'DONE',
+          shape: 'ASTERISK',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 6,
+      code: 'EXTRACTION',
+      name: 'Extracción indicada',
+      category: 'DENTAL',
+      scope: 'TOOTH',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 7,
+          status: 'PENDING',
+          shape: 'CROSS',
+          color: '#D32F2F',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 7,
+      code: 'MISSING_CARIES',
+      name: 'Perdido por caries',
+      category: 'DENTAL',
+      scope: 'TOOTH',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 8,
+          status: 'DONE',
+          shape: 'CROSS',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 8,
+      code: 'MISSING_OTHER',
+      name: 'Perdido por otra causa',
+      category: 'DENTAL',
+      scope: 'TOOTH',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 9,
+          status: 'DONE',
+          shape: 'CROSS',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 9,
+      code: 'ROOT_CANAL',
+      name: 'Endodoncia',
+      category: 'DENTAL',
+      scope: 'TOOTH',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 10,
+          status: 'DONE',
+          shape: 'TRIANGLE',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 10,
+      code: 'CROWN',
+      name: 'Corona',
+      category: 'DENTAL',
+      scope: 'TOOTH',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 11,
+          status: 'DONE',
+          shape: 'DOUBLE_SQUARE',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 11,
+      code: 'FIXED_PROSTHESIS',
+      name: 'Prótesis fija',
+      category: 'DENTAL',
+      scope: 'SPAN',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 12,
+          status: 'DONE',
+          shape: 'SQUARES_LINE',
+          color: '#000000',
+          secondaryColor: null,
+          filled: true,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 12,
+      code: 'REMOVABLE_PROSTHESIS',
+      name: 'Prótesis removible',
+      category: 'DENTAL',
+      scope: 'SPAN',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 13,
+          status: 'DONE',
+          shape: 'DOUBLE_SQUARE',
+          color: '#000000',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 13,
+      code: 'TOTAL_PROSTHESIS',
+      name: 'Prótesis total',
+      category: 'DENTAL',
+      scope: 'SPAN',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 14,
+          status: 'DONE',
+          shape: 'EQUALS',
+          color: '#000000',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+    {
+      id: 14,
+      code: 'OTHER',
+      name: 'Otro hallazgo',
+      category: 'DENTAL',
+      scope: 'TOOTH',
+      gradeMin: null,
+      gradeMax: null,
+      symbols: [
+        {
+          id: 15,
+          status: 'DONE',
+          shape: 'CIRCLE_CROSS',
+          color: '#1E88E5',
+          secondaryColor: null,
+          filled: false,
+          lineStyle: 'SOLID',
+        },
+      ],
+    },
+  ],
+};
+
+export const mockPatientOdontogramEmpty: PatientOdontogram = {
+  patientId: 'pat-1',
+  findings: [],
+  indices: {
+    cpoC: 0,
+    cpoP: 0,
+    cpoO: 0,
+    cpoTotal: 0,
+    ceoC: 0,
+    ceoE: 0,
+    ceoO: 0,
+    ceoTotal: 0,
+  },
+  cariesSurfaces: {},
+};
+
+export const mockPatientOdontogramWithFindings: PatientOdontogram = {
+  patientId: 'pat-1',
+  findings: [
+    {
+      id: 'f-1',
+      toothCode: 16,
+      endToothCode: null,
+      surfaceCode: 'M',
+      surfaceLabel: 'mesial',
+      conditionId: 3, // CARIES
+      status: 'PENDING',
+      grade: null,
+      notes: null,
+      createdAt: '2026-10-12T09:10:00Z',
+      symbol: {
+        id: 3,
+        status: 'PENDING',
+        shape: 'CIRCLE',
+        color: '#D32F2F',
+        secondaryColor: null,
+        filled: true,
+        lineStyle: 'SOLID',
+      },
+    },
+    {
+      id: 'f-2',
+      toothCode: 21,
+      endToothCode: null,
+      surfaceCode: 'D',
+      surfaceLabel: 'distal',
+      conditionId: 4, // FILLING
+      status: 'DONE',
+      grade: null,
+      notes: null,
+      createdAt: '2026-10-12T09:15:00Z',
+      symbol: {
+        id: 4,
+        status: 'DONE',
+        shape: 'CIRCLE',
+        color: '#1E88E5',
+        secondaryColor: null,
+        filled: true,
+        lineStyle: 'SOLID',
+      },
+    },
+    {
+      id: 'f-3',
+      toothCode: 31,
+      endToothCode: null,
+      surfaceCode: null,
+      surfaceLabel: null,
+      conditionId: 1, // MOBILITY
+      status: 'DONE',
+      grade: 2,
+      notes: null,
+      createdAt: '2026-10-12T09:20:00Z',
+      symbol: {
+        id: 1,
+        status: 'DONE',
+        shape: 'NUMBER',
+        color: '#1E88E5',
+        secondaryColor: null,
+        filled: false,
+        lineStyle: 'SOLID',
+      },
+    },
+    {
+      id: 'f-4',
+      toothCode: 41,
+      endToothCode: null,
+      surfaceCode: null,
+      surfaceLabel: null,
+      conditionId: 2, // RECESSION
+      status: 'DONE',
+      grade: 2,
+      notes: null,
+      createdAt: '2026-10-12T09:25:00Z',
+      symbol: {
+        id: 2,
+        status: 'DONE',
+        shape: 'NUMBER',
+        color: '#1E88E5',
+        secondaryColor: null,
+        filled: false,
+        lineStyle: 'SOLID',
+      },
+    },
+  ],
+  indices: {
+    cpoC: 1,
+    cpoP: 0,
+    cpoO: 1,
+    cpoTotal: 2,
+    ceoC: 0,
+    ceoE: 0,
+    ceoO: 0,
+    ceoTotal: 0,
+  },
+  cariesSurfaces: { '16': 1 },
+};
+
+export function flushOdontogram(
+  httpMock: HttpTestingController,
+  patientId = 'pat-1',
+  odontogram: PatientOdontogram = mockPatientOdontogramEmpty
+): void {
+  const catReqs = httpMock.match('/api/v1/odontogram/catalog');
+  catReqs.forEach((req) =>
+    req.flush({ success: true, message: 'Catálogo obtenido', data: mockOdontogramCatalog })
+  );
+
+  const odoReqs = httpMock.match(`/api/v1/patients/${patientId}/odontogram`);
+  odoReqs.forEach((req) =>
+    req.flush({ success: true, message: 'Odontograma obtenido', data: odontogram })
+  );
+}
 

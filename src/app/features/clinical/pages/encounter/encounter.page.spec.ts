@@ -6,6 +6,7 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionStore } from '../../../../core/auth/session.store';
 import {
+  flushOdontogram,
   mockClinicalRecordApiResponse,
   mockClinicalRecordPat1,
   mockConditionsApiResponse,
@@ -13,7 +14,9 @@ import {
   mockEncounterApiResponse,
   mockEncounterCompletedApiResponse,
   mockIcd10SearchApiResponse,
+  mockOdontogramCatalog,
   mockPatientApiResponse,
+  mockPatientOdontogramWithFindings,
 } from '../../testing/fixtures';
 
 import { EncounterPage } from './encounter.page';
@@ -110,6 +113,7 @@ describe('EncounterPage', () => {
     httpMock.verify();
     storage.clear();
     vi.useRealTimers();
+    TestBed.resetTestingModule();
   });
 
   it('carga la atención → cabecera con antecedentes y motivo', async () => {
@@ -131,6 +135,7 @@ describe('EncounterPage', () => {
     recordReq.flush(mockClinicalRecordApiResponse);
 
     fixture.detectChanges();
+    flushOdontogram(httpMock);
     await fixture.whenStable();
 
     const compiled = fixture.nativeElement as HTMLElement;
@@ -164,6 +169,7 @@ describe('EncounterPage', () => {
     recordReq.flush(mockClinicalRecordApiResponse);
 
     fixture.detectChanges();
+    flushOdontogram(httpMock);
 
     // Escribir "K02" en el buscador de diagnósticos
     const inputEl = fixture.nativeElement.querySelector('.combobox-input') as HTMLInputElement;
@@ -232,6 +238,7 @@ describe('EncounterPage', () => {
     recordReq.flush(mockClinicalRecordApiResponse);
 
     fixture.detectChanges();
+    flushOdontogram(httpMock);
     await fixture.whenStable();
 
     // Botón Completar atención debe estar habilitado
@@ -280,6 +287,7 @@ describe('EncounterPage', () => {
     });
 
     fixture.detectChanges();
+    flushOdontogram(httpMock);
     await fixture.whenStable();
 
     // Con la atención cargada y la historia sin antecedentes, se pulsa "Registrar antecedentes"
@@ -378,6 +386,7 @@ describe('EncounterPage', () => {
     });
 
     fixture.detectChanges();
+    flushOdontogram(httpMock);
     await fixture.whenStable();
 
     // Abrir el panel
@@ -449,4 +458,66 @@ describe('EncounterPage', () => {
     expect(headerEl.textContent).toContain('Asma');
   });
 
+  it('carga el odontograma → caras pintadas, grados e índices', async () => {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+
+    // 1. Carga inicial de la atención
+    const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    encReq.flush(mockEncounterApiResponse);
+
+    const patReq = httpMock.expectOne('/api/v1/patients/pat-1');
+    patReq.flush(mockPatientApiResponse);
+
+    const recordReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
+    recordReq.flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+
+    // 2. Odontograma: catálogo y hallazgos del paciente
+    const catReq = httpMock.expectOne('/api/v1/odontogram/catalog');
+    expect(catReq.request.method).toBe('GET');
+    catReq.flush({
+      success: true,
+      message: 'Catálogo obtenido',
+      data: mockOdontogramCatalog,
+    });
+
+    const odoReq = httpMock.expectOne('/api/v1/patients/pat-1/odontogram');
+    expect(odoReq.request.method).toBe('GET');
+    odoReq.flush({
+      success: true,
+      message: 'Odontograma obtenido',
+      data: mockPatientOdontogramWithFindings,
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // la región [data-tooth="16"][data-surface="M"] tiene fill="#D32F2F" y data-condition="CARIES"
+    const region16M = compiled.querySelector('[data-tooth="16"][data-surface="M"]') as SVGPathElement;
+    expect(region16M).toBeTruthy();
+    expect(region16M.getAttribute('fill')).toBe('#D32F2F');
+    expect(region16M.getAttribute('data-condition')).toBe('CARIES');
+
+    // el aria-label de la pieza 16 contiene "mesial Caries (Pendiente)"
+    const tooth16 = compiled.querySelector('g[role="img"][aria-label*="16"]') as SVGGElement;
+    expect(tooth16).toBeTruthy();
+    expect(tooth16.getAttribute('aria-label')).toContain('mesial Caries (Pendiente)');
+
+    // la casilla de movilidad de la columna 31 muestra "2" y la de recesión de la 41, "II"
+    const movCell31 = compiled.querySelector('[data-row="movL"][data-column="31"]') as SVGGElement;
+    expect(movCell31).toBeTruthy();
+    expect(movCell31.textContent?.trim()).toBe('2');
+
+    const recCell41 = compiled.querySelector('[data-row="recL"][data-column="41"]') as SVGGElement;
+    expect(recCell41).toBeTruthy();
+    expect(recCell41.textContent?.trim()).toBe('II');
+
+    // el texto "CPO 2" es visible
+    expect(compiled.textContent).toContain('CPO 2');
+  });
 });
+

@@ -573,12 +573,16 @@ features/clinical/
 - **Hecho (008c):** sin tokens de paleta inexistentes en `src/` (se reemplazan por los de §2.3 o `color-mix`; la
   paleta no crece). La barra de completar es `sticky` y no tapa el sidebar. El ✕ de los chips tiene un área táctil de 44 px.
 
-### 5.9 Odontograma: dibujo y lectura — tarea 009 (P10, parte 1)
+### 5.9 Odontograma: dibujo y lectura — tareas 009a y 009b (P10, parte 1)
 - **Depende de:** 008. **API:** `GET /odontogram/catalog` (cache de sesión) · `GET /patients/{id}/odontogram`.
 - **Estructura y reglas de dibujo:** §6. Se monta en la atención (sin edición todavía) y queda listo para la 014.
 - **Test:** `encounter.page.spec.ts` (se amplía, 1 caso): con hallazgos de ejemplo → la pieza 16 muestra la cara M
   roja (atributo `data-condition`/`aria-label` "16 mesial: caries pendiente") y se ven los índices CPO.
 - **Prueba manual:** comparar visualmente con el 033 en papel (`docs/reference/form-033.txt`, escaneo); 768 y 375.
+
+- **Hecho (009a):** feature `odontogram` (`OdontogramComponent` dumb + `OdontogramStore` provisto por la página +
+  `OdontogramApi` con el catálogo en caché). Dominio `odontogram-layout` (854×414), `surface-layout`, `tooth-names` y
+  `finding-symbol`. Montado en la atención, entre la cabecera y el motivo.
 
 ### 5.10 Odontograma: registro en la atención — tarea 010 (P10, parte 2)
 - **Depende de:** 009. **API:** `POST /encounters/{id}/findings` · `POST /findings/{id}/void` ·
@@ -669,7 +673,7 @@ registrar un hallazgo cueste 2 clics.
 | 7–8 | Movilidad y recesión inferiores | 48…41 · 31…38 |
 
 Línea media vertical entre cuadrantes; números FDI sobre (superior) o bajo (inferior) cada pieza. Temporales
-siempre visibles [F-6]. (Confirmar la posición de recesión/movilidad con el 033 escaneado antes de la tarea 009.)
+siempre visibles [F-6]. Filas periodontales confirmadas por el usuario (F-11): Recesión es la exterior.
 
 **Orientación de caras** (`domain/surface-layout.ts`):
 - Superior: arriba = V, abajo = P (palatina); inferior: arriba = L, abajo = V; centro = O (I en incisivos y
@@ -717,9 +721,12 @@ features/odontogram/
   domain/surface-layout.ts         orientación de caras por pieza
   domain/finding-symbol.ts         hallazgo → región, forma, color
 ```
-Responsive: `≥ sm` (600+) el odontograma completo (el SVG escala; pieza ≥ 36 px de lado en 768); `xs` (< 600) un
-**cuadrante** por pestaña (18–11 · 21–28 · 48–41 · 31–38, con sus temporales): con una arcada entera cada pieza
-quedaría en ~20 px, demasiado pequeña para el dedo.
+Responsive (ajustado en la 009a con el usuario): odontograma completo con **≥ 720 px de contenedor** y pestañas por
+cuadrante (18–11 · 21–28 · 48–41 · 31–38, con sus temporales) por debajo. Geometría en unidades de `viewBox`
+(`TOOTH` 40 y texto 15): con 720 px, el texto mide ≥ 12 px y la pieza unos 33 px. Con la columna de etiquetas no caben
+piezas de 36 px y texto de 12 px a la vez, así que se prioriza el texto, y en la 010 las caras también se eligen con
+los botones del panel (≥ 44 px). Caras del backend: `O V L M D`. `L` superior = palatina y `O` en incisivo o canino =
+incisal (`SurfaceLabelResolver`).
 
 ---
 
@@ -783,7 +790,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | F-8 | Tres perfiles; director = odontólogo + estadísticas + auditoría, sin vista de recepción (§3.1) | Aprobada (usuario) |
 | F-9 | Estadísticas: atenciones, pacientes nuevos, inasistencias, ingresos, saldo pendiente, origen de citas, top 5 tratamientos y diagnósticos (§5.16) | Aprobada |
 | F-10 | Odontólogo y director ven el estado de cuenta en la ficha clínica, solo lectura | Aprobada |
-| F-11 | Posición de las filas de recesión/movilidad en el 033 escaneado | **Pendiente** (antes de la 009) |
+| F-11 | Filas periodontales del 033: Recesión es la fila exterior y Movilidad va junto a los dientes, en espejo abajo (como el boceto) | Aprobada (usuario, 2026-10-12) |
 
 ## 9. Orden y seguimiento de tareas
 | Tarea | Pantalla | Depende de (frontend · backend) | Estado |
@@ -803,8 +810,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 007 | Consultorio: mis citas de hoy | 003 · G-1 | Commit `eae126f` |
 | 008a | Atención: cabecera, motivo, diagnósticos, completar | 007 | Commit `c220096` |
 | 008b | Atención: panel de antecedentes (033) | 008a · G-9 | Commit `dc6099c` |
-| 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | Aprobada (commit pendiente) |
-| 009 | Odontograma: dibujo y lectura | 008 · F-11 | — |
+| 008c | Tokens de color inexistentes y ajustes del audit de la atención | 008b | Commit `3d0d014` |
+| 009a | Odontograma: estructura, caras, filas periodontales e índices | 008 · F-11 | Aprobada (commit pendiente) |
+| 009b | Odontograma: símbolos de pieza, rangos, leyenda, cuadrantes y teclado | 009a | — |
 | 010 | Odontograma: registro | 009 | — |
 | 011 | Más del 033 | 008 | — |
 | 012 | Tratamientos en la atención | 010 · backend 010 | — |
