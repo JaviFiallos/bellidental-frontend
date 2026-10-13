@@ -829,7 +829,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 009a | Odontograma: estructura, caras, filas periodontales e índices | 008 · F-11 | Commit `c0ec93a` |
 | 009b | Odontograma: símbolos de pieza, rangos, leyenda, cuadrantes y teclado | 009a | Commit `aba5a95` |
 | 010a | Odontograma: registro con el panel de la pieza (cara, pieza, periodontal, anular) | 009b | Commit `525688d` |
-| 010b | Odontograma: prótesis en rango ("Elige la pieza final") | 010a | Aprobada (commit pendiente; ejecutó Haiku) |
+| 010b | Odontograma: prótesis en rango ("Elige la pieza final") | 010a | Commit `045e93b` (ejecutó Haiku) |
 | 011 | Más del 033 | 008 | — |
 | 012 | Tratamientos en la atención | 010 · backend 010 | — |
 | 013 | Receta y PDF | 008 · backend 011 | — |
