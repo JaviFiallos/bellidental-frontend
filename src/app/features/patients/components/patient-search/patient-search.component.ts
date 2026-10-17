@@ -2,8 +2,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  inject,
   input,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
 import { ComboboxComponent } from '../../../../shared/components/combobox/combobox.component';
@@ -19,8 +22,13 @@ import { Search } from 'lucide-angular';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './patient-search.component.html',
   styleUrl: './patient-search.component.scss',
+  host: {
+    '[class.is-highlighted]': 'isHighlighted()',
+  },
 })
 export class PatientSearchComponent {
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly query = input<string>('');
   readonly results = input<Patient[]>([]);
   readonly isLoading = input<boolean>(false);
@@ -34,6 +42,17 @@ export class PatientSearchComponent {
   readonly comboboxRef = viewChild<ComboboxComponent<Patient>>('combobox');
 
   readonly searchIcon = Search;
+
+  readonly isHighlighted = signal<boolean>(false);
+  private highlightTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      if (this.highlightTimeoutId) {
+        clearTimeout(this.highlightTimeoutId);
+      }
+    });
+  }
 
   readonly actionLabel = computed(() => {
     if (!this.canRegister()) return null;
@@ -60,5 +79,16 @@ export class PatientSearchComponent {
 
   focusSearch(): void {
     this.comboboxRef()?.focusInput();
+  }
+
+  highlight(): void {
+    this.isHighlighted.set(true);
+    if (this.highlightTimeoutId) {
+      clearTimeout(this.highlightTimeoutId);
+    }
+    this.highlightTimeoutId = setTimeout(() => {
+      this.isHighlighted.set(false);
+      this.highlightTimeoutId = null;
+    }, 1200);
   }
 }

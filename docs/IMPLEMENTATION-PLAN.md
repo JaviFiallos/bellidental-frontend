@@ -282,7 +282,9 @@ features/professionals/index.ts → ProfessionalsApi (getById), Professional
   quien lo usa (hoy `MainLayout`).
 - **002c (Ajustes y pulido):** corrección de hover completo en `.sidebar__link` (100% de ancho en `<button>`),
   feedback visual perceptible de foco al pulsar "Pacientes" o usar `Ctrl+K`/`/`, y normalización de separadores de cédula
-  en `PatientSearchStore`.
+  en `PatientSearchStore`. **Hecho:** el halo vive en `PatientSearchComponent.highlight()` (el header solo lo invoca
+  en `≥ md`); `normalizePatientSearchQuery` quita `-`, `.` y espacios en términos numéricos o documentales. Pendiente
+  backend: confirmar que `GET /patients?query=` filtra también por `document_number`.
 - **Decisiones (redacción de 002):** side-sheet, confirm-dialog, empty-state y skeleton pasan a la 003 (primer uso).
   Rutas provisionales con `layout/coming-soon` (`data: {title, task}`); cada tarea reemplaza su entrada por el
   `loadChildren` de su feature. El pie del sidebar muestra el área ("Recepción", "Consultorio", "Dirección"), no
@@ -816,7 +818,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 001 | Base, sesión y login | — | Commit `cb2b6e1` |
 | 002a | Shell y perfiles | 001 · (G-2 opcional) | Commit `8320033` |
 | 002b | Buscador global de pacientes | 002a | Commit `3cbf525` |
-| 002c | Shell y buscador: hover en sidebar, feedback de foco y cédula | 002b | Redactada |
+| 002c | Shell y buscador: hover en sidebar, feedback de foco y cédula | 002b | Aprobada |
 | 003a | Agenda del día (lectura) | 002b · G-8 | Commit `efa8233` |
 | 003b | Agenda: panel y acciones de estado | 003a | Commit `cee09ad` |
 | 003c | Agenda: pulido tras la auditoría (panel no modal en lg+, 44 px táctil, a11y) | 003b | Commit `221b5f5` |

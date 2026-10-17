@@ -6,6 +6,31 @@ import { ApiError } from '../../../core/api/api.models';
 import { Patient } from '../models/patient.models';
 import { PatientsApi } from './patients.api';
 
+/**
+ * Normaliza el término de búsqueda de pacientes.
+ * Si parece cédula o documento con formato (por ejemplo 171003406-5 o 17 1003 4065),
+ * limpia los caracteres separadores habituales (-, ., espacio) antes de enviarlo a la API.
+ * Si es texto alfabético regular (nombres/apellidos), se envía tal cual con trim.
+ */
+export function normalizePatientSearchQuery(term: string): string {
+  const trimmed = term.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  // Término numérico con separadores (ej: 171003406-5, 17 1003 4065, 09.123.456-7)
+  if (/^[\d\s\-.]+$/.test(trimmed) && /\d/.test(trimmed)) {
+    return trimmed.replace(/[-\s.]/g, '');
+  }
+
+  // Documento alfanumérico con formato (ej: P-1234567, PAS 987654)
+  if (/^[A-Za-z]{1,4}[-\s.]+\d+$/i.test(trimmed)) {
+    return trimmed.replace(/[-\s.]/g, '');
+  }
+
+  return trimmed;
+}
+
 @Injectable()
 export class PatientSearchStore {
   private readonly patientsApi = inject(PatientsApi);
@@ -55,13 +80,13 @@ export class PatientSearchStore {
 
   setQuery(text: string): void {
     this.query.set(text);
-    const trimmed = text.trim();
-    if (trimmed.length < 2) {
+    const normalized = normalizePatientSearchQuery(text);
+    if (normalized.length < 2) {
       this.results.set([]);
       this.isLoading.set(false);
       this.errorMessage.set(null);
     }
-    this.query$.next(trimmed);
+    this.query$.next(normalized);
   }
 
   clear(): void {

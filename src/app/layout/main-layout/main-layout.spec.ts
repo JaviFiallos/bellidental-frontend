@@ -428,4 +428,130 @@ describe('MainLayout', () => {
       queryParams: { q: 'zzz' },
     });
   });
+
+  it('clic en "Pacientes" en el sidebar → ejecuta focusSearch(), enfoca input y aplica resalte visual en el header', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
+
+    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setCurrentUser({
+      userId: 'u-sec',
+      email: 'secretaria@bellidental.local',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ'],
+    });
+
+    fixture = TestBed.createComponent(MainLayout);
+    fixture.detectChanges();
+
+    // Atender GET inicial de citas
+    const appReq = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    appReq.flush({ success: true, message: 'OK', data: [] });
+    fixture.detectChanges();
+
+    // Buscar el botón "Pacientes" en el sidebar
+    const buttons = fixture.nativeElement.querySelectorAll('.sidebar__link--btn') as NodeListOf<HTMLButtonElement>;
+    const pacientesBtn = Array.from(buttons).find((btn) => btn.textContent?.includes('Pacientes'));
+    expect(pacientesBtn).toBeTruthy();
+
+    // Clic en "Pacientes"
+    pacientesBtn!.click();
+    fixture.detectChanges();
+
+    // El input del combobox queda enfocado
+    const inputEl = fixture.nativeElement.querySelector('.combobox-input') as HTMLInputElement;
+    expect(document.activeElement).toBe(inputEl);
+
+    // El componente de búsqueda tiene el resalte activo
+    const patientSearchEl = fixture.nativeElement.querySelector('app-patient-search') as HTMLElement;
+    expect(patientSearchEl.classList.contains('is-highlighted')).toBe(true);
+
+    // Tras 1200 ms, el resalte concluye
+    vi.advanceTimersByTime(1200);
+    fixture.detectChanges();
+
+    expect(patientSearchEl.classList.contains('is-highlighted')).toBe(false);
+  });
+
+  it('buscador: normaliza término con guiones o espacios (cédula) → envía query limpia a GET /api/v1/patients y muestra resultados', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
+
+    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setCurrentUser({
+      userId: 'u-sec',
+      email: 'secretaria@bellidental.local',
+      roles: ['SECRETARIA'],
+      permissions: ['APPOINTMENT_READ'],
+    });
+
+    fixture = TestBed.createComponent(MainLayout);
+    fixture.detectChanges();
+
+    // Atender GET inicial de citas
+    const appReq = httpMock.expectOne((req) => req.url === '/api/v1/appointments');
+    appReq.flush({ success: true, message: 'OK', data: [] });
+    fixture.detectChanges();
+
+    // Escribir cédula con formato "171003406-5" en el input
+    const inputEl = fixture.nativeElement.querySelector('.combobox-input') as HTMLInputElement;
+    inputEl.value = '171003406-5';
+    inputEl.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    // Avanzar debounce (250 ms)
+    vi.advanceTimersByTime(250);
+
+    // Se verifica que la petición a la API envió la cédula normalizada y limpia "1710034065"
+    const patReq = httpMock.expectOne(
+      (req) =>
+        req.url === '/api/v1/patients' &&
+        req.params.get('query') === '1710034065' &&
+        req.params.get('page') === '0' &&
+        req.params.get('size') === '8'
+    );
+    expect(patReq.request.method).toBe('GET');
+
+    patReq.flush({
+      success: true,
+      message: 'OK',
+      data: {
+        content: [
+          {
+            id: 'pat-10',
+            documentType: 'CI',
+            documentNumber: '1710034065',
+            firstName: 'Ana',
+            lastName: 'Torres',
+            fullName: 'Ana Torres',
+            birthDate: '1990-03-20',
+            age: 36,
+            sex: 'F',
+            bloodType: 'O_POSITIVE',
+            bloodTypeLabel: 'O+',
+            phoneE164: '593994443322',
+            email: 'ana.torres@example.com',
+            emergencyContactName: null,
+            emergencyContactPhoneE164: null,
+            active: true,
+            createdAt: '2026-01-01T10:00:00Z',
+            updatedAt: '2026-01-01T10:00:00Z',
+          },
+        ],
+        totalElements: 1,
+        totalPages: 1,
+        number: 0,
+        size: 8,
+      },
+    });
+
+    fixture.detectChanges();
+
+    // Se despliegan fullName, documentNumber, edad y teléfono en el combobox
+    const bodyText = document.body.textContent || '';
+    expect(bodyText).toContain('Ana Torres');
+    expect(bodyText).toContain('1710034065');
+    expect(bodyText).toContain('36 años');
+    expect(bodyText).toContain('0994 443 322');
+  });
 });

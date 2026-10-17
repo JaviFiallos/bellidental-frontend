@@ -26,6 +26,7 @@
     }
 
     .sidebar__link {
+      width: 100%;
       justify-content: center;
       padding: 0.75rem 0;
     }
@@ -38,10 +39,8 @@
       border: none;
     }
 
-    .sidebar__link:hover .sidebar__tooltip,
-    .sidebar__link:focus-visible .sidebar__tooltip,
-    .sidebar__logout-btn:hover .sidebar__tooltip,
-    .sidebar__logout-btn:focus-visible .sidebar__tooltip {
+    .sidebar__link:is(:hover, :focus-visible) .sidebar__tooltip,
+    .sidebar__logout-btn:is(:hover, :focus-visible) .sidebar__tooltip {
       opacity: 1;
       visibility: visible;
       transform: translateY(-50%) translateX(0);
@@ -94,6 +93,9 @@
     position: relative;
     display: flex;
     align-items: center;
+    width: 100%;
+    text-align: left;
+    font: inherit;
     gap: var(--space-sm);
     padding: 0.75rem var(--space-md);
     color: color-mix(in srgb, var(--white) 80%, transparent);

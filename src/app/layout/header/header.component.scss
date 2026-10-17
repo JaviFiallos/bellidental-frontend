@@ -81,6 +81,7 @@
   display: none;
   flex: 1;
   max-width: 36rem;
+  border-radius: var(--radius-md);
 
   @include bp.bp-down('md') {
     &.is-expanded {

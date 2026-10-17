@@ -96,6 +96,7 @@ export class HeaderComponent {
       }, 0);
     } else {
       this.patientSearchRef()?.focusSearch();
+      this.patientSearchRef()?.highlight();
     }
   }
 

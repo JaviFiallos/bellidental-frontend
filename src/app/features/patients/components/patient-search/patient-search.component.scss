@@ -3,6 +3,34 @@
 :host {
   display: block;
   width: 100%;
+  border-radius: var(--radius-md);
+  transition: box-shadow var(--transition-base);
+
+  &.is-highlighted {
+    animation: patient-search-pulse 1.2s ease-out;
+  }
+}
+
+@keyframes patient-search-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-focus) 0%, transparent);
+  }
+  25% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-focus) 50%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-focus) 35%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-focus) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host.is-highlighted {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 45%, transparent);
+  }
 }
 
 .search-prefix {
