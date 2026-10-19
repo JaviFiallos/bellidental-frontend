@@ -15,6 +15,7 @@ import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { Patient } from '../../../patients';
 import { Professional, Specialty } from '../../../professionals';
+import { DEFAULT_DURATION_MINUTES } from '../../domain/slot-ranges';
 import { Appointment, AvailableSlot } from '../../models/appointment.models';
 import { AppointmentFormMode, WalkInAvailability } from '../../services/appointment-form.store';
 import { AppointmentPatientFieldComponent } from '../appointment-patient-field/appointment-patient-field.component';
@@ -60,7 +61,6 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
       <bd-field
         label="Especialidad"
         fieldId="appt-specialty-select"
-        [hint]="durationText()"
       >
         <select
           id="appt-specialty-select"
@@ -138,12 +138,14 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
           }
           <bd-slot-picker
             [ariaLabelledby]="'appt-slot-label'"
-            [slots]="slots()"
-            [selectedSlot]="selectedSlot()"
+            [blocks]="slots()"
+            [durationMinutes]="durationMinutes()"
+            [selectedStart]="selectedStart()"
             [loading]="slotsLoading()"
             [error]="slotsError()"
             [ready]="isSlotPickerReady()"
-            (slotChange)="slotSelected.emit($event)"
+            (startChange)="startChange.emit($event)"
+            (durationChange)="durationChange.emit($event)"
             (nextDay)="nextDayClicked.emit()"
             (retry)="retrySlots.emit()"
           />
@@ -305,6 +307,7 @@ export class AppointmentFormComponent implements AfterViewInit {
   readonly availableSpecialties = input<Specialty[]>([]);
   readonly selectedSpecialtyId = input<number | null>(null);
   readonly durationText = input<string | null>(null);
+  readonly durationMinutes = input<number>(DEFAULT_DURATION_MINUTES);
 
   readonly availableProfessionals = input<Professional[]>([]);
   readonly selectedProfessionalId = input<string>('');
@@ -314,6 +317,7 @@ export class AppointmentFormComponent implements AfterViewInit {
 
   readonly slots = input<AvailableSlot[]>([]);
   readonly selectedSlot = input<AvailableSlot | null>(null);
+  readonly selectedStart = computed<string | null>(() => this.selectedSlot()?.startAt ?? null);
   readonly slotsLoading = input<boolean>(false);
   readonly slotsError = input<string | null>(null);
   readonly isSlotPickerReady = input<boolean>(false);
@@ -330,10 +334,11 @@ export class AppointmentFormComponent implements AfterViewInit {
   readonly specialtyChange = output<number | null>();
   readonly professionalChange = output<string>();
   readonly dateChange = output<string>();
+  readonly durationChange = output<number>();
   readonly todayClick = output<void>();
   readonly tomorrowClick = output<void>();
 
-  readonly slotSelected = output<AvailableSlot>();
+  readonly startChange = output<string>();
   readonly nextDayClicked = output<void>();
   readonly retrySlots = output<void>();
 

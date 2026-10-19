@@ -1,0 +1,147 @@
+<div class="slot-picker">
+  @if (!ready()) {
+    <p class="slot-picker__prompt" role="status">
+      Elige profesional, especialidad y fecha para ver las horas libres.
+    </p>
+  } @else if (loading()) {
+    <div class="slot-picker__skeleton" aria-busy="true">
+      <bd-skeleton height="44px" width="4.5rem" />
+      <bd-skeleton height="44px" width="4.5rem" />
+      <bd-skeleton height="44px" width="4.5rem" />
+      <bd-skeleton height="44px" width="4.5rem" />
+    </div>
+  } @else if (error()) {
+    <div class="slot-picker__error" role="alert">
+      <p class="slot-picker__error-text">{{ error() }}</p>
+      <button
+        type="button"
+        class="btn btn-outline slot-picker__retry-btn"
+        (click)="retry.emit()"
+      >
+        Reintentar
+      </button>
+    </div>
+  } @else if (blocks().length === 0 || allValidStarts().length === 0) {
+    <div class="slot-picker__empty">
+      <div class="slot-picker__duration-row">
+        <span class="slot-picker__duration-label">Duración</span>
+        <bd-duration-stepper
+          [value]="durationMinutes()"
+          (valueChange)="durationChange.emit($event)"
+        />
+      </div>
+      @if (blocks().length === 0) {
+        <p class="slot-picker__empty-text" role="status">Sin horas libres este día.</p>
+      } @else {
+        <p class="slot-picker__empty-text" role="status">
+          La cita de {{ emptyDurationText() }} no cabe en ningún hueco de este día. Reduce la duración o mira el día siguiente.
+        </p>
+      }
+      <button
+        type="button"
+        class="btn btn-outline slot-picker__next-day-btn"
+        (click)="nextDay.emit()"
+      >
+        Ver día siguiente
+      </button>
+    </div>
+  } @else {
+    <div class="slot-picker__controls">
+      <!-- 1. Duración -->
+      <div class="slot-picker__duration-row">
+        <span class="slot-picker__duration-label">Duración</span>
+        <bd-duration-stepper
+          [value]="durationMinutes()"
+          (valueChange)="durationChange.emit($event)"
+        />
+      </div>
+
+      <!-- 2. Jornadas (Segmented control) -->
+      <div class="slot-picker__tabs" role="tablist" aria-label="Jornada">
+        <button
+          type="button"
+          role="tab"
+          id="tab-morning"
+          class="slot-picker__tab"
+          [class.slot-picker__tab--active]="activeJornada() === 'morning'"
+          [attr.aria-selected]="activeJornada() === 'morning'"
+          aria-controls="panel-morning"
+          [disabled]="morningCount() === 0"
+          (click)="setJornada('morning')"
+        >
+          Mañana ({{ morningCount() }})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-afternoon"
+          class="slot-picker__tab"
+          [class.slot-picker__tab--active]="activeJornada() === 'afternoon'"
+          [attr.aria-selected]="activeJornada() === 'afternoon'"
+          aria-controls="panel-afternoon"
+          [disabled]="afternoonCount() === 0"
+          (click)="setJornada('afternoon')"
+        >
+          Tarde ({{ afternoonCount() }})
+        </button>
+      </div>
+
+      <!-- 3. Chips de la jornada activa -->
+      <div
+        class="slot-picker__chips-container"
+        role="tabpanel"
+        [id]="activeJornada() === 'morning' ? 'panel-morning' : 'panel-afternoon'"
+        [attr.aria-labelledby]="activeJornada() === 'morning' ? 'tab-morning' : 'tab-afternoon'"
+      >
+        <div
+          class="slot-picker__chips"
+          role="radiogroup"
+          [attr.aria-labelledby]="ariaLabelledby()"
+          [attr.aria-label]="!ariaLabelledby() ? 'Hora de la cita' : null"
+        >
+          @for (item of currentJornadaChips(); track item.startAt) {
+            <div class="slot-chip-wrapper">
+              @if (item.isValidStart) {
+                <input
+                  type="radio"
+                  class="slot-chip__input"
+                  [id]="'slot-' + item.startAt"
+                  name="availableSlot"
+                  [value]="item.startAt"
+                  [checked]="item.isStart"
+                  (change)="onSelectSlot(item.startAt)"
+                />
+                <label
+                  [for]="'slot-' + item.startAt"
+                  class="slot-chip__label"
+                  [class.slot-chip__label--start]="item.isStart"
+                  [class.slot-chip__label--in-range]="item.isInRange && !item.isStart"
+                  [attr.aria-describedby]="item.isInRange ? 'slot-picker-summary' : null"
+                >
+                  @if (item.isStart) {
+                    <span class="slot-chip__check" aria-hidden="true">✓</span>
+                  }
+                  {{ item.label }}
+                </label>
+              } @else {
+                <span
+                  class="slot-chip__label slot-chip__label--in-range slot-chip__label--range-only"
+                  aria-describedby="slot-picker-summary"
+                >
+                  {{ item.label }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 4. Resumen -->
+      @if (summaryText()) {
+        <div id="slot-picker-summary" class="slot-picker__summary" role="status">
+          <span class="slot-picker__summary-text">{{ summaryText() }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

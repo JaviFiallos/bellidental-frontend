@@ -10,11 +10,20 @@ import { AvailableSlot } from '../models/appointment.models';
 export class AvailabilityApi {
   private readonly api = inject(ApiClient);
 
-  slots(professionalId: string, specialtyId: number, date: string): Observable<AvailableSlot[]> {
-    const params = new HttpParams()
+  slots(
+    professionalId: string,
+    specialtyId: number,
+    date: string,
+    durationMinutes?: number
+  ): Observable<AvailableSlot[]> {
+    let params = new HttpParams()
       .set('professionalId', professionalId)
       .set('specialtyId', specialtyId.toString())
       .set('date', date);
+
+    if (durationMinutes !== undefined && durationMinutes !== null) {
+      params = params.set('durationMinutes', durationMinutes.toString());
+    }
 
     return this.api.get<AvailableSlot[]>('/api/v1/availability', { params });
   }

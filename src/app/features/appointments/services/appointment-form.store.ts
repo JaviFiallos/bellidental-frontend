@@ -22,6 +22,14 @@ import {
 } from '../models/appointment.models';
 import { AppointmentsApi } from './appointments.api';
 import { AvailabilityApi } from './availability.api';
+import {
+  DEFAULT_DURATION_MINUTES,
+  formatDuration,
+  MAX_DURATION_MINUTES,
+  rangeFrom,
+  roundUpToQuarter,
+  SLOT_STEP_MINUTES,
+} from '../domain/slot-ranges';
 
 export type AppointmentFormMode = 'create' | 'walk-in' | 'reschedule';
 
@@ -52,6 +60,7 @@ export class AppointmentFormStore {
   readonly selectedSpecialtyId = signal<number | null>(null);
   readonly selectedProfessionalId = signal<string>('');
   readonly date = signal<string>('');
+  readonly durationMinutes = signal<number>(DEFAULT_DURATION_MINUTES);
   readonly selectedSlot = signal<AvailableSlot | null>(null);
 
   readonly openedFromSlot = signal<boolean>(false);
@@ -90,7 +99,7 @@ export class AppointmentFormStore {
           this.slotsLoading.set(true);
           this.slotsError.set(null);
           return this.availabilityApi
-            .slots(professionalId, specialtyId, date)
+            .slots(professionalId, specialtyId, date, SLOT_STEP_MINUTES)
             .pipe(
               catchError((err: ApiError) => {
                 this.slotsLoading.set(false);
@@ -119,8 +128,18 @@ export class AppointmentFormStore {
                 this.clinicClock.minutesOfDay(s.startAt) === pendingMin
             );
             if (match) {
-              this.selectedSlot.set(match);
-              this.notice.set(null);
+              const range = rangeFrom(slots, match.startAt, this.durationMinutes());
+              if (range.length > 0) {
+                this.selectedSlot.set(match);
+                this.notice.set(null);
+              } else {
+                this.selectedSlot.set(null);
+                const timeStr = this.clinicTimePipe.transform(match.startAt);
+                const durStr = formatDuration(this.durationMinutes());
+                this.notice.set(
+                  `La cita de ${durStr} no cabe desde las ${timeStr}. Elige otra hora.`
+                );
+              }
             } else {
               this.selectedSlot.set(null);
               this.notice.set('Esa hora no está libre; elige otra.');
@@ -136,7 +155,14 @@ export class AppointmentFormStore {
                   s.startAt.slice(0, 10) === currentDate &&
                   this.clinicClock.minutesOfDay(s.startAt) === currentMin
               );
-              this.selectedSlot.set(match || null);
+              if (
+                match &&
+                rangeFrom(slots, match.startAt, this.durationMinutes()).length > 0
+              ) {
+                this.selectedSlot.set(match);
+              } else {
+                this.selectedSlot.set(null);
+              }
             }
           }
         }
@@ -289,6 +315,12 @@ export class AppointmentFormStore {
     );
   });
 
+  readonly selectedRange = computed<AvailableSlot[]>(() => {
+    const slot = this.selectedSlot();
+    if (!slot) return [];
+    return rangeFrom(this.slots(), slot.startAt, this.durationMinutes());
+  });
+
   readonly canSubmit = computed<boolean>(() => {
     if (this.saving()) {
       return false;
@@ -308,7 +340,8 @@ export class AppointmentFormStore {
         this.selectedSpecialtyId() !== null &&
         !!this.selectedProfessionalId() &&
         !!this.date() &&
-        !!this.selectedSlot()
+        !!this.selectedSlot() &&
+        this.selectedRange().length > 0
       );
     }
 
@@ -317,7 +350,8 @@ export class AppointmentFormStore {
       this.selectedSpecialtyId() !== null &&
       !!this.selectedProfessionalId() &&
       !!this.date() &&
-      !!this.selectedSlot()
+      !!this.selectedSlot() &&
+      this.selectedRange().length > 0
     );
   });
 
@@ -343,6 +377,7 @@ export class AppointmentFormStore {
     this.patient.set(null);
     this.selectedSpecialtyId.set(null);
     this.selectedProfessionalId.set('');
+    this.durationMinutes.set(DEFAULT_DURATION_MINUTES);
     this.selectedSlot.set(null);
     this.pendingStartAt.set(null);
     this.notice.set(null);
@@ -388,6 +423,10 @@ export class AppointmentFormStore {
     this.patient.set(null);
     this.selectedSpecialtyId.set(appointment.specialtyId);
     this.selectedProfessionalId.set(appointment.professionalId);
+    const startMs = new Date(appointment.startAt).getTime();
+    const endMs = new Date(appointment.endAt).getTime();
+    const diffMins = Math.round((endMs - startMs) / 60000);
+    this.durationMinutes.set(roundUpToQuarter(diffMins));
     this.selectedSlot.set(null);
     this.pendingStartAt.set(null);
     this.notice.set(null);
@@ -427,6 +466,7 @@ export class AppointmentFormStore {
     const prof = this.allProfessionals().find((p) => p.id === professionalId);
     if (prof && prof.specialties.length === 1) {
       this.selectedSpecialtyId.set(prof.specialties[0].id);
+      this.durationMinutes.set(roundUpToQuarter(prof.specialties[0].defaultDurationMinutes));
       this.triggerAvailability();
     } else {
       this.selectedSpecialtyId.set(null);
@@ -458,6 +498,7 @@ export class AppointmentFormStore {
         this.triggerAvailability();
       } else if (prof.specialties.length === 1) {
         this.selectedSpecialtyId.set(prof.specialties[0].id);
+        this.durationMinutes.set(roundUpToQuarter(prof.specialties[0].defaultDurationMinutes));
         this.triggerAvailability();
       } else {
         this.selectedSpecialtyId.set(null);
@@ -474,6 +515,13 @@ export class AppointmentFormStore {
     this.selectedSpecialtyId.set(specialtyId);
     this.notice.set(null);
     this.error.set(null);
+
+    if (this.mode() === 'create' && specialtyId !== null) {
+      const spec = this.allSpecialties().find((s) => s.id === specialtyId);
+      if (spec) {
+        this.durationMinutes.set(roundUpToQuarter(spec.defaultDurationMinutes));
+      }
+    }
 
     if (this.mode() === 'walk-in') {
       this.loadWalkInAvailability(specialtyId);
@@ -499,6 +547,29 @@ export class AppointmentFormStore {
 
     this.selectedSlot.set(null);
     this.triggerAvailability();
+  }
+
+  setDuration(minutes: number): void {
+    const clamped = Math.min(
+      MAX_DURATION_MINUTES,
+      Math.max(SLOT_STEP_MINUTES, minutes)
+    );
+    this.durationMinutes.set(clamped);
+
+    const current = this.selectedSlot();
+    if (current) {
+      const range = rangeFrom(this.slots(), current.startAt, clamped);
+      if (range.length === 0) {
+        const timeStr = this.clinicTimePipe.transform(current.startAt);
+        const durStr = formatDuration(clamped);
+        this.selectedSlot.set(null);
+        this.notice.set(
+          `La cita de ${durStr} no cabe desde las ${timeStr}. Elige otra hora.`
+        );
+      } else {
+        this.notice.set(null);
+      }
+    }
   }
 
   private loadWalkInAvailability(specialtyId: number | null): void {
@@ -536,6 +607,16 @@ export class AppointmentFormStore {
 
   setSelectedSlot(slot: AvailableSlot | null): void {
     this.selectedSlot.set(slot);
+    this.notice.set(null);
+  }
+
+  setSelectedStart(startAt: string | null): void {
+    if (!startAt) {
+      this.selectedSlot.set(null);
+    } else {
+      const match = this.slots().find((s) => s.startAt === startAt) || null;
+      this.selectedSlot.set(match);
+    }
     this.notice.set(null);
   }
 
@@ -593,6 +674,7 @@ export class AppointmentFormStore {
       const slot = this.selectedSlot()!;
       const body: RescheduleAppointmentRequest = {
         startAt: slot.startAt,
+        endAt: this.selectedRange().at(-1)!.endAt,
       };
       if (this.selectedProfessionalId() !== orig.professionalId) {
         body.professionalId = this.selectedProfessionalId();
@@ -608,6 +690,7 @@ export class AppointmentFormStore {
         professionalId: this.selectedProfessionalId(),
         specialtyId: this.selectedSpecialtyId()!,
         startAt: slot.startAt,
+        endAt: this.selectedRange().at(-1)!.endAt,
       };
       const trimmed = reason?.trim();
       if (trimmed) {
@@ -632,12 +715,7 @@ export class AppointmentFormStore {
         this.error.set(message);
 
         if (err.status === 409) {
-          if (this.mode() === 'walk-in') {
-            this.reloadSlots();
-          } else {
-            this.selectedSlot.set(null);
-            this.reloadSlots();
-          }
+          this.reloadSlots();
         }
         return throwError(() => err);
       })

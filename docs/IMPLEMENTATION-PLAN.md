@@ -393,6 +393,7 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   - `bd-side-sheet` gana `fullscreenBelowMd`.
   - En el walk-in, el profesional por defecto es el que tiene el hueco más cercano según `/availability` de hoy.
   - En reprogramar se envían `professionalId` y `specialtyId` solo si cambiaron.
+  - El formulario envía siempre `endAt` (actualizado en 004c tras backend 006f): permite citas de duración variable (15 a 240 min) calculando el fin del último bloque.
 - **Hecho (004a):** `AppointmentFormStore` (provisto por la página junto a `PatientSearchStore`) pide
   `/availability` con `switchMap`, reconcilia la hora preseleccionada con `minutesOfDay` y, tras un 409, vuelve a
   pedir las horas. La página guarda `activePanel: 'detail' | 'create' | null`; si la cita seleccionada desaparece,
@@ -407,6 +408,12 @@ Agenda · [◀ sáb 10 oct ▶] [Hoy]     Vista: (●Por profesional ○Por esta
   - **Reprogramar:** se abre desde la acción `'reschedule'` de `availableActions()`. Al cerrar sin guardar vuelve
     al detalle, y al guardar quita la selección y va a la fecha nueva.
   - `activePanel` en la página: `'detail' | 'create' | 'walk-in' | 'reschedule' | null`.
+- **Hecho (004c):** Soporte para duración variable en bloques de 15 min. `GET /availability?...&durationMinutes=15`
+  en crear y reprogramar (walk-in sin cambios). `slot-ranges.ts` con funciones puras (`validStarts`, `rangeFrom`,
+  `formatDuration`, `roundUpToQuarter`). Componente dumb `duration-stepper` (− / valor / +). `slot-picker` con
+  control segmentado de jornadas (`Mañana (n) · Tarde (n)`), visualización de una jornada a la vez, filtrado de
+  inicios válidos donde cabe la duración, marcado visual de rango con borde y check, y resumen de hora fin.
+  `POST /appointments` y `/reschedule` envían siempre `endAt`.
 
 ### 5.5 Pacientes: alta, edición y ficha de recepción — tareas 005a (alta y edición) y 005b (ficha) (P5 sin cuenta, P6)
 - **Depende de:** 002 · [G-4] (citas del paciente) · [G-5] (observaciones). **Perfil:** SECRETARIA; en
@@ -763,11 +770,11 @@ incisal (`SurfaceLabelResolver`).
 | `GET /specialties` | `[{ id, name, defaultDurationMinutes }]` |
 | `GET /professionals/{id}/schedules` | `[{ id, weekday 1–7, specificDate, startTime, endTime, available }]` |
 | `GET …/schedules/effective?from&to` | `[{ date, shifts[{startTime,endTime}] }]` |
-| `GET /availability?professionalId&specialtyId&date` | `[{ startAt, endAt }]` |
+| `GET /availability?professionalId&specialtyId&date&durationMinutes?` | `[{ startAt, endAt }]` |
 | `GET /appointments?professionalId?&from&to`, `GET /appointments/{id}` | `Appointment { id, patientId, patientName, professionalId, professionalName, colorTag, specialtyId, specialtyName, startAt, endAt, status, source, reason, notes, checkedInAt, rescheduledFromId }` (+ `encounterId`, `encounterStatus`, `encounterVoided` [G-1]) |
-| `POST /appointments` | body `{ patientId, professionalId, specialtyId, startAt, endAt?, reason?, notes? }` → `Appointment` |
+| `POST /appointments` | body `{ patientId, professionalId, specialtyId, startAt, endAt, reason?, notes? }` → `Appointment` |
 | `POST /appointments/walk-in` | body `{ patientId, professionalId, specialtyId }` → `Appointment` |
-| `POST /appointments/{id}/reschedule` | body `{ startAt, endAt?, professionalId?, specialtyId? }` → `Appointment` |
+| `POST /appointments/{id}/reschedule` | body `{ startAt, endAt, professionalId?, specialtyId? }` → `Appointment` |
 | `POST /appointments/{id}/confirm · check-in · no-show · cancel` | solo `message` |
 | `GET/POST /patients/{id}/clinical-record` | `{ id, recordNumber, openedAt, noKnownHistory, currentMedication, historyEntries[{ id, conditionId, conditionName, scope, relative, description, active }] }` |
 | `GET /medical-history-conditions` | `[{ id, name, displayOrder }]` |
@@ -824,6 +831,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 003c | Agenda: pulido tras la auditoría (panel no modal en lg+, 44 px táctil, a11y) | 003b | Commit `221b5f5` |
 | 004a | Nueva cita (formulario, slot-picker, clic en hueco de la grilla) | 003c | Commit `a11593e` |
 | 004b | Sin cita (walk-in) y reprogramar | 004a | Commit `266d779` |
+| 004c | Nueva cita y reprogramar: bloques de 15 min y duración elegida | 004b · backend 006f | Aprobada |
 | 005a | Pacientes: alta y edición | 002b · G-5 | Commit `2b80240` |
 | 005b | Pacientes: ficha de recepción (identificación, observaciones, citas) | 005a · G-4 | Commit `0a63492` |
 | 006a | Horarios: semana tipo por profesional | 002 · G-8 | Commit `417bed3` |
