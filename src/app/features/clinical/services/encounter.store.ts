@@ -12,6 +12,12 @@ import {
   UpdateEncounterRequest,
 } from '../models/encounter.models';
 import { Icd10Code } from '../models/icd10.models';
+import {
+  EncounterExtraField,
+  missing033Sections,
+  VitalSignField,
+  vitalSignError,
+} from '../domain/encounter-completeness';
 import { ClinicalRecordsApi } from './clinical-records.api';
 import { EncountersApi } from './encounters.api';
 import { Icd10Api } from './icd10.api';
@@ -119,6 +125,11 @@ export class EncounterStore implements OnDestroy {
     return missing;
   });
 
+  readonly missing033 = computed<string[]>(() => {
+    const enc = this.encounter();
+    return enc ? missing033Sections(enc) : [];
+  });
+
   readonly canComplete = computed<boolean>(() => {
     if (this.isReadOnly()) return false;
     if (this.isCompleted()) return false;
@@ -223,6 +234,22 @@ export class EncounterStore implements OnDestroy {
     this.triggerAutoSave();
   }
 
+  /** Un valor fuera de rango no se guarda: el último valor válido se conserva. */
+  setVitalSign(field: VitalSignField, value: number | null): void {
+    if (this.isReadOnly()) return;
+    if (vitalSignError(field, value) !== null) return;
+    this.encounter.update((curr) => (curr ? { ...curr, [field]: value } : curr));
+    this.triggerAutoSave();
+  }
+
+  /** Vacío o solo espacios se guardan como null. */
+  setExtraField(field: EncounterExtraField, value: string | null): void {
+    if (this.isReadOnly()) return;
+    const normalized = value && value.trim() ? value : null;
+    this.encounter.update((curr) => (curr ? { ...curr, [field]: normalized } : curr));
+    this.triggerAutoSave();
+  }
+
   retrySave(): void {
     this.triggerAutoSave();
   }
@@ -272,15 +299,18 @@ export class EncounterStore implements OnDestroy {
 
     return this.encountersApi.update(enc.id, body).pipe(
       tap((updated) => {
-        if (targetVersion >= this.changeVersion) {
+        const isLatestVersion = targetVersion >= this.changeVersion;
+        if (isLatestVersion) {
           this.savedVersion = targetVersion;
           this.saveStatus.set('saved');
           this.saveErrorMessage.set(null);
         }
         this.encounter.update((curr) => {
           if (!curr) return updated;
+          // Una respuesta antigua no debe pisar ediciones hechas mientras se guardaba.
+          const base = isLatestVersion ? updated : curr;
           return {
-            ...updated,
+            ...base,
             diagnoses: curr.diagnoses ?? updated.diagnoses,
           };
         });

@@ -25,6 +25,7 @@ import {
 } from '../../../odontogram';
 import { CompleteBarComponent } from '../../components/complete-bar/complete-bar.component';
 import { DiagnosisListComponent } from '../../components/diagnosis-list/diagnosis-list.component';
+import { EncounterExtraComponent } from '../../components/encounter-extra/encounter-extra.component';
 import { EncounterNotesComponent } from '../../components/encounter-notes/encounter-notes.component';
 import { HistoryPanelComponent } from '../../components/history-panel/history-panel.component';
 import { PatientClinicalHeaderComponent } from '../../components/patient-clinical-header/patient-clinical-header.component';
@@ -48,6 +49,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     OdontogramComponent,
     EncounterNotesComponent,
     DiagnosisListComponent,
+    EncounterExtraComponent,
     CompleteBarComponent,
     SideSheetComponent,
     HistoryPanelComponent,
@@ -191,9 +193,22 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (addDiagnosis)="onAddDiagnosis($event)"
             (voidDiagnosis)="onVoidDiagnosis($event)"
           />
+
+          <!-- 5. Más del 033: signos vitales, examen, indicadores y planes (plegado) -->
+          <bd-encounter-extra
+            [encounter]="store.encounter()!"
+            [missingSections]="store.missing033()"
+            [isReadOnly]="store.isReadOnly()"
+            [saveStatus]="store.saveStatus()"
+            [saveErrorMessage]="store.saveErrorMessage()"
+            (vitalSignChange)="store.setVitalSign($event.field, $event.value)"
+            (indicatorChange)="store.setExtraField($event.field, $event.value)"
+            (textChange)="store.setExtraField($event.field, $event.value)"
+            (retrySave)="store.retrySave()"
+          />
         </main>
 
-        <!-- 5. Barra de completar fija abajo -->
+        <!-- 6. Barra de completar fija abajo -->
         <bd-complete-bar
           [missingRequirements]="store.missingRequirements()"
           [canComplete]="store.canComplete()"
@@ -205,7 +220,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           (complete)="onComplete()"
         />
 
-        <!-- 6. Panel lateral de antecedentes con bd-side-sheet -->
+        <!-- 7. Panel lateral de antecedentes con bd-side-sheet -->
         <bd-side-sheet
           [isOpen]="historyStore.isOpen()"
           [fullscreenBelowMd]="true"

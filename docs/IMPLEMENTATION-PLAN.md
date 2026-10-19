@@ -894,7 +894,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 012b | Tratamiento ligado a un hallazgo (rojo → azul) y "Tratar" en el panel | 012a · backend 010b | Redactada |
 | 013a | Receta: armar y guardar el borrador | 008 · backend 011a | Redactada |
 | 013b | Receta: emitir e imprimir (PDF), reimprimir y anular | 013a · backend 011b | Redactada |
-| 011 | Más del 033 (se ejecuta después de 013b) | 008 | Redactada |
+| 011 | Más del 033 | 008 | Aprobada |
 | 014 | Ficha clínica e historial | 009 · backend clinical-summary | — |
 | 015 | Cobros y comprobante | 005 · backend 012 | — |
 | 016 | Estadísticas del director | 002 · G-6 · F-9 | — |

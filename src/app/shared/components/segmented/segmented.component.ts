@@ -45,6 +45,8 @@ export interface SegmentedOption<T = string> {
   styles: `
     .bd-segmented {
       display: inline-flex;
+      flex-wrap: wrap;
+      max-width: 100%;
       align-items: center;
       background-color: var(--slate-100);
       border: 1px solid var(--slate-200);
