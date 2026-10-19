@@ -236,6 +236,7 @@ const QUADRANT_RANGE_LABELS: Record<number, string> = {
             [currentMarks]="selectedToothMarks()"
             [encounterFindingIds]="encounterFindingIds()"
             [canVoid]="canVoid()"
+            [canTreat]="editable()"
             [saving]="saving()"
             [actionError]="actionError()"
             [lastAction]="lastAction()"
@@ -246,6 +247,7 @@ const QUADRANT_RANGE_LABELS: Record<number, string> = {
             (clearSelection)="onClearSelection()"
             (registerFinding)="onPanelRegister($event)"
             (voidFinding)="voidFinding.emit($event)"
+            (treatFinding)="onTreatFinding($event)"
             (startSpan)="onStartSpan($event)"
             (cancelSpan)="onCancelSpan()"
           />
@@ -332,6 +334,8 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   readonly toothActivate = output<number>();
   readonly registerFinding = output<CreateFindingRequest>();
   readonly voidFinding = output<Finding>();
+  /** El hallazgo pendiente que la atención va a tratar; cierra el panel de la pieza. */
+  readonly treatFinding = output<Finding>();
 
   readonly isNarrow = signal<boolean>(false);
   readonly selectedQuadrant = signal<1 | 2 | 4 | 3>(1);
@@ -594,6 +598,14 @@ export class OdontogramComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       this.toothPanel?.focusFirstFace();
     });
+  }
+
+  onTreatFinding(finding: Finding): void {
+    this.spanMode.set(null);
+    this.spanError.set(null);
+    this.selectedToothCode.set(null);
+    this.selectedFace.set(null);
+    this.treatFinding.emit(finding);
   }
 
   onFaceChange(face: SurfaceCode): void {

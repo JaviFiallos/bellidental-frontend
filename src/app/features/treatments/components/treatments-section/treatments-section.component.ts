@@ -12,6 +12,7 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import {
   DiagnosisOption,
+  FindingOption,
   PerformedTreatment,
   RecordTreatmentRequest,
   Treatment,
@@ -65,11 +66,14 @@ import { TreatmentListComponent } from '../treatment-list/treatment-list.compone
           <bd-treatment-form
             [treatment]="treatment"
             [diagnoses]="diagnoses()"
+            [findings]="pendingFindings()"
+            [selectedFindingId]="selectedFindingId()"
             [initialToothCode]="selectedTooth()"
             [saving]="saving()"
             [errorMessage]="saveError()"
             (register)="register.emit($event)"
             (cancel)="cancel.emit()"
+            (findingChange)="findingChange.emit($event)"
           />
         }
       }
@@ -162,6 +166,7 @@ import { TreatmentListComponent } from '../treatment-list/treatment-list.compone
 })
 export class TreatmentsSectionComponent {
   readonly diagnoses = input<DiagnosisOption[]>([]);
+  readonly pendingFindings = input<FindingOption[]>([]);
   readonly isReadOnly = input<boolean>(false);
 
   readonly items = input<PerformedTreatment[]>([]);
@@ -178,6 +183,7 @@ export class TreatmentsSectionComponent {
 
   readonly selectedTreatment = input<Treatment | null>(null);
   readonly selectedTooth = input<number | null>(null);
+  readonly selectedFindingId = input<string | null>(null);
   readonly saving = input<boolean>(false);
   readonly saveError = input<string | null>(null);
 
@@ -185,6 +191,7 @@ export class TreatmentsSectionComponent {
   readonly queryChange = output<string>();
   readonly pick = output<Treatment>();
   readonly cancel = output<void>();
+  readonly findingChange = output<string | null>();
   readonly register = output<RecordTreatmentRequest>();
   readonly voidRequest = output<PerformedTreatment>();
   readonly retryLoad = output<void>();

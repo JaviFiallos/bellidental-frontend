@@ -23,6 +23,13 @@
   color: var(--color-text-muted);
 }
 
+.treatment-list__link {
+  display: inline-flex;
+  margin-inline-start: var(--space-xs);
+  vertical-align: middle;
+  color: var(--blue-800);
+}
+
 .treatment-list__total {
   font-weight: 600;
   color: var(--color-text);

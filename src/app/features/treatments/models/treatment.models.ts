@@ -28,6 +28,7 @@ export interface RecordTreatmentRequest {
   quantity?: number;
   price?: number;
   encounterDiagnosisId?: string;
+  dentalFindingId?: string;
   toothCode?: number;
   surfaceCode?: string;
   notes?: string;
@@ -40,5 +41,13 @@ export interface VoidTreatmentRequest {
 /** Diagnóstico activo que la página pasa a la sección (treatments no conoce el modelo de clinical). */
 export interface DiagnosisOption {
   id: string;
+  label: string;
+}
+
+/** Hallazgo pendiente del paciente que la página pasa a la sección (treatments no conoce el modelo de odontogram). */
+export interface FindingOption {
+  id: string;
+  toothCode: number;
+  surfaceCode: string | null;
   label: string;
 }

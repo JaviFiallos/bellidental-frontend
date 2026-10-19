@@ -34,6 +34,7 @@ export class TreatmentsStore {
 
   readonly selectedTreatment = signal<Treatment | null>(null);
   readonly selectedTooth = signal<number | null>(null);
+  readonly selectedFindingId = signal<string | null>(null);
 
   readonly saving = signal<boolean>(false);
   readonly saveError = signal<string | null>(null);
@@ -110,7 +111,13 @@ export class TreatmentsStore {
 
   clearSelection(): void {
     this.selectedTreatment.set(null);
+    this.selectedFindingId.set(null);
     this.saveError.set(null);
+  }
+
+  selectFinding(findingId: string | null): void {
+    this.saveError.set(null);
+    this.selectedFindingId.set(findingId);
   }
 
   selectTooth(toothCode: number): void {
@@ -134,6 +141,7 @@ export class TreatmentsStore {
           this.items.update((items) => [...items, created]);
           this.saving.set(false);
           this.selectedTreatment.set(null);
+          this.selectedFindingId.set(null);
         },
         error: (err: ApiError | Error) => {
           this.saving.set(false);

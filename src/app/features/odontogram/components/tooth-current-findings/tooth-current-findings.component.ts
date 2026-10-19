@@ -85,6 +85,17 @@ function isToothInFindingSpan(toothCode: number, finding: Finding): boolean {
                 </div>
               </div>
 
+              @if (canTreat() && item.finding.status === 'PENDING') {
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm current-findings__treat-btn"
+                  [disabled]="saving()"
+                  (click)="onTreat(item.finding)"
+                >
+                  Tratar
+                </button>
+              }
+
               @if (item.isCurrentEncounter && canVoid()) {
                 <button
                   type="button"
@@ -178,6 +189,14 @@ function isToothInFindingSpan(toothCode: number, finding: Finding): boolean {
       color: var(--slate-500);
     }
 
+    .current-findings__treat-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 0 var(--space-sm);
+      font-size: var(--fs-xs);
+      flex-shrink: 0;
+    }
+
     .current-findings__void-btn {
       min-height: 44px;
       min-width: 44px;
@@ -193,9 +212,11 @@ export class ToothCurrentFindingsComponent {
   readonly catalog = input<OdontogramCatalog | null>(null);
   readonly encounterFindingIds = input<Set<string>>(new Set());
   readonly canVoid = input<boolean>(false);
+  readonly canTreat = input<boolean>(false);
   readonly saving = input<boolean>(false);
 
   readonly voidClick = output<Finding>();
+  readonly treatClick = output<Finding>();
 
   readonly toothFindings = computed<CurrentFindingViewModel[]>(() => {
     const code = this.toothCode();
@@ -231,5 +252,9 @@ export class ToothCurrentFindingsComponent {
 
   onVoid(finding: Finding): void {
     this.voidClick.emit(finding);
+  }
+
+  onTreat(finding: Finding): void {
+    this.treatClick.emit(finding);
   }
 }

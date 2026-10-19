@@ -95,7 +95,59 @@ Se amplía `encounter.page.spec.ts` con **1 caso**:
 5. Tablet (768): "Tratar" cierra la hoja inferior y lleva al formulario.
 
 ## Resultado
-*(lo llena Gemini)*
+- **Archivos modificados** (sin commit):
+  - `odontogram`: `tooth-current-findings` (input `canTreat`, output `treatClick`, botón "Tratar" solo en PENDING);
+    `tooth-panel` (input `canTreat`, output `treatFinding`); `odontogram.component` (output `treatFinding`,
+    `onTreatFinding` cierra la selección de pieza y reemite).
+  - `treatments`: `models/treatment.models.ts` (`FindingOption`, `dentalFindingId` en la petición);
+    `services/treatments.store.ts` (`selectedFindingId`, `selectFinding()`, se limpia al registrar o cancelar);
+    `components/treatment-form` (select "Hallazgo pendiente" si hay pendientes, orden por pieza, pieza y cara
+    bloqueadas con las del hallazgo, body con `dentalFindingId` sin `toothCode`/`surfaceCode`, `findingChange`);
+    `components/treatments-section` (inputs `pendingFindings`, `selectedFindingId`, output `findingChange`);
+    `components/treatment-list` (+ `bd-icon` Link2 con aria-label "Ligado al hallazgo de la pieza N") y su scss.
+  - `clinical/pages/encounter/encounter.page.ts`: `pendingFindingOptions` (PENDING → `FindingOption`, etiqueta
+    `pieza · cara · condición`); `onTreatFinding` (preselecciona, en un `setTimeout` hace scroll al bloque de
+    Tratamientos y foco al buscador); `onRegisterTreatment` recarga el odontograma si el hallazgo era PENDING.
+    Envuelve `bd-treatments-section` en un `<div #treatmentsBlock>` para el scroll.
+  - `clinical/pages/encounter/encounter.page.spec.ts`: +1 caso ("Tratar una caries pendiente → la cara pasa a
+    obturación realizada").
+- **Build**: `npx ng build` OK (bundle generado, sin errores).
+- **Tests** (`npx ng test --watch=false`):
+  `Test Files  8 passed (8)`
+  `Tests  38 passed (38)`
+  (El spec de clínica solo: `Test Files  1 passed (1)`, `Tests  11 passed (11)`.)
+- **Responsive**: no verificado visualmente (sin DevTools). Reglas aplicadas: botones "Tratar" y "Anular" con
+  `min-height: 44px`; el ícono de enlace tiene `aria-label`; solo tokens de color; el scroll de la página
+  se hace al bloque de Tratamientos tras cerrar el panel de la pieza (en < lg la hoja inferior se cierra al
+  pulsar "Tratar"). Pendiente de revisar a 375, 768, 1024 y 1366.
+- **Supuestos y decisiones**:
+  - El cierre del panel de la pieza lo hace `OdontogramComponent.onTreatFinding` (no la página): limpia la
+    pieza y la cara seleccionadas antes de emitir `treatFinding`. No llama a `onClearSelection`, que devuelve
+    el foco a la pieza y le quitaría el foco al buscador.
+  - El foco y el scroll van en `setTimeout` porque el panel se cierra en el siguiente ciclo de detección de
+    cambios. El test espera ese timer con un `setTimeout` real.
+  - El aria-label de la cara en el test no es "obturación realizada" sino el `<title>` real del SVG
+    (`36 · … : Obturación (Realizado)`); la aserción usa el fill `#1E88E5` y ese título.
+  - Sin `focusRequest` en el store: la página llama a `focusSearch()` directamente.
+  - Para hallazgos de prótesis (span), la etiqueta del select sale como `36 · de 36 a 38 · Prótesis` (el
+    `toothCode` se repite). No está cubierto en la tarea; queda anotado.
+  - La pieza y la cara bloqueadas se restauran a la pieza de la atención si se quita el hallazgo.
+- **Problemas**: ninguno en build ni tests. `prompt.txt` ya venía modificado antes de esta tarea; no se tocó.
+- **Para la prueba manual**: nada extra; usar un paciente con una caries PENDING en la atención abierta.
 
 ## Revisión
-*(lo llena Claude)*
+
+Estado: APROBADO
+
+Revisado por Claude (Opus; ejecutó Haiku). `npx ng build` OK; `npx ng test --watch=false` → 8 archivos, 38 tests.
+Cumple los criterios 1–6:
+- con un hallazgo elegido, el body lleva `dentalFindingId` sin pieza ni cara;
+- el select solo ofrece hallazgos PENDING, y con una pieza seleccionada que tiene un único pendiente, viene elegido;
+- "Tratar" solo aparece si la atención es editable;
+- después de registrar, se pide de nuevo el odontograma;
+- `odontogram` y `treatments` no se importan entre sí.
+
+Se acepta que el test verifique el `<title>` del SVG ("Obturación (Realizado)") en lugar del texto de la tarea, y que
+sea `OdontogramComponent` quien cierra el panel.
+Pendiente menor (sin bloquear): en prótesis (SPAN) la etiqueta del select no muestra la pieza final.
+Responsive sin verificar visualmente: queda para la prueba manual del usuario.

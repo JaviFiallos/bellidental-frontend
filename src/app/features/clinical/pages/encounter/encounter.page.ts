@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   OnInit,
   viewChild,
@@ -26,6 +27,7 @@ import {
 } from '../../../odontogram';
 import {
   DiagnosisOption,
+  FindingOption,
   PerformedTreatment,
   RecordTreatmentRequest,
   TreatmentsSectionComponent,
@@ -174,6 +176,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
                 [lastAction]="odontogramStore.lastAction()"
                 (registerFinding)="onRegisterFinding($event)"
                 (voidFinding)="onVoidFinding($event)"
+                (treatFinding)="onTreatFinding($event)"
                 (toothActivate)="treatmentsStore.selectTooth($event)"
               />
             }
@@ -205,8 +208,11 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           />
 
           <!-- 4b. Tratamientos: catálogo, registro, total y anulación -->
+          <div #treatmentsBlock>
           <bd-treatments-section
             [diagnoses]="diagnosisOptions()"
+            [pendingFindings]="pendingFindingOptions()"
+            [selectedFindingId]="treatmentsStore.selectedFindingId()"
             [isReadOnly]="store.isReadOnly()"
             [items]="treatmentsStore.items()"
             [isLoading]="treatmentsStore.loading()"
@@ -226,10 +232,12 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (queryChange)="treatmentsStore.setQuery($event)"
             (pick)="treatmentsStore.pickTreatment($event)"
             (cancel)="treatmentsStore.clearSelection()"
+            (findingChange)="treatmentsStore.selectFinding($event)"
             (register)="onRegisterTreatment($event)"
             (voidRequest)="onVoidTreatment($event)"
             (retryLoad)="treatmentsStore.reload()"
           />
+          </div>
 
           <!-- 5. Más del 033: signos vitales, examen, indicadores y planes (plegado) -->
           <bd-encounter-extra
@@ -393,6 +401,21 @@ export class EncounterPage implements OnInit {
   });
 
   readonly treatmentsSection = viewChild(TreatmentsSectionComponent);
+  readonly treatmentsBlock = viewChild<ElementRef<HTMLElement>>('treatmentsBlock');
+
+  /** Hallazgos pendientes del paciente, en el formato que pide la sección de tratamientos. */
+  readonly pendingFindingOptions = computed<FindingOption[]>(() => {
+    const catalog = this.odontogramStore.catalog();
+    return this.odontogramStore
+      .findings()
+      .filter((finding) => finding.status === 'PENDING')
+      .map((finding) => ({
+        id: finding.id,
+        toothCode: finding.toothCode,
+        surfaceCode: finding.surfaceCode,
+        label: `${finding.toothCode} · ${finding.surfaceLabel ?? getFindingWhere(finding)} · ${getConditionName(finding, catalog)}`,
+      }));
+  });
 
   readonly diagnosisOptions = computed<DiagnosisOption[]>(() => {
     return this.store.activeDiagnoses().map((diagnosis) => ({
@@ -515,12 +538,37 @@ export class EncounterPage implements OnInit {
   }
 
   onRegisterTreatment(request: RecordTreatmentRequest): void {
+    const linksPendingFinding =
+      !!request.dentalFindingId &&
+      this.pendingFindingOptions().some((option) => option.id === request.dentalFindingId);
+
     this.treatmentsStore.record(request).subscribe({
       next: () => {
         this.notificationService.success('Tratamiento registrado');
+        // El backend crea el hallazgo realizado: el odontograma se pide de nuevo para pintarlo en azul.
+        if (linksPendingFinding) {
+          this.odontogramStore.reload();
+        }
         this.treatmentsSection()?.focusSearch();
       },
       error: () => {},
+    });
+  }
+
+  /** "Tratar" en el panel de la pieza: preselecciona el hallazgo, lleva a Tratamientos y enfoca el buscador. */
+  onTreatFinding(finding: Finding): void {
+    this.treatmentsStore.selectFinding(finding.id);
+
+    // Diferido: el panel de la pieza se cierra en el siguiente ciclo y cambia la altura de la página.
+    setTimeout(() => {
+      const block = this.treatmentsBlock()?.nativeElement;
+      const reduceMotion =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (block && typeof block.scrollIntoView === 'function') {
+        block.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      }
+      this.treatmentsSection()?.focusSearch();
     });
   }
 

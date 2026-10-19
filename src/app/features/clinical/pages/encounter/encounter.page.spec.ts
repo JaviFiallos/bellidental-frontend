@@ -659,6 +659,125 @@ describe('EncounterPage', () => {
     expect(panel.textContent).toContain('Anular');
   });
 
+  it('Tratar una caries pendiente → la cara pasa a obturación realizada', async () => {
+    const pendingCaries: Finding = {
+      id: 'f-caries-36',
+      toothCode: 36,
+      endToothCode: null,
+      surfaceCode: 'O',
+      surfaceLabel: 'oclusal',
+      conditionId: 3,
+      status: 'PENDING',
+      grade: null,
+      notes: null,
+      createdAt: '2026-10-12T10:00:00Z',
+      symbol: {
+        id: 3,
+        status: 'PENDING',
+        shape: 'CIRCLE',
+        color: '#D32F2F',
+        secondaryColor: null,
+        filled: true,
+        lineStyle: 'SOLID',
+      },
+    };
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock, 'pat-1', { ...mockPatientOdontogramEmpty, findings: [pendingCaries] }, 'enc-1', []);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    // 1. Clic en la cara O de la pieza 36 y "Tratar" sobre la caries pendiente del panel
+    const surface36O = compiled.querySelector('[data-tooth="36"][data-surface="O"]') as SVGPathElement;
+    surface36O.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+    const panel = compiled.querySelector('bd-tooth-panel') as HTMLElement;
+    const treatButton = (Array.from(panel.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (btn) => btn.textContent?.trim() === 'Tratar'
+    );
+    expect(treatButton).toBeTruthy();
+    treatButton!.click();
+    fixture.detectChanges();
+    // La página hace scroll y foco al buscador en un setTimeout (tras cerrar el panel de la pieza)
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+
+    // 2. Foco en el buscador → GET /api/v1/treatments, y se elige D2330
+    const catalogReq = httpMock.expectOne('/api/v1/treatments');
+    catalogReq.flush(mockTreatmentCatalogApiResponse);
+    fixture.detectChanges();
+    const searchInput = compiled.querySelector('.treatments-section .combobox-input') as HTMLInputElement;
+    searchInput.value = 'resina';
+    searchInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (document.querySelector('.combobox-option') as HTMLElement).click();
+    fixture.detectChanges();
+
+    // 3. Registrar → POST con dentalFindingId y sin pieza ni cara
+    const registerButton = (Array.from(compiled.querySelectorAll('button')) as HTMLButtonElement[]).find(
+      (btn) => btn.textContent?.trim() === 'Registrar'
+    );
+    registerButton!.click();
+
+    const postReq = httpMock.expectOne('/api/v1/encounters/enc-1/treatments');
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      treatmentId: 1,
+      quantity: 1,
+      price: 30,
+      dentalFindingId: 'f-caries-36',
+    });
+    postReq.flush(
+      {
+        success: true,
+        message: 'Tratamiento registrado',
+        data: {
+          ...mockPerformedResina,
+          quantity: 1,
+          total: 30,
+          dentalFindingId: 'f-caries-36',
+          toothCode: 36,
+          surfaceCode: 'O',
+        },
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+
+    // 4. Recarga del odontograma: la cara queda realizada (obturación, azul)
+    const doneFilling: Finding = {
+      ...pendingCaries,
+      id: 'f-filling-36',
+      conditionId: 4,
+      status: 'DONE',
+      symbol: { ...pendingCaries.symbol, id: 4, status: 'DONE', color: '#1E88E5' },
+    };
+    flushOdontogram(
+      httpMock,
+      'pat-1',
+      { ...mockPatientOdontogramEmpty, findings: [pendingCaries, doneFilling] },
+      'enc-1',
+      []
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const region = compiled.querySelector('[data-tooth="36"][data-surface="O"]') as SVGPathElement;
+    expect(region.getAttribute('fill')).toBe('#1E88E5');
+    expect(region.querySelector('title')?.textContent).toContain('Obturación (Realizado)');
+  });
+
   it('prótesis fija de 15 a 13 → POST con endToothCode y aparece la banda', async () => {
     sessionStore.setSession('token-123', 3600000);
     sessionStore.setCurrentUser({

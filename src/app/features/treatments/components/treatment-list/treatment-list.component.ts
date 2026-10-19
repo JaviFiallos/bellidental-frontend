@@ -1,4 +1,9 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { Link2 } from 'lucide-angular';
+import {
+  IconComponent,
+  LucideIconData,
+} from '../../../../shared/components/icon/icon.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { PerformedTreatment } from '../../models/treatment.models';
 
@@ -6,7 +11,7 @@ import { PerformedTreatment } from '../../models/treatment.models';
 @Component({
   selector: 'bd-treatment-list',
   standalone: true,
-  imports: [MoneyPipe],
+  imports: [MoneyPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <table class="treatment-list__table" aria-label="Tratamientos registrados en la atención">
@@ -27,7 +32,12 @@ import { PerformedTreatment } from '../../models/treatment.models';
         @for (item of items(); track item.id) {
           <tr>
             <td data-label="Código">{{ item.treatmentCode }}</td>
-            <td data-label="Tratamiento">{{ item.treatmentName }}</td>
+            <td data-label="Tratamiento">
+              {{ item.treatmentName }}
+              @if (item.dentalFindingId) {
+                <bd-icon class="treatment-list__link" [name]="linkIcon" [size]="16" [label]="linkLabel(item)" />
+              }
+            </td>
             <td data-label="Pieza">{{ toothLabel(item) }}</td>
             <td data-label="Cant.">{{ item.quantity }}</td>
             <td data-label="Precio">{{ item.price | money }}</td>
@@ -58,6 +68,14 @@ export class TreatmentListComponent {
   readonly voiding = input<boolean>(false);
 
   readonly voidRequested = output<PerformedTreatment>();
+
+  readonly linkIcon: LucideIconData = Link2;
+
+  linkLabel(item: PerformedTreatment): string {
+    return item.toothCode === null
+      ? 'Ligado al hallazgo'
+      : `Ligado al hallazgo de la pieza ${item.toothCode}`;
+  }
 
   toothLabel(item: PerformedTreatment): string {
     if (item.toothCode === null) return '—';

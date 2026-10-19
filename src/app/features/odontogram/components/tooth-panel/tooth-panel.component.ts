@@ -151,8 +151,10 @@ interface FaceOption {
           [catalog]="catalog()"
           [encounterFindingIds]="encounterFindingIds()"
           [canVoid]="canVoid()"
+          [canTreat]="canTreat()"
           [saving]="saving()"
           (voidClick)="voidFinding.emit($event)"
+          (treatClick)="treatFinding.emit($event)"
         />
       }
     </div>
@@ -309,6 +311,7 @@ export class ToothPanelComponent {
   readonly encounterFindingIds = input<Set<string>>(new Set());
 
   readonly canVoid = input<boolean>(false);
+  readonly canTreat = input<boolean>(false);
   readonly saving = input<boolean>(false);
   readonly actionError = input<string | null>(null);
   readonly lastAction = input<string | null>(null);
@@ -320,6 +323,7 @@ export class ToothPanelComponent {
   readonly clearSelection = output<void>();
   readonly registerFinding = output<CreateFindingRequest>();
   readonly voidFinding = output<Finding>();
+  readonly treatFinding = output<Finding>();
   readonly startSpan = output<DentalCondition>();
   readonly cancelSpan = output<void>();
 
