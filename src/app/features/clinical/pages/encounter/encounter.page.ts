@@ -34,6 +34,7 @@ import {
   TreatmentsStore,
 } from '../../../treatments';
 import {
+  Prescription,
   PrescriptionEditorComponent,
   PrescriptionHeaderDraft,
   PrescriptionsSectionComponent,
@@ -255,8 +256,16 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             [canCreate]="prescriptionsCanCreate()"
             [canUpdate]="prescriptionsCanUpdate()"
             [hasDiagnoses]="diagnosisOptions().length > 0"
+            [actionError]="prescriptionsStore.actionError()"
+            [busyPrescriptionId]="prescriptionsStore.busyPrescriptionId()"
+            [pendingPdfId]="prescriptionsStore.pendingPdf()?.prescriptionId ?? null"
             (newPrescription)="prescriptionsStore.openNew()"
             (editPrescription)="prescriptionsStore.openEdit($event)"
+            (emitPrescription)="onEmitPrescription($event)"
+            (printPrescription)="onPrintPrescription($event)"
+            (openPendingPdf)="prescriptionsStore.openPendingPdf()"
+            (voidPrescription)="onVoidPrescription($event)"
+            (redoPrescription)="onRedoPrescription($event)"
             (retryLoad)="prescriptionsStore.reload()"
           />
 
@@ -337,12 +346,14 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
               [searchError]="prescriptionsStore.medicationSearchError()"
               [saving]="prescriptionsStore.saving()"
               [saveError]="prescriptionsStore.saveError()"
+              [copiedFrom]="prescriptionsStore.copiedFrom()"
               (medicationQueryChange)="prescriptionsStore.searchMedications($event)"
               (addItem)="prescriptionsStore.upsertItem($event)"
               (editItem)="prescriptionsStore.editItem($event)"
               (removeItem)="prescriptionsStore.removeItem($event)"
               (cancelItemEdit)="prescriptionsStore.cancelItemEdit()"
               (save)="onSavePrescription($event)"
+              (saveAndEmit)="onSaveAndEmitPrescription($event)"
               (close)="prescriptionsStore.closeEditor()"
             />
           }
@@ -659,6 +670,61 @@ export class EncounterPage implements OnInit {
       next: () => this.notificationService.success('Receta guardada como borrador'),
       error: () => {},
     });
+  }
+
+  /** Guarda, emite y abre el PDF. La pestaña se abre en este clic (dentro del store). */
+  onSaveAndEmitPrescription(draft: PrescriptionHeaderDraft): void {
+    this.prescriptionsStore.saveAndEmit(draft.encounterDiagnosisId, draft.generalInstructions).subscribe({
+      next: () => this.notificationService.success('Receta emitida'),
+      error: () => {},
+    });
+  }
+
+  onEmitPrescription(prescription: Prescription): void {
+    this.prescriptionsStore.emit(prescription).subscribe({
+      next: () => this.notificationService.success('Receta emitida'),
+      error: () => {},
+    });
+  }
+
+  onPrintPrescription(prescription: Prescription): void {
+    this.prescriptionsStore.print(prescription).subscribe({
+      error: () => {},
+    });
+  }
+
+  onVoidPrescription(prescription: Prescription): void {
+    this.confirmDialog
+      .open({
+        title: 'Anular borrador',
+        message: '¿Anular este borrador?',
+        tone: 'danger',
+        confirmLabel: 'Anular',
+      })
+      .subscribe((res) => {
+        if (!res.confirmed) return;
+        this.prescriptionsStore.voidPrescription(prescription).subscribe({
+          next: () => this.notificationService.success('Receta anulada'),
+          error: () => {},
+        });
+      });
+  }
+
+  onRedoPrescription(prescription: Prescription): void {
+    this.confirmDialog
+      .open({
+        title: 'Anular y rehacer',
+        message: 'La receta emitida quedará anulada y se abrirá un borrador con los mismos datos.',
+        tone: 'danger',
+        confirmLabel: 'Anular y rehacer',
+      })
+      .subscribe((res) => {
+        if (!res.confirmed) return;
+        this.prescriptionsStore.voidAndRedo(prescription).subscribe({
+          next: () => this.notificationService.success('Receta anulada'),
+          error: () => {},
+        });
+      });
   }
 
   onRegisterFinding(req: CreateFindingRequest): void {

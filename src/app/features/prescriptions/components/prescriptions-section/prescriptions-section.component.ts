@@ -1,13 +1,15 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
+import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
+import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { Prescription } from '../../models/prescription.models';
 
 /** Tarjeta "Receta" de la atención. Presentacional: la lista llega por input() y las acciones salen por output(). */
 @Component({
   selector: 'bd-prescriptions-section',
   standalone: true,
-  imports: [AlertComponent, SkeletonComponent],
+  imports: [AlertComponent, SkeletonComponent, ClinicDatePipe, ClinicTimePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card prescriptions-section" aria-labelledby="prescriptions-section-title">
@@ -24,6 +26,10 @@ import { Prescription } from '../../models/prescription.models';
           </button>
         }
       </header>
+
+      @if (actionError(); as error) {
+        <bd-alert variant="error" [message]="error" />
+      }
 
       @if (loadError(); as error) {
         <bd-alert variant="error" [message]="error">
@@ -42,7 +48,11 @@ import { Prescription } from '../../models/prescription.models';
                     [class.prescriptions-section__status--draft]="prescription.status === 'DRAFT'"
                     [class.prescriptions-section__status--issued]="prescription.status === 'ISSUED'"
                   >
-                    {{ prescription.status === 'DRAFT' ? 'Borrador' : 'Emitida' }}
+                    @if (prescription.status === 'DRAFT') {
+                      Borrador
+                    } @else {
+                      Emitida · {{ prescription.prescribedAt | clinicDate }} {{ prescription.prescribedAt | clinicTime }}
+                    }
                   </span>
                   <span class="prescriptions-section__code">{{ prescription.icd10Code }}</span>
                   <span class="prescriptions-section__diagnosis">{{ prescription.icd10Description }}</span>
@@ -51,11 +61,56 @@ import { Prescription } from '../../models/prescription.models';
                   {{ medicationNames(prescription) }}
                 </p>
               </div>
-              @if (canUpdate() && prescription.status === 'DRAFT') {
-                <button type="button" class="btn btn-outline prescriptions-section__edit" (click)="editPrescription.emit(prescription)">
-                  Editar
-                </button>
-              }
+
+              <div class="prescriptions-section__actions">
+                @if (prescription.status === 'DRAFT') {
+                  @if (canUpdate()) {
+                    <button type="button" class="btn btn-outline prescriptions-section__action" (click)="editPrescription.emit(prescription)">
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-primary prescriptions-section__action"
+                      [disabled]="busyPrescriptionId() !== null"
+                      (click)="emitPrescription.emit(prescription)"
+                    >
+                      Emitir e imprimir
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline prescriptions-section__action"
+                      [disabled]="busyPrescriptionId() !== null"
+                      (click)="voidPrescription.emit(prescription)"
+                    >
+                      Anular
+                    </button>
+                  }
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn-outline prescriptions-section__action"
+                    [disabled]="busyPrescriptionId() !== null"
+                    (click)="printPrescription.emit(prescription)"
+                  >
+                    Imprimir
+                  </button>
+                  @if (canUpdate()) {
+                    <button
+                      type="button"
+                      class="btn btn-outline prescriptions-section__action"
+                      [disabled]="busyPrescriptionId() !== null"
+                      (click)="redoPrescription.emit(prescription)"
+                    >
+                      Anular y rehacer
+                    </button>
+                  }
+                }
+                @if (pendingPdfId() === prescription.id) {
+                  <button type="button" class="btn btn-primary prescriptions-section__action" (click)="openPendingPdf.emit()">
+                    Abrir PDF
+                  </button>
+                }
+              </div>
             </li>
           }
         </ul>
@@ -69,6 +124,7 @@ import { Prescription } from '../../models/prescription.models';
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);
+      container-type: inline-size;
     }
 
     .prescriptions-section__header {
@@ -112,6 +168,7 @@ import { Prescription } from '../../models/prescription.models';
 
     .prescriptions-section__info {
       display: flex;
+      flex: 1 1 14rem;
       flex-direction: column;
       gap: var(--space-xs);
       min-width: 0;
@@ -160,8 +217,28 @@ import { Prescription } from '../../models/prescription.models';
       color: var(--color-text);
     }
 
-    .prescriptions-section__edit {
+    .prescriptions-section__actions {
+      display: flex;
+      flex: 0 1 auto;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: var(--space-xs);
+    }
+
+    .prescriptions-section__action {
       min-height: 44px;
+    }
+
+    /* Tarjeta angosta (teléfono): las acciones bajan debajo del resumen y ocupan todo el ancho. */
+    @container (max-width: 30rem) {
+      .prescriptions-section__actions {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .prescriptions-section__action {
+        flex: 1 1 auto;
+      }
     }
 
     .prescriptions-section__empty {
@@ -169,19 +246,34 @@ import { Prescription } from '../../models/prescription.models';
       color: var(--color-text-muted);
       margin: 0;
     }
+
+    .prescriptions-section__action:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 1px;
+    }
   `,
 })
 export class PrescriptionsSectionComponent {
   readonly prescriptions = input<Prescription[]>([]);
   readonly isLoading = input<boolean>(false);
   readonly loadError = input<string | null>(null);
+  readonly actionError = input<string | null>(null);
   readonly canCreate = input<boolean>(false);
   readonly canUpdate = input<boolean>(false);
   readonly hasDiagnoses = input<boolean>(false);
+  /** Receta con una acción en curso: mientras tanto las acciones de la lista están deshabilitadas. */
+  readonly busyPrescriptionId = input<string | null>(null);
+  /** Receta cuyo PDF espera un clic para abrirse (la pestaña fue bloqueada). */
+  readonly pendingPdfId = input<string | null>(null);
 
   readonly newPrescription = output<void>();
   readonly editPrescription = output<Prescription>();
   readonly retryLoad = output<void>();
+  readonly emitPrescription = output<Prescription>();
+  readonly printPrescription = output<Prescription>();
+  readonly openPendingPdf = output<void>();
+  readonly voidPrescription = output<Prescription>();
+  readonly redoPrescription = output<Prescription>();
 
   medicationNames(prescription: Prescription): string {
     return prescription.items.map((item) => item.medicationName).join(', ');

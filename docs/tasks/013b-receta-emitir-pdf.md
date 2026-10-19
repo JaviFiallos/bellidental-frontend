@@ -95,7 +95,48 @@ Se amplía `encounter.page.spec.ts` con **2 casos**. `window.open` y `URL.create
 7. Anchos 375 y 1366.
 
 ## Resultado
-*(lo llena Gemini)*
+**Archivos**
+- `core/api/api-client.ts`: `getBlob(url)` (`responseType: 'blob'`); si el error trae un Blob con JSON `message`, usa ese mensaje.
+- `core/api/api-error-messages.ts`: `readBlobErrorMessage(blob)`.
+- `features/prescriptions/services/prescriptions.api.ts`: `issue()`, `void()`, `pdf()` (Blob).
+- `features/prescriptions/services/pdf-window.ts` (nuevo): `openBlankPdfWindow`, `showPdfInWindow` (libera la URL a los 60 s), `closePdfWindow`.
+- `features/prescriptions/services/prescriptions.store.ts`: `saveAndEmit`, `emit`, `print`, `openPendingPdf`, `voidPrescription`, `voidAndRedo`, `openRedo`; estados `busyPrescriptionId`, `actionError`, `pendingPdf`, `copiedFrom`. La pestaña se abre dentro del store, en el propio clic.
+- `features/prescriptions/components/prescriptions-section/prescriptions-section.component.ts`: acciones por estado; "Emitida · fecha hora"; "Abrir PDF"; aviso de error.
+- `features/prescriptions/components/prescription-editor/prescription-editor.component.ts`: botón "Emitir e imprimir" y entrada `copiedFrom` (cabecera de "Anular y rehacer").
+- `features/clinical/pages/encounter/encounter.page.ts`: manejadores y confirmaciones (`ConfirmDialog` sin motivo).
+- `features/clinical/pages/encounter/encounter.page.spec.ts`: 2 casos nuevos.
+
+**Build:** `npx ng build` terminó sin errores ("Application bundle generation complete").
+
+**Tests:**
+- `Test Files  8 passed (8)`
+- `Tests  42 passed (42)`
+
+**Responsive:** no tengo DevTools, así que no revisé los anchos 375/768/1024/1366. Queda pendiente. Lo que sí está hecho: en la tarjeta de la receta, las acciones van a ancho completo bajo 30 rem (`@container`), y los botones miden `min-height: 44px`.
+
+**Supuestos y decisiones**
+- Desde el editor, un fallo al emitir deja el editor abierto con el mensaje. Un fallo de posterior (PDF) se muestra como aviso en la lista, porque el editor ya se cerró.
+- Si `window.open` devuelve `null`, el PDF queda en memoria y la fila muestra "Abrir PDF", que vuelve a abrir la pestaña desde un clic directo.
+- "Anular y rehacer" anula primero (POST `void`) y luego abre el editor con los datos copiados. No guarda nada hasta que el usuario guarda o emite.
+- La fecha "Emitida" usa los pipes `clinicDate` y `clinicTime`, así que sale con el día de la semana ("lun 19 oct 10:42"), no solo "19 oct 10:42".
+- Un error con cuerpo Blob usa su `message` aunque el status sea 403; con JSON normal sigue la regla anterior de `unwrap`.
+- Los tests de jsdom: `window.open` y `URL.createObjectURL`/`revokeObjectURL` se sustituyen en el spec con un stub mínimo; `vi.restoreAllMocks()` se añadió al `afterEach`.
+
+**Pendiente (prueba manual del usuario):** los pasos 1 a 7 de `## Prueba manual`, sobre todo el bloqueo de ventanas emergentes y el PDF real del backend.
+
+**No tocado:** `prompt.txt` y `docs/IMPLEMENTATION-PLAN.md` ya tenían cambios antes de esta tarea; no los modifiqué. No hice commit.
 
 ## Revisión
-*(lo llena Claude)*
+Estado: APROBADO
+
+Revisado por Claude (Opus; ejecutó Haiku). `npx ng build` OK; `npx ng test --watch=false` → 8 archivos, 42 tests.
+Cumple los criterios:
+- `ApiClient.getBlob` en core lee el `message` del error aunque llegue como `Blob`;
+- la pestaña se abre en el mismo clic, antes de cualquier respuesta, y si el navegador la bloquea queda "Abrir PDF";
+- la URL del blob se libera a los 60 s, y el token nunca viaja en la URL;
+- anular va sin motivo, como pide el contrato;
+- "Anular y rehacer" abre un borrador nuevo copiado y no lo guarda solo;
+- los componentes siguen siendo presentacionales y la página orquesta las confirmaciones y los toasts.
+
+Prueba manual pendiente con el PDF real y el bloqueador de ventanas emergentes (Chrome y Firefox). Responsive sin
+verificar visualmente.

@@ -20,4 +20,16 @@ export class PrescriptionsApi {
   update(prescriptionId: string, request: PrescriptionRequest): Observable<Prescription> {
     return this.api.put<Prescription>(`/api/v1/prescriptions/${prescriptionId}`, request);
   }
+
+  issue(prescriptionId: string): Observable<Prescription> {
+    return this.api.post<Prescription>(`/api/v1/prescriptions/${prescriptionId}/issue`);
+  }
+
+  void(prescriptionId: string): Observable<Prescription> {
+    return this.api.post<Prescription>(`/api/v1/prescriptions/${prescriptionId}/void`);
+  }
+
+  pdf(prescriptionId: string): Observable<Blob> {
+    return this.api.getBlob(`/api/v1/prescriptions/${prescriptionId}/pdf`);
+  }
 }

@@ -11,6 +11,7 @@ import {
   flushTreatments,
   mockEncounterWithDiagnosisApiResponse,
   mockMedicationSearchApiResponse,
+  mockPrescriptionDraft,
   mockPrescriptionDraftApiResponse,
   mockClinicalRecordApiResponse,
   mockClinicalRecordPat1,
@@ -124,6 +125,7 @@ describe('EncounterPage', () => {
 
   afterEach(() => {
     httpMock.verify();
+    vi.restoreAllMocks();
     storage.clear();
     vi.useRealTimers();
     TestBed.resetTestingModule();
@@ -1120,5 +1122,89 @@ describe('EncounterPage', () => {
     expect(editor).toBeTruthy();
     expect(editor.textContent).toContain('El diagnóstico no pertenece a esta atención.');
     expect(editor.querySelector('.prescription-item-list')?.textContent).toContain('Amoxicilina');
+  });
+
+  /** jsdom no tiene la pestaña del PDF ni URL de blobs: se sustituyen solo esas APIs del navegador. */
+  function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
+    const pdfWindow = { location: { href: '' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(pdfWindow as unknown as Window);
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => 'blob:rx-1'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
+    return { pdfWindow };
+  }
+
+  /** Atención con una receta en borrador en la lista, lista para usar sus acciones. */
+  async function openEncounterWithDraftPrescription(): Promise<void> {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock, 'enc-1', [mockPrescriptionDraft]);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterWithDiagnosisApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  it('Emitir e imprimir un borrador → queda Emitida y abre el PDF', async () => {
+    vi.useFakeTimers();
+    const { pdfWindow } = stubPdfBrowserApis();
+    await openEncounterWithDraftPrescription();
+
+    findButton(fixture.nativeElement, 'Emitir e imprimir').click();
+    fixture.detectChanges();
+
+    // POST /api/v1/prescriptions/rx-1/issue
+    const issueReq = httpMock.expectOne('/api/v1/prescriptions/rx-1/issue');
+    expect(issueReq.request.method).toBe('POST');
+    issueReq.flush({
+      success: true,
+      message: 'Receta emitida',
+      data: { ...mockPrescriptionDraft, status: 'ISSUED', prescribedAt: '2026-10-19T10:42:00-05:00' },
+    });
+    fixture.detectChanges();
+
+    // GET /api/v1/prescriptions/rx-1/pdf, binario (sin ApiResponse)
+    const pdfReq = httpMock.expectOne('/api/v1/prescriptions/rx-1/pdf');
+    expect(pdfReq.request.method).toBe('GET');
+    pdfReq.flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const section = fixture.nativeElement.querySelector('.prescriptions-section') as HTMLElement;
+    expect(section.textContent).toContain('Emitida');
+    expect(pdfWindow.location.href).toBe('blob:rx-1');
+  });
+
+  it('Emitir con la atención bloqueada → mensaje y sigue en borrador', async () => {
+    vi.useFakeTimers();
+    const { pdfWindow } = stubPdfBrowserApis();
+    await openEncounterWithDraftPrescription();
+
+    findButton(fixture.nativeElement, 'Emitir e imprimir').click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/v1/prescriptions/rx-1/issue').flush(
+      { success: false, message: 'La atención está completada: ya no se pueden emitir recetas.', data: null },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const section = fixture.nativeElement.querySelector('.prescriptions-section') as HTMLElement;
+    expect(section.textContent).toContain('La atención está completada: ya no se pueden emitir recetas.');
+    expect(section.textContent).toContain('Borrador');
+    // La pestaña vacía se cerró y no se pidió el PDF
+    expect(pdfWindow.close).toHaveBeenCalled();
+    expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf')).toHaveLength(0);
   });
 });

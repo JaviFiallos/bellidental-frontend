@@ -82,8 +82,11 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
 
       <footer class="prescription-editor__footer">
         <button type="button" class="btn btn-outline prescription-editor__btn" (click)="close.emit()">Cancelar</button>
-        <button type="button" class="btn btn-primary prescription-editor__btn" [disabled]="!canSave()" (click)="onSave()">
+        <button type="button" class="btn btn-outline prescription-editor__btn" [disabled]="!canSave()" (click)="onSave()">
           {{ saving() ? 'Guardando…' : 'Guardar borrador' }}
+        </button>
+        <button type="button" class="btn btn-primary prescription-editor__btn" [disabled]="!canSave()" (click)="onSaveAndEmit()">
+          {{ saving() ? 'Emitiendo…' : 'Emitir e imprimir' }}
         </button>
       </footer>
     </div>
@@ -177,6 +180,8 @@ export class PrescriptionEditorComponent implements OnInit {
 
   readonly diagnoses = input<DiagnosisOption[]>([]);
   readonly prescription = input<Prescription | null>(null);
+  /** Receta anulada de la que se copian diagnóstico e indicaciones ("Anular y rehacer"). */
+  readonly copiedFrom = input<Prescription | null>(null);
   readonly items = input<DraftItem[]>([]);
   readonly editingItem = input<DraftItem | null>(null);
   readonly editingItemIndex = input<number | null>(null);
@@ -192,6 +197,7 @@ export class PrescriptionEditorComponent implements OnInit {
   readonly removeItem = output<number>();
   readonly cancelItemEdit = output<void>();
   readonly save = output<PrescriptionHeaderDraft>();
+  readonly saveAndEmit = output<PrescriptionHeaderDraft>();
   readonly close = output<void>();
 
   readonly shortcuts = GENERAL_INSTRUCTION_SHORTCUTS;
@@ -202,10 +208,10 @@ export class PrescriptionEditorComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const prescription = this.prescription();
+    const source = this.prescription() ?? this.copiedFrom();
     this.header.reset({
-      encounterDiagnosisId: prescription?.encounterDiagnosisId ?? this.diagnoses()[0]?.id ?? '',
-      generalInstructions: prescription?.generalInstructions ?? '',
+      encounterDiagnosisId: source?.encounterDiagnosisId ?? this.diagnoses()[0]?.id ?? '',
+      generalInstructions: source?.generalInstructions ?? '',
     });
   }
 
@@ -221,10 +227,19 @@ export class PrescriptionEditorComponent implements OnInit {
 
   onSave(): void {
     if (!this.canSave()) return;
+    this.save.emit(this.currentHeader());
+  }
+
+  onSaveAndEmit(): void {
+    if (!this.canSave()) return;
+    this.saveAndEmit.emit(this.currentHeader());
+  }
+
+  private currentHeader(): PrescriptionHeaderDraft {
     const value = this.header.getRawValue();
-    this.save.emit({
+    return {
       encounterDiagnosisId: value.encounterDiagnosisId,
       generalInstructions: value.generalInstructions,
-    });
+    };
   }
 }
