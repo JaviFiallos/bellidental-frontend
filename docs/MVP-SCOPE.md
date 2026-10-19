@@ -24,26 +24,40 @@ Plan: `docs/IMPLEMENTATION-PLAN.md`. Contexto y visibilidad por rol: `docs/CONTE
 | P8 | Inicio odontólogo: tablero de sus citas por estado | ODONTOLOGO, DIRECTOR | RF07 | lista (ver G1) |
 | P9 | Atención: paciente + antecedentes, motivo, diagnósticos CIE-10, completar | ODONTOLOGO, DIRECTOR | RF01, RF03 | lista |
 | P10 | Odontograma tipo 033 (registro y lectura) | ODONTOLOGO, DIRECTOR | RF02 | lista |
-| P11 | Tratamientos en la atención | ODONTOLOGO, DIRECTOR | RF04 | backend 010 |
-| P12 | Receta + PDF | ODONTOLOGO, DIRECTOR | RF04, RF05 | backend 011 |
-| P13 | Ficha clínica / historial inmediato | ODONTOLOGO, DIRECTOR | RF06 | backend clinical-summary |
-| P14 | Cobro de abono y comprobante PDF | SECRETARIA | RF08 | backend 012 |
+| P11 | Tratamientos en la atención (ligados a diagnóstico y hallazgo) | ODONTOLOGO, DIRECTOR | RF04, RF02 | lista (backend 010a, 010b) |
+| P12 | Receta (borrador → emitida) + PDF | ODONTOLOGO, DIRECTOR | RF04, RF05 | lista (backend 011a, 011b) |
+| P13 | Ficha clínica / historial inmediato | ODONTOLOGO, DIRECTOR | RF06 | falta (backend clinical-summary) |
+| P14 | Cobro de abono y comprobante PDF | SECRETARIA | RF08 | falta (backend 012) |
 | P15 | "Más del 033": signos, examen, indicadores, planes (editable después) | ODONTOLOGO, DIRECTOR | RF01 | lista |
 | P16 | Estadísticas de la clínica | DIRECTOR | (gestión) | falta (G-6) |
 | P17 | Auditoría: quién cambió qué y cuándo | DIRECTOR | RNF02 | backend 013 + G-7 |
 
+## Bot de WhatsApp (RF10–RF15): sin pantallas
+El bot es un agente Python aparte que habla con el backend por `/api/v1/bot/*` (backend D-19). No tiene interfaz
+en este frontend:
+- **No hay bandeja de mensajes entrantes.** La conversación vive solo en el agente (en memoria, 30 min) y no se
+  guarda en la base. Cuando el bot no puede resolver algo (preguntas clínicas, saldos, paciente nuevo, límites),
+  **deriva**: envía al paciente el enlace `wa.me` del WhatsApp de recepción, que sigue atendiéndose en su teléfono.
+- **Lo que hace el bot se ve en la agenda** (ya implementado): citas con `source=BOT` (ícono y "Agendada por el
+  bot"), confirmaciones y cancelaciones del recordatorio como cambios de estado, y reprogramaciones con su cita
+  nueva. La agenda se refresca sola.
+- Urgencias por el bot: la cita aparece en la agenda como cualquier otra; no hay aviso aparte (backend D-21b).
+- Estado del recordatorio y consentimiento del aviso de privacidad: sin UI en el MVP (G-10 del plan, opcional).
+
 ## Fuera del MVP (no implementar)
-Registro de usuarios y gestión de permisos · pantallas del bot (el bot no tiene UI) · impresión del 033 (RF09) ·
-pantalla de exportación y respaldos (backend 018 sin UI) · notificaciones en tiempo real
-(WebSocket) · modo oscuro · PWA/offline del navegador (el servidor está en la LAN) · i18n (solo español).
+Registro de usuarios y gestión de permisos · pantallas del bot (bandeja, conversaciones, configuración) ·
+impresión del 033 (RF09) · pantalla de exportación y respaldos (backend 018 sin UI) · notificaciones en tiempo real
+(WebSocket) · modo oscuro · PWA/offline del navegador (sin internet se usa la contingencia en papel) · i18n (solo
+español).
 
 ## Decisiones (no cambiar sin aprobación)
 - Tres perfiles (secretaria, odontólogo, director); menús por perfil, acciones por permiso.
 - Angular 22 standalone + signals; sin librería de componentes; `@angular/cdk` para overlays, diálogos y a11y.
 - Sesión en `localStorage` que expira a las 24 h; sin unit tests (solo integración de página + prueba manual).
 - Paleta azulada de la marca con antagonistas dorado/coral (plan §2.3).
-- Sin recursos de internet en tiempo de ejecución: fuentes e íconos locales (la clínica funciona sin internet).
-- API por URL relativa `/api/v1` (proxy en desarrollo, nginx en producción).
+- Sin recursos de terceros en tiempo de ejecución (CDN, Google Fonts): fuentes e íconos locales (privacidad y
+  menos puntos de fallo). El sistema vive en un VPS (backend D-17) y se usa por HTTPS desde el navegador.
+- API por URL relativa `/api/v1` (proxy en desarrollo; Caddy + nginx en el VPS en producción).
 - La secretaria nunca ve datos clínicos: ni antecedentes, ni odontograma, ni diagnósticos (AM 5216-A, RNF03).
 - La atención muestra solo lo esencial del 033; el resto se completa después en "Más del 033".
 - Odontograma con la disposición y simbología del formulario 033 (pedido del odontólogo).

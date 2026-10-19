@@ -27,7 +27,7 @@ su odontograma y simbología, la separación de datos clínicos que exige el AM 
 antecedentes, odontograma ni diagnósticos) y un bot que también agenda citas.
 
 ## Operating Context
-- Funciona en la LAN de la clínica, sin internet: fuentes, íconos y recursos son locales.
+- Vive en un VPS y se usa por HTTPS; fuentes, íconos y recursos se sirven desde el propio sistema (nada de terceros).
 - Hoy: Google Calendar compartido con un color por doctor; ficha rápida en papel (filiación, antecedentes,
   odontograma, tabla fecha/Dg./tratamiento/doctor/abono/saldo/firma); formulario 033; receta manuscrita.
 - La agenda la modifican la recepción, los profesionales y el bot, así que puede cambiar sin que la secretaria
@@ -62,7 +62,7 @@ antecedentes, odontograma ni diagnósticos) y un bot que también agenda citas.
 2. La acción frecuente va a un clic; las raras y destructivas, detrás de una confirmación.
 3. El color nunca va solo: el estado siempre lleva etiqueta o ícono.
 4. Lo clínico es del odontólogo: la recepción no lo ve, ni de reojo.
-5. Funciona sin internet y con interrupciones: lo que está en pantalla es la verdad actual (refresco periódico,
+5. Ante cortes de conexión, lo que está en pantalla es la verdad actual (refresco periódico,
    errores visibles, nunca silenciosos).
 
 ## Accessibility & Inclusion

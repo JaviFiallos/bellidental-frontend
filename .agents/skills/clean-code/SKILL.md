@@ -14,7 +14,8 @@
   sueltos en componentes, salvo los colores clínicos que llegan del catálogo del odontograma.
 - Sin dependencias nuevas sin que la tarea lo diga. Permitidas: `@angular/cdk` (overlay, dialog, a11y),
   `lucide-angular` (íconos), `@fontsource/*` (fuentes).
-- Sin recursos externos en tiempo de ejecución (CDN, Google Fonts): el sistema corre en la LAN sin internet.
+- Sin recursos externos en tiempo de ejecución (CDN, Google Fonts): privacidad de datos de salud y menos puntos de
+  fallo (el sistema vive en un VPS, backend D-17).
   Fuentes e íconos van en `public/` o `src/assets/`.
 - Errores de la API: se muestran con el `message` del backend; 403 → "No tienes permiso"; 0 → "No se pudo conectar con
   el servidor". Nunca un error silencioso.
