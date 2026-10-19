@@ -7,19 +7,26 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { SessionStore } from '../../../../core/auth/session.store';
 import {
   flushOdontogram,
+  flushTreatments,
   mockClinicalRecordApiResponse,
   mockClinicalRecordPat1,
   mockConditionsApiResponse,
   mockDiagnosisApiResponse,
+  mockDiagnosisK02,
   mockEncounterApiResponse,
+  mockEncounterOpen,
   mockEncounterCompletedApiResponse,
   mockIcd10SearchApiResponse,
   mockOdontogramCatalog,
   mockPatientApiResponse,
   mockPatientOdontogramEmpty,
   mockPatientOdontogramWithFindings,
+  mockPerformedResina,
+  mockTreatmentCatalogApiResponse,
+  mockTreatmentResina,
 } from '../../testing/fixtures';
 import { Finding, PatientOdontogram } from '../../../odontogram';
+import { ApplicationRef } from '@angular/core';
 
 import { EncounterPage } from './encounter.page';
 
@@ -121,6 +128,7 @@ describe('EncounterPage', () => {
   it('carga la atención → cabecera con antecedentes y motivo', async () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // 1. GET /api/v1/encounters/enc-1
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -159,6 +167,7 @@ describe('EncounterPage', () => {
 
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // Carga inicial
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -219,6 +228,7 @@ describe('EncounterPage', () => {
   it('completa la atención → POST y navega a /consultorio', async () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // Carga inicial con atención que ya tiene motivo y diagnóstico
     const encounterWithDiag = {
@@ -267,6 +277,7 @@ describe('EncounterPage', () => {
   it('registra un antecedente familiar → POST y aparece en la cabecera', async () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // Carga inicial con historia clínica sin antecedentes activos y sin noKnownHistory
     const clinicalRecordEmpty = {
@@ -366,6 +377,7 @@ describe('EncounterPage', () => {
   it('marcar "no refiere" cuando otra sesión registró un antecedente → 409, mensaje y recarga', async () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // Con la historia sin entradas activas y noKnownHistory: false
     const clinicalRecordEmpty = {
@@ -463,6 +475,7 @@ describe('EncounterPage', () => {
   it('carga el odontograma → caras pintadas, grados e índices', async () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // 1. Carga inicial de la atención
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -541,6 +554,7 @@ describe('EncounterPage', () => {
 
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // Carga inicial de la atención
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -657,6 +671,7 @@ describe('EncounterPage', () => {
 
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
+    flushTreatments(httpMock);
 
     // Carga inicial de la atención
     httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
@@ -751,5 +766,111 @@ describe('EncounterPage', () => {
       compiled.querySelector('[role="img"][aria-label="Prótesis fija de 15 a 13 (Realizado)"]')
     ).toBeTruthy();
     expect(compiled.querySelector('bd-span-notice')).toBeNull();
+  });
+
+  it('registra un tratamiento → aparece con su total', async () => {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+
+    // Atención con un diagnóstico activo (K02.1) para ligar el tratamiento
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, diagnoses: [mockDiagnosisK02] },
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+
+    // Foco en el buscador → GET /api/v1/treatments (catálogo completo, sin query)
+    const searchInput = fixture.nativeElement.querySelector(
+      '.treatments-section .combobox-input'
+    ) as HTMLInputElement;
+    searchInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    const catalogReq = httpMock.expectOne('/api/v1/treatments');
+    expect(catalogReq.request.method).toBe('GET');
+    catalogReq.flush(mockTreatmentCatalogApiResponse);
+    fixture.detectChanges();
+
+    // Escribir "resina" y elegir D2330
+    searchInput.value = 'resina';
+    searchInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    const option = document.querySelector('.combobox-option') as HTMLElement;
+    expect(option.textContent).toContain('D2330');
+    option.click();
+    fixture.detectChanges();
+
+    // Cantidad 2 (precio y diagnóstico ya vienen puestos)
+    const quantityInput = fixture.nativeElement.querySelector('#treatment-quantity') as HTMLInputElement;
+    quantityInput.value = '2';
+    quantityInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    // Registrar → POST con el body exacto
+    const registerButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.trim() === 'Registrar') as HTMLButtonElement;
+    registerButton.click();
+
+    const recordReq = httpMock.expectOne('/api/v1/encounters/enc-1/treatments');
+    expect(recordReq.request.method).toBe('POST');
+    expect(recordReq.request.body).toEqual({
+      treatmentId: 1,
+      quantity: 2,
+      price: 30,
+      encounterDiagnosisId: 'diag-1',
+    });
+    recordReq.flush({ success: true, message: 'Tratamiento registrado', data: mockPerformedResina });
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('D2330');
+    expect(compiled.textContent).toContain('Total de la sesión');
+    expect(compiled.textContent).toContain('$ 60,00');
+  });
+
+  it('anula tratamiento con motivo → se quita de la lista y el total es $ 0,00', async () => {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock, 'enc-1', [mockPerformedResina]);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('$ 60,00');
+
+    // Anular → diálogo con motivo obligatorio
+    const voidButton = compiled.querySelector('.treatment-list__void') as HTMLButtonElement;
+    voidButton.click();
+    fixture.detectChanges();
+
+    const reasonInput = document.querySelector('.confirm-dialog__textarea') as HTMLTextAreaElement;
+    reasonInput.value = 'Error de digitación';
+    reasonInput.dispatchEvent(new Event('input'));
+    TestBed.inject(ApplicationRef).tick();
+
+    const confirmButton = document.querySelector('.confirm-dialog .btn-danger') as HTMLButtonElement;
+    confirmButton.click();
+
+    // POST /api/v1/performed-treatments/{id}/void con { voidReason }
+    const voidReq = httpMock.expectOne('/api/v1/performed-treatments/pt-1/void');
+    expect(voidReq.request.method).toBe('POST');
+    expect(voidReq.request.body).toEqual({ voidReason: 'Error de digitación' });
+    voidReq.flush({ success: true, message: 'Tratamiento anulado', data: null });
+    fixture.detectChanges();
+
+    expect(compiled.querySelector('.treatment-list__void')).toBeNull();
+    expect(compiled.textContent).toContain('$ 0,00');
   });
 });

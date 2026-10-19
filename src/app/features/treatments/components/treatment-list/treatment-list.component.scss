@@ -1,0 +1,103 @@
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.treatment-list__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.treatment-list__table th,
+.treatment-list__table td {
+  text-align: start;
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.treatment-list__table th {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.treatment-list__total {
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.treatment-list__action {
+  text-align: end;
+}
+
+.treatment-list__void {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 0.9rem;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.treatment-list__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Menos de 600 px del contenedor: cada fila es una tarjeta */
+@container (max-width: 37.49rem) {
+  .treatment-list__table thead {
+    display: none;
+  }
+
+  .treatment-list__table,
+  .treatment-list__table tbody,
+  .treatment-list__table tr,
+  .treatment-list__table td {
+    display: block;
+    width: 100%;
+  }
+
+  .treatment-list__table tr {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs) var(--space-sm);
+    margin-bottom: var(--space-sm);
+  }
+
+  .treatment-list__table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+    border-bottom: none;
+    padding: var(--space-xs) 0;
+  }
+
+  .treatment-list__table td::before {
+    content: attr(data-label);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  .treatment-list__action {
+    justify-content: flex-end;
+  }
+
+  .treatment-list__action::before {
+    content: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .treatment-list__void {
+    transition: none;
+  }
+}

@@ -143,7 +143,70 @@ Se amplía `encounter.page.spec.ts` con **2 casos**. Los casos existentes solo a
 8. Anchos 375, 1024 y 1366.
 
 ## Resultado
-*(lo llena Gemini)*
+Ejecutado por Haiku 5.5 (sustituye a Gemini por encargo explícito del usuario). Segunda pasada: correcciones de la Revisión.
+
+**Correcciones aplicadas**
+1. `TreatmentsSectionComponent` es presentacional: sin `inject`. Estado por `input()` (items, isLoading, loadError,
+   sessionTotal, actionError, voiding, query, results, catalogLoading, catalogError, selectedTreatment, selectedTooth,
+   saving, saveError, diagnoses, isReadOnly) y salidas `catalogRequest`, `queryChange`, `pick`, `cancel`, `register`,
+   `voidRequest`, `retryLoad`. Método público `focusSearch()`.
+   `onRegisterTreatment` y `onVoidTreatment` (ConfirmDialogService + NotificationService) están en `encounter.page.ts`.
+   La página llama `focusSearch()` tras registrar vía `viewChild(TreatmentsSectionComponent)`.
+   La página pasa los datos del `TreatmentsStore` a la sección; no hay cambios en tests.
+2. Validador de `toothCode`: `Validators.min(11)` y `Validators.max(85)`; mensaje y hint actualizados (temporales 51–85).
+
+**Archivos creados**
+- `src/app/shared/pipes/money.pipe.ts`
+- `src/app/features/treatments/index.ts`, `models/treatment.models.ts`, `services/treatments.api.ts`, `services/treatments.store.ts`
+- `src/app/features/treatments/components/treatments-section/treatments-section.component.ts`
+- `src/app/features/treatments/components/treatment-form/treatment-form.component.ts`
+- `src/app/features/treatments/components/treatment-list/treatment-list.component.ts` y `.scss`
+
+**Archivos modificados**
+- `src/app/shared/components/confirm-dialog/confirm-dialog.component.ts`: `reasonRequired?: boolean`.
+- `src/app/features/clinical/pages/encounter/encounter.page.ts`: providers, `<bd-treatments-section>` con bindings y salidas, `toothActivate`, `diagnosisOptions`, `treatmentsSection` viewChild, `onRegisterTreatment`, `onVoidTreatment`, `load` en `ngOnInit`.
+- `src/app/features/clinical/pages/encounter/encounter.page.spec.ts`: +2 casos; los 8 existentes con `flushTreatments`.
+- `src/app/features/clinical/testing/fixtures.ts`: catálogo, `mockPerformedResina`, `flushTreatments`.
+- `docs/tasks/012a-tratamientos-registro.md`: esta sección.
+
+**Totales (copiados de la consola)**
+- `npx ng build`: exit 0, `Application bundle generation complete.`
+- `npx ng test --watch=false`: `Test Files  8 passed (8)` / `Tests  37 passed (37)`
+
+**Responsive (no verificado visualmente)**
+Sin DevTools. Formulario: 1 columna; `@container (min-width: 36rem)` → 3; `(min-width: 60rem)` → 6. Lista: tarjetas con `@container (max-width: 37.49rem)`. Inputs y botones con `min-height: 44px`.
+
+**Pendiente**
+Revisión manual en 375, 768, 1024 y 1366, y teclado en "Registrar". No hice commit.
 
 ## Revisión
-*(lo llena Claude)*
+
+Estado: CORRECCIONES
+
+Revisado por Claude (Opus). Store, API, pipe `money`, `reasonRequired` y tests (37/37) están bien; `treatments` no
+importa de `clinical`. Faltan dos cosas:
+
+1. **`TreatmentsSectionComponent` no puede inyectar servicios** (`architecture/SKILL.md`: los componentes son
+   presentacionales; la tarea lo pedía). Además, la 012b necesita que la página sepa cuándo se registró un
+   tratamiento, para recargar el odontograma. Cambios:
+   - la sección recibe por `input()` lo que hoy lee del store (items, loading, loadError, results, catalogLoading,
+     catalogError, selectedTreatment, selectedTooth, saving, saveError, actionError, sessionTotal) y emite
+     `catalogRequest`, `queryChange`, `pick`, `cancel`, `register`, `voidRequest` y `retryLoad`;
+   - `onRegister` y `onVoidRequested` (con `ConfirmDialogService` y `NotificationService`) pasan a
+     `encounter.page.ts`, igual que `onRegisterFinding`/`onVoidFinding` del odontograma;
+   - el foco en el buscador tras registrar: la sección expone un método público `focusSearch()` y la página lo llama
+     con `viewChild(TreatmentsSectionComponent)`.
+   - Los tests no deberían cambiar.
+2. **Piezas temporales:** el validador de `toothCode` admite de 11 a 48 y deja fuera las temporales (51–85), que
+   el backend sí acepta. Cambiar a `min(11)`/`max(85)` (el backend valida que la pieza exista).
+
+### Ronda 2
+Estado: APROBADO
+
+Correcciones 1–2 aplicadas:
+- la sección ya no inyecta servicios;
+- registrar y anular los orquesta la página, que también llama a `focusSearch()`;
+- `toothCode` acepta de 11 a 85.
+
+`npx ng build` OK; `npx ng test --watch=false` → 8 archivos, 37 tests.
+Pendiente del usuario: responsive y teclado en la prueba manual (Haiku no tiene DevTools).

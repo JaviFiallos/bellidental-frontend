@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   OnInit,
+  viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SessionStore } from '../../../../core/auth/session.store';
@@ -23,6 +24,13 @@ import {
   OdontogramComponent,
   OdontogramStore,
 } from '../../../odontogram';
+import {
+  DiagnosisOption,
+  PerformedTreatment,
+  RecordTreatmentRequest,
+  TreatmentsSectionComponent,
+  TreatmentsStore,
+} from '../../../treatments';
 import { CompleteBarComponent } from '../../components/complete-bar/complete-bar.component';
 import { DiagnosisListComponent } from '../../components/diagnosis-list/diagnosis-list.component';
 import { EncounterExtraComponent } from '../../components/encounter-extra/encounter-extra.component';
@@ -49,6 +57,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     OdontogramComponent,
     EncounterNotesComponent,
     DiagnosisListComponent,
+    TreatmentsSectionComponent,
     EncounterExtraComponent,
     CompleteBarComponent,
     SideSheetComponent,
@@ -56,7 +65,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     ClinicDatePipe,
     ClinicTimePipe,
   ],
-  providers: [EncounterStore, HistoryPanelStore, OdontogramStore],
+  providers: [EncounterStore, HistoryPanelStore, OdontogramStore, TreatmentsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="encounter-page">
@@ -165,6 +174,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
                 [lastAction]="odontogramStore.lastAction()"
                 (registerFinding)="onRegisterFinding($event)"
                 (voidFinding)="onVoidFinding($event)"
+                (toothActivate)="treatmentsStore.selectTooth($event)"
               />
             }
           </section>
@@ -192,6 +202,33 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (queryChange)="store.searchIcd10($event)"
             (addDiagnosis)="onAddDiagnosis($event)"
             (voidDiagnosis)="onVoidDiagnosis($event)"
+          />
+
+          <!-- 4b. Tratamientos: catálogo, registro, total y anulación -->
+          <bd-treatments-section
+            [diagnoses]="diagnosisOptions()"
+            [isReadOnly]="store.isReadOnly()"
+            [items]="treatmentsStore.items()"
+            [isLoading]="treatmentsStore.loading()"
+            [loadError]="treatmentsStore.loadError()"
+            [sessionTotal]="treatmentsStore.sessionTotal()"
+            [actionError]="treatmentsStore.actionError()"
+            [voiding]="treatmentsStore.voiding()"
+            [query]="treatmentsStore.query()"
+            [results]="treatmentsStore.results()"
+            [catalogLoading]="treatmentsStore.catalogLoading()"
+            [catalogError]="treatmentsStore.catalogError()"
+            [selectedTreatment]="treatmentsStore.selectedTreatment()"
+            [selectedTooth]="treatmentsStore.selectedTooth()"
+            [saving]="treatmentsStore.saving()"
+            [saveError]="treatmentsStore.saveError()"
+            (catalogRequest)="treatmentsStore.ensureCatalog()"
+            (queryChange)="treatmentsStore.setQuery($event)"
+            (pick)="treatmentsStore.pickTreatment($event)"
+            (cancel)="treatmentsStore.clearSelection()"
+            (register)="onRegisterTreatment($event)"
+            (voidRequest)="onVoidTreatment($event)"
+            (retryLoad)="treatmentsStore.reload()"
           />
 
           <!-- 5. Más del 033: signos vitales, examen, indicadores y planes (plegado) -->
@@ -340,6 +377,7 @@ export class EncounterPage implements OnInit {
   readonly store = inject(EncounterStore);
   readonly historyStore = inject(HistoryPanelStore);
   readonly odontogramStore = inject(OdontogramStore);
+  readonly treatmentsStore = inject(TreatmentsStore);
   private readonly sessionStore = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -352,6 +390,15 @@ export class EncounterPage implements OnInit {
 
   readonly odontogramCanVoid = computed<boolean>(() => {
     return this.sessionStore.hasPermission('RECORD_UPDATE');
+  });
+
+  readonly treatmentsSection = viewChild(TreatmentsSectionComponent);
+
+  readonly diagnosisOptions = computed<DiagnosisOption[]>(() => {
+    return this.store.activeDiagnoses().map((diagnosis) => ({
+      id: diagnosis.id,
+      label: `${diagnosis.code} · ${diagnosis.description}`,
+    }));
   });
 
   private lastLoadedPatientId: string | null = null;
@@ -371,6 +418,7 @@ export class EncounterPage implements OnInit {
     const encounterId = this.route.snapshot.paramMap.get('encounterId');
     if (encounterId) {
       this.store.load(encounterId);
+      this.treatmentsStore.load(encounterId);
     }
   }
 
@@ -464,6 +512,36 @@ export class EncounterPage implements OnInit {
     this.historyStore.setNoKnownHistory(val).subscribe({
       error: () => {},
     });
+  }
+
+  onRegisterTreatment(request: RecordTreatmentRequest): void {
+    this.treatmentsStore.record(request).subscribe({
+      next: () => {
+        this.notificationService.success('Tratamiento registrado');
+        this.treatmentsSection()?.focusSearch();
+      },
+      error: () => {},
+    });
+  }
+
+  onVoidTreatment(item: PerformedTreatment): void {
+    this.confirmDialog
+      .open({
+        title: 'Anular tratamiento',
+        message: `${item.treatmentCode} · ${item.treatmentName} dejará de contar en el total de la sesión.`,
+        tone: 'danger',
+        confirmLabel: 'Anular',
+        reasonLabel: 'Motivo de la anulación',
+        reasonRequired: true,
+      })
+      .subscribe((result) => {
+        if (!result.confirmed || !result.reason) return;
+
+        this.treatmentsStore.void(item, result.reason.trim()).subscribe({
+          next: (message) => this.notificationService.success(message || 'Tratamiento anulado'),
+          error: () => {},
+        });
+      });
   }
 
   onRegisterFinding(req: CreateFindingRequest): void {

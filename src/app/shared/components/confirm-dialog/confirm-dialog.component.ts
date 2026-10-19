@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -14,6 +15,7 @@ export interface ConfirmDialogOptions {
   cancelLabel?: string;
   tone?: 'danger' | 'primary';
   reasonLabel?: string;
+  reasonRequired?: boolean;
 }
 
 export interface ConfirmDialogResult {
@@ -67,6 +69,7 @@ let nextDialogId = 0;
           class="btn confirm-dialog__btn"
           [class.btn-danger]="data.tone === 'danger'"
           [class.btn-primary]="data.tone !== 'danger'"
+          [disabled]="confirmDisabled()"
           (click)="onConfirm()"
         >
           {{ data.confirmLabel || 'Confirmar' }}
@@ -181,11 +184,16 @@ export class ConfirmDialogComponent {
 
   readonly reason = signal<string>('');
 
+  readonly confirmDisabled = computed<boolean>(
+    () => !!this.data.reasonRequired && this.reason().trim().length === 0
+  );
+
   onCancel(): void {
     this.dialogRef.close({ confirmed: false });
   }
 
   onConfirm(): void {
+    if (this.confirmDisabled()) return;
     this.dialogRef.close({
       confirmed: true,
       reason: this.data.reasonLabel ? this.reason() : undefined,

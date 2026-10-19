@@ -11,6 +11,10 @@ import { Patient } from '../../patients';
 import { ClinicalRecord } from '../models/clinical-record.models';
 import { Diagnosis, Encounter } from '../models/encounter.models';
 import { Icd10Code } from '../models/icd10.models';
+import {
+  PerformedTreatment,
+  Treatment,
+} from '../../treatments';
 
 export const mockEncounterOpen: Encounter = {
   id: 'enc-1',
@@ -627,3 +631,52 @@ export function flushOdontogram(
   );
 }
 
+export const mockTreatmentResina: Treatment = {
+  id: 1,
+  code: 'D2330',
+  name: 'Resina compuesta, 1 superficie',
+  description: null,
+  basePrice: 30,
+};
+
+export const mockTreatmentProfilaxis: Treatment = {
+  id: 2,
+  code: 'D1110',
+  name: 'Profilaxis',
+  description: null,
+  basePrice: 25,
+};
+
+export const mockTreatmentCatalogApiResponse: ApiResponse<Treatment[]> = {
+  success: true,
+  message: 'Catálogo de tratamientos obtenido',
+  data: [mockTreatmentResina, mockTreatmentProfilaxis],
+};
+
+export const mockPerformedResina: PerformedTreatment = {
+  id: 'pt-1',
+  encounterId: 'enc-1',
+  treatmentId: 1,
+  treatmentCode: 'D2330',
+  treatmentName: 'Resina compuesta, 1 superficie',
+  encounterDiagnosisId: 'diag-1',
+  dentalFindingId: null,
+  toothCode: null,
+  surfaceCode: null,
+  quantity: 2,
+  price: 30,
+  total: 60,
+  notes: null,
+  createdAt: '2026-10-12T09:30:00-05:00',
+};
+
+/** Responde GET /encounters/{id}/treatments (por defecto, lista vacía). */
+export function flushTreatments(
+  httpMock: HttpTestingController,
+  encounterId = 'enc-1',
+  treatments: PerformedTreatment[] = []
+): void {
+  httpMock.match(`/api/v1/encounters/${encounterId}/treatments`).forEach((req) =>
+    req.flush({ success: true, message: 'Tratamientos obtenidos', data: treatments })
+  );
+}
