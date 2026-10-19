@@ -7,7 +7,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { SessionStore } from '../../../../core/auth/session.store';
 import {
   flushOdontogram,
+  flushPrescriptions,
   flushTreatments,
+  mockEncounterWithDiagnosisApiResponse,
+  mockMedicationSearchApiResponse,
+  mockPrescriptionDraftApiResponse,
   mockClinicalRecordApiResponse,
   mockClinicalRecordPat1,
   mockConditionsApiResponse,
@@ -129,6 +133,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // 1. GET /api/v1/encounters/enc-1
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -168,6 +173,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Carga inicial
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -229,6 +235,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Carga inicial con atención que ya tiene motivo y diagnóstico
     const encounterWithDiag = {
@@ -278,6 +285,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Carga inicial con historia clínica sin antecedentes activos y sin noKnownHistory
     const clinicalRecordEmpty = {
@@ -378,6 +386,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Con la historia sin entradas activas y noKnownHistory: false
     const clinicalRecordEmpty = {
@@ -476,6 +485,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // 1. Carga inicial de la atención
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -555,6 +565,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Carga inicial de la atención
     const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
@@ -685,6 +696,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
     httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
@@ -791,6 +803,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Carga inicial de la atención
     httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
@@ -891,6 +904,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
 
     // Atención con un diagnóstico activo (K02.1) para ligar el tratamiento
     httpMock.expectOne('/api/v1/encounters/enc-1').flush({
@@ -956,6 +970,7 @@ describe('EncounterPage', () => {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock, 'enc-1', [mockPerformedResina]);
+    flushPrescriptions(httpMock);
 
     httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterApiResponse);
     httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
@@ -991,5 +1006,119 @@ describe('EncounterPage', () => {
 
     expect(compiled.querySelector('.treatment-list__void')).toBeNull();
     expect(compiled.textContent).toContain('$ 0,00');
+  });
+
+  /** Abre "Nueva receta", busca "amo", elige amoxicilina (preset ya elegido), cantidad y "Agregar"; deja el editor listo para guardar. */
+  async function armAmoxicilinaPrescription(): Promise<void> {
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterWithDiagnosisApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Nueva receta').click();
+    fixture.detectChanges();
+
+    const medicationInput = fixture.nativeElement.querySelector(
+      '.prescription-item-form .combobox-input'
+    ) as HTMLInputElement;
+    medicationInput.value = 'amo';
+    medicationInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    vi.advanceTimersByTime(250);
+
+    const searchReq = httpMock.expectOne('/api/v1/medications?query=amo');
+    expect(searchReq.request.method).toBe('GET');
+    searchReq.flush(mockMedicationSearchApiResponse);
+    fixture.detectChanges();
+
+    const amoxicilinaOption = Array.from(
+      document.querySelectorAll<HTMLElement>('.combobox-option')
+    ).find((option) => option.textContent?.includes('Amoxicilina'));
+    expect(amoxicilinaOption, 'opción Amoxicilina').toBeTruthy();
+    amoxicilinaOption!.click();
+    fixture.detectChanges();
+
+    // Con un solo preset, viene elegido (botón con aria-pressed)
+    const presetButton = fixture.nativeElement.querySelector(
+      '.prescription-item-form [aria-pressed="true"]'
+    ) as HTMLElement;
+    expect(presetButton.textContent).toContain('Cada 8 h × 7 días');
+
+    typeInto(fixture.nativeElement, '#prescription-quantity', '21 cápsulas');
+    findButton(fixture.nativeElement, 'Agregar').click();
+    fixture.detectChanges();
+  }
+
+  function findButton(root: HTMLElement, text: string): HTMLButtonElement {
+    const button = Array.from(root.querySelectorAll('button')).find(
+      (candidate) => candidate.textContent?.trim() === text
+    );
+    expect(button, `botón "${text}"`).toBeTruthy();
+    return button as HTMLButtonElement;
+  }
+
+  function typeInto(root: HTMLElement, selector: string, value: string): void {
+    const input = root.querySelector(selector) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
+  it('Nueva receta con preset → queda en borrador', async () => {
+    vi.useFakeTimers();
+    await armAmoxicilinaPrescription();
+
+    findButton(fixture.nativeElement, 'Guardar borrador').click();
+
+    // POST /api/v1/encounters/enc-1/prescriptions con el preset copiado y la cantidad escrita
+    const postReq = httpMock.expectOne('/api/v1/encounters/enc-1/prescriptions');
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      encounterDiagnosisId: 'diag-1',
+      items: [
+        {
+          medicationId: 5,
+          medicationPresetId: 1,
+          dose: '1 cápsula',
+          frequency: 'cada 8 horas',
+          duration: '7 días',
+          quantity: '21 cápsulas',
+        },
+      ],
+    });
+    postReq.flush(mockPrescriptionDraftApiResponse, { status: 201, statusText: 'Created' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.prescription-editor')).toBeNull();
+    expect(compiled.querySelector('.prescriptions-section')?.textContent).toContain('Borrador');
+    expect(compiled.querySelector('.prescriptions-section')?.textContent).toContain('Amoxicilina');
+  });
+
+  it('Guardar con un diagnóstico que ya no vale → mensaje visible y el ítem se conserva', async () => {
+    vi.useFakeTimers();
+    await armAmoxicilinaPrescription();
+
+    findButton(fixture.nativeElement, 'Guardar borrador').click();
+    httpMock.expectOne('/api/v1/encounters/enc-1/prescriptions').flush(
+      { success: false, message: 'El diagnóstico no pertenece a esta atención.', data: null },
+      { status: 409, statusText: 'Conflict' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const editor = fixture.nativeElement.querySelector('.prescription-editor') as HTMLElement;
+    expect(editor).toBeTruthy();
+    expect(editor.textContent).toContain('El diagnóstico no pertenece a esta atención.');
+    expect(editor.querySelector('.prescription-item-list')?.textContent).toContain('Amoxicilina');
   });
 });

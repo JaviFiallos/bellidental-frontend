@@ -891,8 +891,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 010a | Odontograma: registro con el panel de la pieza (cara, pieza, periodontal, anular) | 009b | Commit `525688d` |
 | 010b | Odontograma: prótesis en rango ("Elige la pieza final") | 010a | Commit `045e93b` (ejecutó Haiku) |
 | 012a | Tratamientos: catálogo, registro, total de la sesión y anular | 010b · backend 010a | Commit `201b522` (ejecutó Haiku) |
-| 012b | Tratamiento ligado a un hallazgo (rojo → azul) y "Tratar" en el panel | 012a · backend 010b | Aprobada (ejecutó Haiku) |
-| 013a | Receta: armar y guardar el borrador | 008 · backend 011a | Redactada |
+| 012b | Tratamiento ligado a un hallazgo (rojo → azul) y "Tratar" en el panel | 012a · backend 010b | Commit `0113586` (ejecutó Haiku) |
+| 013a | Receta: armar y guardar el borrador | 008 · backend 011a | Aprobada (ejecutó Haiku) |
 | 013b | Receta: emitir e imprimir (PDF), reimprimir y anular | 013a · backend 011b | Redactada |
 | 011 | Más del 033 | 008 | Commit `fa8d43b` (ejecutó Haiku) |
 | 014 | Ficha clínica e historial | 009 · backend clinical-summary | — |

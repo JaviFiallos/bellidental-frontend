@@ -33,6 +33,12 @@ import {
   TreatmentsSectionComponent,
   TreatmentsStore,
 } from '../../../treatments';
+import {
+  PrescriptionEditorComponent,
+  PrescriptionHeaderDraft,
+  PrescriptionsSectionComponent,
+  PrescriptionsStore,
+} from '../../../prescriptions';
 import { CompleteBarComponent } from '../../components/complete-bar/complete-bar.component';
 import { DiagnosisListComponent } from '../../components/diagnosis-list/diagnosis-list.component';
 import { EncounterExtraComponent } from '../../components/encounter-extra/encounter-extra.component';
@@ -60,6 +66,8 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     EncounterNotesComponent,
     DiagnosisListComponent,
     TreatmentsSectionComponent,
+    PrescriptionsSectionComponent,
+    PrescriptionEditorComponent,
     EncounterExtraComponent,
     CompleteBarComponent,
     SideSheetComponent,
@@ -67,7 +75,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     ClinicDatePipe,
     ClinicTimePipe,
   ],
-  providers: [EncounterStore, HistoryPanelStore, OdontogramStore, TreatmentsStore],
+  providers: [EncounterStore, HistoryPanelStore, OdontogramStore, TreatmentsStore, PrescriptionsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="encounter-page">
@@ -239,6 +247,19 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           />
           </div>
 
+          <!-- 4c. Receta: lista de la atención y borrador en el editor lateral -->
+          <bd-prescriptions-section
+            [prescriptions]="prescriptionsStore.prescriptions()"
+            [isLoading]="prescriptionsStore.loading()"
+            [loadError]="prescriptionsStore.loadError()"
+            [canCreate]="prescriptionsCanCreate()"
+            [canUpdate]="prescriptionsCanUpdate()"
+            [hasDiagnoses]="diagnosisOptions().length > 0"
+            (newPrescription)="prescriptionsStore.openNew()"
+            (editPrescription)="prescriptionsStore.openEdit($event)"
+            (retryLoad)="prescriptionsStore.reload()"
+          />
+
           <!-- 5. Más del 033: signos vitales, examen, indicadores y planes (plegado) -->
           <bd-encounter-extra
             [encounter]="store.encounter()!"
@@ -295,6 +316,36 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (noKnownHistoryChange)="onNoKnownHistoryChange($event)"
             (retryConditions)="historyStore.loadConditionsIfNeeded()"
           />
+        </bd-side-sheet>
+
+        <!-- 8. Editor de receta en panel lateral (pantalla completa bajo md) -->
+        <bd-side-sheet
+          [isOpen]="prescriptionsStore.editorOpen()"
+          [fullscreenBelowMd]="true"
+          titleId="prescription-editor-title"
+          (closed)="prescriptionsStore.closeEditor()"
+        >
+          @if (prescriptionsStore.editorOpen()) {
+            <bd-prescription-editor
+              [diagnoses]="diagnosisOptions()"
+              [prescription]="prescriptionsStore.editing()"
+              [items]="prescriptionsStore.items()"
+              [editingItem]="prescriptionsStore.editingItem()"
+              [editingItemIndex]="prescriptionsStore.editingItemIndex()"
+              [medications]="prescriptionsStore.medicationResults()"
+              [isSearching]="prescriptionsStore.medicationSearching()"
+              [searchError]="prescriptionsStore.medicationSearchError()"
+              [saving]="prescriptionsStore.saving()"
+              [saveError]="prescriptionsStore.saveError()"
+              (medicationQueryChange)="prescriptionsStore.searchMedications($event)"
+              (addItem)="prescriptionsStore.upsertItem($event)"
+              (editItem)="prescriptionsStore.editItem($event)"
+              (removeItem)="prescriptionsStore.removeItem($event)"
+              (cancelItemEdit)="prescriptionsStore.cancelItemEdit()"
+              (save)="onSavePrescription($event)"
+              (close)="prescriptionsStore.closeEditor()"
+            />
+          }
         </bd-side-sheet>
       }
     </div>
@@ -386,6 +437,7 @@ export class EncounterPage implements OnInit {
   readonly historyStore = inject(HistoryPanelStore);
   readonly odontogramStore = inject(OdontogramStore);
   readonly treatmentsStore = inject(TreatmentsStore);
+  readonly prescriptionsStore = inject(PrescriptionsStore);
   private readonly sessionStore = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -398,6 +450,15 @@ export class EncounterPage implements OnInit {
 
   readonly odontogramCanVoid = computed<boolean>(() => {
     return this.sessionStore.hasPermission('RECORD_UPDATE');
+  });
+
+  /** Recetar: solo con permiso de crear y atención editable (no solo lectura ni anulada). */
+  readonly prescriptionsCanCreate = computed<boolean>(() => {
+    return !this.store.isReadOnly() && this.sessionStore.hasPermission('RECORD_CREATE');
+  });
+
+  readonly prescriptionsCanUpdate = computed<boolean>(() => {
+    return !this.store.isReadOnly() && this.sessionStore.hasPermission('RECORD_UPDATE');
   });
 
   readonly treatmentsSection = viewChild(TreatmentsSectionComponent);
@@ -442,6 +503,7 @@ export class EncounterPage implements OnInit {
     if (encounterId) {
       this.store.load(encounterId);
       this.treatmentsStore.load(encounterId);
+      this.prescriptionsStore.load(encounterId);
     }
   }
 
@@ -590,6 +652,13 @@ export class EncounterPage implements OnInit {
           error: () => {},
         });
       });
+  }
+
+  onSavePrescription(draft: PrescriptionHeaderDraft): void {
+    this.prescriptionsStore.save(draft.encounterDiagnosisId, draft.generalInstructions).subscribe({
+      next: () => this.notificationService.success('Receta guardada como borrador'),
+      error: () => {},
+    });
   }
 
   onRegisterFinding(req: CreateFindingRequest): void {

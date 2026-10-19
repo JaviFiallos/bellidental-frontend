@@ -15,6 +15,7 @@ import {
   PerformedTreatment,
   Treatment,
 } from '../../treatments';
+import { Medication, Prescription } from '../../prescriptions';
 
 export const mockEncounterOpen: Encounter = {
   id: 'enc-1',
@@ -678,5 +679,78 @@ export function flushTreatments(
 ): void {
   httpMock.match(`/api/v1/encounters/${encounterId}/treatments`).forEach((req) =>
     req.flush({ success: true, message: 'Tratamientos obtenidos', data: treatments })
+  );
+}
+
+export const mockEncounterWithDiagnosisApiResponse: ApiResponse<Encounter> = {
+  success: true,
+  message: 'Atención obtenida',
+  data: { ...mockEncounterOpen, diagnoses: [mockDiagnosisK02] },
+};
+
+export const mockMedicationAmoxicilina: Medication = {
+  id: 5,
+  name: 'Amoxicilina',
+  presentation: 'cápsula',
+  concentration: '500 mg',
+  route: 'oral',
+  presets: [
+    {
+      id: 1,
+      label: 'Cada 8 h × 7 días',
+      dose: '1 cápsula',
+      frequency: 'cada 8 horas',
+      duration: '7 días',
+      instructions: null,
+    },
+  ],
+};
+
+export const mockMedicationSearchApiResponse: ApiResponse<Medication[]> = {
+  success: true,
+  message: 'Medicamentos obtenidos',
+  data: [mockMedicationAmoxicilina],
+};
+
+export const mockPrescriptionDraft: Prescription = {
+  id: 'rx-1',
+  encounterId: 'enc-1',
+  encounterDiagnosisId: 'diag-1',
+  icd10Code: 'K02.1',
+  icd10Description: 'Caries de la dentina',
+  status: 'DRAFT',
+  prescribedAt: '2026-10-12T09:40:00-05:00',
+  generalInstructions: null,
+  voided: false,
+  items: [
+    {
+      id: 'rx-item-1',
+      medicationId: 5,
+      medicationName: 'Amoxicilina',
+      presentation: 'cápsula',
+      concentration: '500 mg',
+      medicationPresetId: 1,
+      dose: '1 cápsula',
+      frequency: 'cada 8 horas',
+      duration: '7 días',
+      quantity: '21 cápsulas',
+      instructions: null,
+    },
+  ],
+};
+
+export const mockPrescriptionDraftApiResponse: ApiResponse<Prescription> = {
+  success: true,
+  message: 'Receta guardada como borrador',
+  data: mockPrescriptionDraft,
+};
+
+export function flushPrescriptions(
+  httpMock: HttpTestingController,
+  encounterId = 'enc-1',
+  prescriptions: Prescription[] = []
+): void {
+  httpMock.match(`/api/v1/encounters/${encounterId}/prescriptions`).forEach((req) =>
+    req.flush({ success: true, message: 'Recetas obtenidas', data: prescriptions })
   );
 }

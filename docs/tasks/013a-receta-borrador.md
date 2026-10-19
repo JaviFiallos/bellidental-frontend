@@ -145,7 +145,67 @@ Se amplía `encounter.page.spec.ts` con **2 casos**. Los existentes solo añaden
 6. Anchos 375, 1024 y 1366.
 
 ## Resultado
-*(lo llena Gemini)*
+**Archivos creados** (`src/app/features/prescriptions/`):
+- `index.ts`, `models/prescription.models.ts` (modelos, `formatMedicationLabel`, `toDraftMedication`).
+- `services/medications.api.ts`, `services/prescriptions.api.ts`, `services/prescriptions.store.ts`
+  (store provisto por la página; búsqueda con debounce de 250 ms y cancelación; POST/PUT).
+- `components/prescriptions-section/`, `components/prescription-editor/`, `components/prescription-item-form/`,
+  `components/prescription-item-list/` (todos presentacionales: `input()`/`output()`).
+- Se borró `prescriptions/.gitkeep`.
+
+**Archivos modificados**:
+- `src/app/features/clinical/pages/encounter/encounter.page.ts`: provee `PrescriptionsStore`; sección "Receta" bajo
+  Tratamientos; `bd-side-sheet` con `fullscreenBelowMd` para el editor; permisos `RECORD_CREATE` / `RECORD_UPDATE`
+  y `!isReadOnly()`; toast "Receta guardada como borrador".
+- `src/app/features/clinical/pages/encounter/encounter.page.spec.ts`: +2 casos; los 11 existentes responden
+  `GET /api/v1/encounters/enc-1/prescriptions` con `[]` (`flushPrescriptions`).
+- `src/app/features/clinical/testing/fixtures.ts`: `mockEncounterWithDiagnosisApiResponse`, `mockMedicationAmoxicilina`
+  (con un preset), `mockMedicationSearchApiResponse`, `mockPrescriptionDraft(ApiResponse)`, `flushPrescriptions`.
+
+**Build**: OK (`npx ng build`, sin errores ni advertencias; initial total 455.06 kB).
+
+**Tests**:
+```
+ Test Files  8 passed (8)
+      Tests  40 passed (40)
+```
+Los 2 casos nuevos (Nueva receta con preset → borrador; 409 de diagnóstico → mensaje y ítem conservado) pasan.
+
+**Responsive**: NO revisado. No tengo DevTools en este entorno; no se verificaron los anchos 375, 768, 1024 ni 1366.
+Por construcción: el editor usa `fullscreenBelowMd`, la posología es una sola columna en todos los anchos, y los
+botones y presets tienen `min-height: 44px`. Falta comprobar el scroll horizontal y el panel de 26rem en 1366.
+
+**Supuestos y limitaciones**:
+- Un ítem cargado desde una receta guardada no trae presets (el contrato de `Prescription` no los incluye), así que
+  al editarlo no aparecen los botones de preset; sus valores y `medicationPresetId` se conservan y se envían tal cual.
+- El "Medicamento" es un `<span>` y no un `<label>` asociado: `bd-combobox` no acepta `id`. Falta asociar la etiqueta
+  al input (accesibilidad).
+- Si la receta guardada tiene un diagnóstico que ya no está activo, el `<select>` no lo tiene como opción y mostrará
+  el primero: se corrige con la 013b o con una opción de diagnóstico anulado.
+- "Agregar" con un texto escrito en el medicamento sin elegir opción muestra "Elige un medicamento de la lista."
+  (el Enter en el buscador no envía nada: el formulario es un `div`, no un `form`).
+- Un ítem a medio escribir no se guarda al pulsar "Guardar borrador" (se descarta; solo cuenta lo agregado).
+- Cancelar o cerrar el editor descarta los ítems sin confirmación (no está especificado).
+- `MedicationPreset.instructions` y `PrescriptionItem.dose/frequency/...` se tipan `string | null`; los ids de
+  `PrescriptionItem` y `Prescription` como `string` (uuid). Confirmar contra el backend si difiere.
+
+**Problemas**: ninguno pendiente en tests ni build. No se hizo commit. `prompt.txt` no se tocó.
 
 ## Revisión
-*(lo llena Claude)*
+Estado: APROBADO
+
+Revisado por Claude (Opus; ejecutó Haiku). `npx ng build` OK; `npx ng test --watch=false` → 8 archivos, 40 tests.
+Cumple los criterios 1–8:
+- `prescriptions` no importa de `clinical` ni de `treatments`; los componentes solo inyectan `FormBuilder`, y la
+  página orquesta el toast y el store;
+- la búsqueda empieza con 1 carácter, con debounce de 250 ms y cancelación de la anterior;
+- los campos vacíos se omiten del body;
+- `maxlength` 100/100/100/50;
+- POST la primera vez, PUT al editar, y el editor conserva lo escrito tras un error.
+
+Pendientes menores (no bloquean; se ven en la prueba manual):
+- al editar un borrador, los ítems no muestran sus presets (los valores sí se conservan);
+- la etiqueta "Medicamento" no está asociada al input de `bd-combobox`, que no acepta `id`;
+- un diagnóstico ya anulado en un borrador cae al primero activo.
+
+Responsive sin verificar visualmente.
