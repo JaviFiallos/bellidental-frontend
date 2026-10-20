@@ -754,3 +754,99 @@ export function flushPrescriptions(
     req.flush({ success: true, message: 'Recetas obtenidas', data: prescriptions })
   );
 }
+
+export const mockClinicalSummary2Sessions = {
+  patientId: 'pat-1',
+  clinicName: 'Bellidental',
+  recordNumber: 'HC-00123',
+  openedAt: '2026-10-03T09:00:00Z',
+  openedBy: {
+    id: 'prof-1',
+    fullName: 'Dra. Ana López',
+    licenseNumber: 'MED-1234',
+  },
+  sessions: [
+    {
+      encounterId: 'enc-1',
+      sessionNumber: 1,
+      startAt: '2026-10-03T09:00:00Z',
+      status: 'COMPLETED',
+      professional: {
+        id: 'prof-1',
+        fullName: 'Dra. Ana López',
+        licenseNumber: 'MED-1234',
+      },
+      diagnoses: [
+        {
+          id: 'diag-1',
+          code: 'K02.1',
+          description: 'Caries de la dentina',
+          certainty: 'DEFINITIVE' as const,
+          notes: null,
+        },
+      ],
+      treatments: [],
+      prescriptions: [],
+    },
+    {
+      encounterId: 'enc-2',
+      sessionNumber: 2,
+      startAt: '2026-10-10T10:00:00Z',
+      status: 'COMPLETED',
+      professional: {
+        id: 'prof-1',
+        fullName: 'Dra. Ana López',
+        licenseNumber: 'MED-1234',
+      },
+      diagnoses: [
+        {
+          id: 'diag-2',
+          code: 'K05.0',
+          description: 'Gingivitis aguda',
+          certainty: 'PRESUMPTIVE' as const,
+          notes: null,
+        },
+      ],
+      treatments: [],
+      prescriptions: [],
+    },
+  ],
+};
+
+export const mockEncounterSession1: Encounter = {
+  ...mockEncounterOpen,
+  id: 'enc-1',
+  patientId: 'pat-1',
+  chiefComplaint: 'Dolor en pieza 16',
+  currentIllness: 'Molestia desde hace 3 días',
+  diagnoses: [
+    {
+      id: 'diag-1',
+      icd10Id: 101,
+      code: 'K02.1',
+      description: 'Caries de la dentina',
+      certainty: 'DEFINITIVE',
+      voidedAt: null,
+    },
+  ],
+};
+
+export const mockEncounterSession2: Encounter = {
+  ...mockEncounterOpen,
+  id: 'enc-2',
+  patientId: 'pat-1',
+  startAt: '2026-10-10T10:00:00Z',
+  chiefComplaint: 'Sangrado en encías',
+  currentIllness: 'Evolución de 1 semana',
+  diagnoses: [
+    {
+      id: 'diag-2',
+      icd10Id: 102,
+      code: 'K05.0',
+      description: 'Gingivitis aguda',
+      certainty: 'PRESUMPTIVE',
+      voidedAt: null,
+    },
+  ],
+};
+

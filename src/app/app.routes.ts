@@ -43,6 +43,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'pacientes/:id/033',
+        canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
+        loadComponent: () =>
+          import('./features/clinical/pages/form-033/form-033.page').then(
+            (m) => m.Form033Page
+          ),
+      },
+      {
         path: 'pacientes/:id',
         loadComponent: () =>
           import('./features/patients/pages/patient-reception/patient-reception.page').then(

@@ -108,7 +108,7 @@ const QUADRANT_RANGE_LABELS: Record<number, string> = {
     <div class="odontogram-wrapper" [class.odontogram-wrapper--editable]="editable()">
       <div class="odontogram-container">
         <!-- Selector de cuadrantes si el contenedor mide menos de 720 px -->
-        @if (isNarrow()) {
+        @if (isNarrow() && variant() !== 'form-033') {
           <bd-odontogram-quadrant-bar
             [selectedQuadrant]="selectedQuadrant()"
             [orientationText]="orientationText()"
@@ -214,17 +214,19 @@ const QUADRANT_RANGE_LABELS: Record<number, string> = {
         </svg>
 
         <!-- Índices CPO y ceo -->
-        <bd-dental-indices
-          [indices]="indices()"
-          [hasFindings]="findings().length > 0"
-        />
+        @if (variant() !== 'form-033') {
+          <bd-dental-indices
+            [indices]="indices()"
+            [hasFindings]="findings().length > 0"
+          />
 
-        <!-- Leyenda plegable del catálogo -->
-        <bd-odontogram-legend [catalog]="catalog()" />
+          <!-- Leyenda plegable del catálogo -->
+          <bd-odontogram-legend [catalog]="catalog()" />
+        }
       </div>
 
       <!-- Panel de la pieza (solo en modo editable) -->
-      @if (editable()) {
+      @if (editable() && variant() !== 'form-033') {
         <aside class="odontogram-sidebar">
           <bd-tooth-panel
             #toothPanel
@@ -323,6 +325,7 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   readonly catalog = input.required<OdontogramCatalog>();
   readonly findings = input<Finding[]>([]);
   readonly indices = input<DentalIndices | null>(null);
+  readonly variant = input<'default' | 'form-033'>('default');
 
   readonly editable = input<boolean>(false);
   readonly canVoid = input<boolean>(false);
@@ -373,6 +376,7 @@ export class OdontogramComponent implements OnInit, OnDestroy {
   });
 
   readonly activeView = computed<OdontogramView>(() => {
+    if (this.variant() === 'form-033') return 'full';
     return this.isNarrow() ? this.selectedQuadrant() : 'full';
   });
 

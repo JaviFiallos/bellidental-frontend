@@ -8,14 +8,16 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, filter, finalize, forkJoin, map, merge, Observable, of, Subject, switchMap, tap } from 'rxjs';
+import { FileText } from 'lucide-angular';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiError } from '../../../../core/api/api.models';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { Appointment, AppointmentsApi } from '../../../appointments';
@@ -29,8 +31,10 @@ import { PatientsApi } from '../../services/patients.api';
   selector: 'bd-patient-reception-page',
   standalone: true,
   imports: [
+    RouterLink,
     AlertComponent,
     SkeletonComponent,
+    IconComponent,
     PatientIdentityComponent,
     AdminNotesComponent,
     PatientAppointmentsComponent,
@@ -49,7 +53,21 @@ import { PatientsApi } from '../../services/patients.api';
           <button type="button" class="btn btn-primary" (click)="reloadPatient()">Reintentar</button>
         </bd-alert>
       } @else if (patient(); as current) {
-        <bd-patient-identity [patient]="current" [canEdit]="canEdit()" (edit)="onEdit()" />
+        <div class="patient-reception__identity-section">
+          <bd-patient-identity [patient]="current" [canEdit]="canEdit()" (edit)="onEdit()" />
+          @if (canViewForm033()) {
+            <div class="patient-reception__actions">
+              <a
+                class="btn btn-outline patient-reception__btn-033"
+                [routerLink]="['/pacientes', current.id, '033']"
+                aria-label="Ver Formulario 033"
+              >
+                <bd-icon [name]="fileTextIcon" [size]="18" />
+                <span>Formulario 033</span>
+              </a>
+            </div>
+          }
+        </div>
 
         @if (isSecretaria()) {
           <bd-admin-notes
@@ -96,6 +114,25 @@ import { PatientsApi } from '../../services/patients.api';
       max-width: 64rem;
       margin: 0 auto;
       box-sizing: border-box;
+    }
+
+    .patient-reception__identity-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .patient-reception__actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .patient-reception__btn-033 {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      min-height: 44px;
+      padding: 0 var(--space-md);
     }
 
     .patient-reception__skeleton {
@@ -149,6 +186,11 @@ export class PatientReceptionPage implements OnInit {
   readonly notesError = signal<string | null>(null);
 
   readonly isSecretaria = computed(() => this.sessionStore.profile() === 'SECRETARIA');
+  readonly canViewForm033 = computed(() => {
+    const prof = this.sessionStore.profile();
+    return prof === 'ODONTOLOGO' || prof === 'DIRECTOR';
+  });
+  readonly fileTextIcon = FileText;
   readonly canEdit = computed(
     () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')
   );

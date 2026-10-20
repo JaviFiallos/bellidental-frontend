@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { FileText } from 'lucide-angular';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { Patient } from '../../../patients';
 import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.models';
 
 @Component({
   selector: 'bd-patient-clinical-header',
   standalone: true,
+  imports: [RouterLink, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="patient-clinical-header" role="region" aria-label="Información clínica del paciente">
@@ -64,6 +68,16 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
               Antecedentes
             </button>
           }
+
+          <!-- Enlace Formulario 033 -->
+          <a
+            class="btn-form-033"
+            [routerLink]="['/pacientes', patient().id, '033']"
+            aria-label="Ver Formulario 033"
+          >
+            <bd-icon [name]="fileTextIcon" [size]="16" />
+            <span>Formulario 033</span>
+          </a>
         </div>
       </div>
     </header>
@@ -219,6 +233,33 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
         outline: 2px solid var(--color-focus);
       }
     }
+
+    .btn-form-033 {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      min-height: 44px;
+      padding: 0 var(--space-sm);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      background-color: var(--white);
+      color: var(--blue-800);
+      border: 1px solid var(--blue-300);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+      &:hover {
+        background-color: var(--blue-50);
+        border-color: var(--blue-500);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+      }
+    }
   `,
 
 })
@@ -227,6 +268,8 @@ export class PatientClinicalHeaderComponent {
   readonly clinicalRecord = input<ClinicalRecord | null>(null);
 
   readonly openHistory = output<void>();
+
+  readonly fileTextIcon = FileText;
 
   readonly isUnregistered = computed<boolean>(() => {
     const rec = this.clinicalRecord();

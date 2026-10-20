@@ -1,0 +1,156 @@
+// Estilos compartidos por las secciones de la hoja 033 (MSP). Solo tokens --form033-* (excepción F-14).
+// Cada componente incluye los mixins que necesita con `@include`.
+
+@mixin section {
+  .form033-section {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--form033-border);
+    background-color: var(--form033-paper);
+  }
+}
+
+@mixin band {
+  .section-band {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2mm;
+    padding: 1.5pt 4pt;
+    background-color: var(--form033-band);
+    border-bottom: 1px solid var(--form033-border);
+  }
+
+  .section-title {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--form033-ink);
+  }
+
+  .section-subtext {
+    font-size: 5pt;
+    color: var(--form033-ink);
+  }
+}
+
+@mixin table {
+  .form033-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .form033-table th,
+  .form033-table td {
+    border: 1px solid var(--form033-border);
+    padding: 1pt 2pt;
+    box-sizing: border-box;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+
+  .cell-label {
+    background-color: var(--form033-label);
+    font-size: 5.5pt;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.05;
+    color: var(--form033-ink);
+  }
+
+  .cell-val {
+    background-color: var(--form033-paper);
+    font-size: 7pt;
+    color: var(--form033-ink);
+  }
+
+  .cell-mark {
+    background-color: var(--form033-mark);
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-align: center;
+    color: var(--form033-ink);
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  .font-bold {
+    font-weight: 700;
+  }
+}
+
+@mixin ruled-lines {
+  .ruled-lines {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ruled-line {
+    min-height: 4.5mm;
+    box-sizing: border-box;
+    padding: 0.5mm 1.2mm;
+    border-bottom: 1px solid var(--form033-border);
+    font-size: 7pt;
+    line-height: 1.25;
+    color: var(--form033-ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+// Sección 12 (tratamiento): dos bloques de borde grueso (SESIÓN Y FECHA + DIAGNÓSTICOS | PROCEDIMIENTOS +
+// PRESCRIPCIONES + CÓDIGO Y FIRMA). Cabecera y sesiones usan las mismas proporciones para quedar alineadas.
+@mixin treatment-columns {
+  .treatment-columns {
+    display: flex;
+    gap: 2.5mm;
+  }
+
+  .treatment-block {
+    display: flex;
+    border: 1.5px solid var(--form033-ink);
+    box-sizing: border-box;
+    background-color: var(--form033-paper);
+  }
+
+  .treatment-block--left {
+    flex: 277 1 0;
+  }
+
+  .treatment-block--right {
+    flex: 452 1 0;
+  }
+
+  .treatment-col {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  .treatment-col + .treatment-col {
+    border-left: 1px solid var(--form033-border);
+  }
+
+  .col-session {
+    flex: 93 1 0;
+  }
+
+  .col-diagnoses {
+    flex: 184 1 0;
+  }
+
+  .col-procedures {
+    flex: 196 1 0;
+  }
+
+  .col-prescriptions {
+    flex: 163 1 0;
+  }
+
+  .col-signature {
+    flex: 93 1 0;
+  }
+}

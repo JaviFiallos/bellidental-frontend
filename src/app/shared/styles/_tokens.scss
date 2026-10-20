@@ -134,4 +134,18 @@
      ========================================================================== */
   --transition-fast: 150ms ease;
   --transition-base: 220ms ease;
+
+  /* ==========================================================================
+     FORMULARIO 033 (MSP) — Excepción F-14 exclusiva para la hoja 033
+     ========================================================================== */
+  --form033-band:       #CCCCFF;
+  --form033-label:      #CCFFCC;
+  --form033-mark:       #FFFF99;
+  --form033-odontogram: #CCFFFF;
+  --form033-total:      #FFCC99;
+  --form033-border:     #808080;
+  --form033-ink:        #000000;
+  --form033-paper:      #FFFFFF;
+  --form033-sublabel:   #CCFFFF;
+  --form033-font:       Arial, Helvetica, sans-serif;
 }
