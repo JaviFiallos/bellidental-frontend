@@ -87,7 +87,18 @@ interface FaceOption {
 
         <!-- Selector de Cara -->
         <section class="tooth-panel__section" aria-labelledby="face-section-heading">
-          <h4 id="face-section-heading" class="tooth-panel__section-title">Cara</h4>
+          <div class="tooth-panel__section-header">
+            <h4 id="face-section-heading" class="tooth-panel__section-title">Cara</h4>
+            <button
+              type="button"
+              class="btn btn-outline btn-sm whole-tooth-btn"
+              [class.active]="selectedFace() === null"
+              [attr.aria-pressed]="selectedFace() === null"
+              (click)="onSelectWholeTooth()"
+            >
+              Pieza completa
+            </button>
+          </div>
           <div class="tooth-panel__faces-row" role="group" aria-label="Caras de la pieza">
             @for (face of faceOptions(); track face.code + face.label; let i = $index) {
               <button
@@ -270,6 +281,30 @@ interface FaceOption {
       color: var(--slate-500);
     }
 
+    .tooth-panel__section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xs);
+    }
+
+    .whole-tooth-btn {
+      min-height: 44px;
+      padding: 0 0.75rem;
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--slate-600);
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+
+      &.active,
+      &[aria-pressed='true'] {
+        background: var(--blue-800);
+        color: var(--white);
+        border-color: var(--blue-800);
+      }
+    }
+
     .tooth-panel__faces-row {
       display: flex;
       gap: 0.35rem;
@@ -318,7 +353,7 @@ export class ToothPanelComponent {
   readonly isSpanning = input<boolean>(false);
   readonly activeSpanConditionId = input<number | null>(null);
 
-  readonly faceChange = output<SurfaceCode>();
+  readonly faceChange = output<SurfaceCode | null>();
   readonly statusChange = output<FindingStatus>();
   readonly clearSelection = output<void>();
   readonly registerFinding = output<CreateFindingRequest>();
@@ -365,6 +400,10 @@ export class ToothPanelComponent {
 
   onSelectFace(face: SurfaceCode): void {
     this.faceChange.emit(face);
+  }
+
+  onSelectWholeTooth(): void {
+    this.faceChange.emit(null);
   }
 
   onEscape(): void {

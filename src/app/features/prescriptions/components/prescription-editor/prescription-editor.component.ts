@@ -96,6 +96,7 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
+      padding: var(--space-xl) var(--space-xl) var(--space-lg);
     }
 
     .prescription-editor__title {
@@ -104,6 +105,7 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
       font-weight: 600;
       color: var(--blue-950);
       margin: 0;
+      padding-right: 2.5rem; /* Espacio para el botón cerrar de la hoja */
     }
 
     .prescription-editor__subtitle {

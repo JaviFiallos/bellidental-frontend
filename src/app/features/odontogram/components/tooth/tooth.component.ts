@@ -60,6 +60,7 @@ interface RegionViewModel {
           [attr.stroke-width]="isFaceSelected(region.surface) ? 2.2 : 1"
           [style.cursor]="editable() ? 'pointer' : null"
           (click)="onRegionClick(region.surface, $event)"
+          (dblclick)="onRegionDoubleClick($event)"
           [attr.data-tooth]="tooth().code"
           [attr.data-surface]="region.surface"
           [attr.data-condition]="region.conditionCode"
@@ -299,6 +300,12 @@ export class ToothComponent {
     if (!this.editable()) return;
     event.stopPropagation();
     this.faceClick.emit({ toothCode: this.tooth().code, surface });
+  }
+
+  onRegionDoubleClick(event: MouseEvent): void {
+    if (!this.editable()) return;
+    event.stopPropagation();
+    this.toothNumberClick.emit(this.tooth().code);
   }
 
   onNumberClick(event: MouseEvent): void {

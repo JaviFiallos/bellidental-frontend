@@ -5,6 +5,7 @@ export interface LoginRequest {
 
 export interface AuthResponse {
   accessToken: string;
+  /** Vigencia del token en segundos (no milisegundos). */
   expiresIn: number;
   roles: string[];
 }

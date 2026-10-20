@@ -63,8 +63,8 @@ export class SessionStore {
     return user?.permissions?.includes(code) ?? false;
   }
 
-  setSession(accessToken: string, expiresIn: number): void {
-    this._expiresAt = Date.now() + expiresIn;
+  setSession(accessToken: string, expiresInSeconds: number): void {
+    this._expiresAt = Date.now() + expiresInSeconds * 1000;
     this._token.set(accessToken);
 
     const session: StoredSession = {

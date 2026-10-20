@@ -162,7 +162,12 @@ function atMostTwoDecimals(control: AbstractControl<number | null>): ValidationE
         </bd-field>
 
         <bd-field label="Nota (opcional)" fieldId="treatment-notes">
-          <input id="treatment-notes" class="treatment-form__input" type="text" formControlName="notes" />
+          <textarea
+            id="treatment-notes"
+            class="treatment-form__input treatment-form__textarea"
+            rows="3"
+            formControlName="notes"
+          ></textarea>
         </bd-field>
       </div>
 
@@ -238,6 +243,11 @@ function atMostTwoDecimals(control: AbstractControl<number | null>): ValidationE
         outline: 2px solid var(--color-focus);
         outline-offset: -1px;
       }
+    }
+
+    .treatment-form__textarea {
+      min-height: 5.5rem;
+      resize: vertical;
     }
 
     .treatment-form__actions {

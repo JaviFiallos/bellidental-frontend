@@ -91,7 +91,7 @@ describe('MainLayout', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
-    sessionStore.setSession('token-odontologa', 86400000);
+    sessionStore.setSession('token-odontologa', 86400);
     sessionStore.setCurrentUser({
       userId: 'u-odo',
       email: 'odontologa@bellidental.local',
@@ -189,7 +189,7 @@ describe('MainLayout', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
-    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setSession('token-sec', 86400);
     sessionStore.setCurrentUser({
       userId: 'u-sec',
       email: 'secretaria@bellidental.local',
@@ -242,7 +242,7 @@ describe('MainLayout', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
-    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setSession('token-sec', 86400);
     sessionStore.setCurrentUser({
       userId: 'u-sec',
       email: 'secretaria@bellidental.local',
@@ -359,7 +359,7 @@ describe('MainLayout', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
-    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setSession('token-sec', 86400);
     sessionStore.setCurrentUser({
       userId: 'u-sec',
       email: 'secretaria@bellidental.local',
@@ -433,7 +433,7 @@ describe('MainLayout', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
-    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setSession('token-sec', 86400);
     sessionStore.setCurrentUser({
       userId: 'u-sec',
       email: 'secretaria@bellidental.local',
@@ -477,7 +477,7 @@ describe('MainLayout', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
-    sessionStore.setSession('token-sec', 86400000);
+    sessionStore.setSession('token-sec', 86400);
     sessionStore.setCurrentUser({
       userId: 'u-sec',
       email: 'secretaria@bellidental.local',

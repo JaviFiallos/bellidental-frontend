@@ -612,7 +612,7 @@ export class OdontogramComponent implements OnInit, OnDestroy {
     this.treatFinding.emit(finding);
   }
 
-  onFaceChange(face: SurfaceCode): void {
+  onFaceChange(face: SurfaceCode | null): void {
     this.selectedFace.set(face);
   }
 

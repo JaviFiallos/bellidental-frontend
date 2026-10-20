@@ -40,7 +40,7 @@ Marcas: **[G-n]** = falta en el backend (§7.2) · **[F-n]** = decisión (§8).
 
 ### 2.2 Sesión [F-4]
 - `POST /auth/login` → guardar en **`localStorage`** (`bd.session`) `{ accessToken, expiresAt }` con
-  `expiresAt = Date.now() + expiresIn` (`expiresIn` en ms, 24 h). La sesión sobrevive a cerrar el navegador y
+  `expiresAt = Date.now() + expiresIn * 1000` (`expiresIn` en **segundos**, 86400 = 24 h; corregido en la 020). La sesión sobrevive a cerrar el navegador y
   expira sola a las 24 h.
 - Al iniciar la app: si hay sesión vigente → `GET /auth/me`; si vencida o `/me` falla → limpiar y login.
 - `401` en cualquier petición → limpiar sesión → `/auth/login?expirada=1`. Sin refresh token.
@@ -827,7 +827,7 @@ incisal (`SurfaceLabelResolver`).
 ### 7.1 DTO usados (los `models/` del frontend los reflejan tal cual)
 | Endpoint | Respuesta (`data`) |
 |---|---|
-| `POST /auth/login` `{email,password}` | `{ accessToken, expiresIn (ms), roles[] }` |
+| `POST /auth/login` `{email,password}` | `{ accessToken, expiresIn (segundos), roles[] }` |
 | `GET /auth/me` | `{ userId, email, roles[], permissions[], professionalId? }` |
 | `GET /patients?query&page&size` | `Page<Patient>` (size ≤ 50) |
 | `GET/POST/PUT /patients[/{id}]` | `Patient { id, documentType, documentNumber, firstName, lastName, fullName, birthDate, age, sex, bloodType, bloodTypeLabel, phoneE164, email, emergencyContactName, emergencyContactPhoneE164, active }` (+ `adminNotes` [G-5]) |
@@ -933,6 +933,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
 | 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
+| 020 | Ajustes: pieza completa, textos largos, sesión 24 h, logo y margen de la receta | 019 | Aprobada (ejecutó Haiku) |
+| 021 | Casillas del 033: regiones del examen (sección 5), exámenes del plan y descripción única (sección 10) | 011 · 018a · backend 008b | Redactada |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015.

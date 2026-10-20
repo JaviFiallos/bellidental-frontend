@@ -1,16 +1,9 @@
 <nav class="sidebar sidebar--{{ mode() }}" aria-label="Navegación principal">
   <!-- Cabecera / Marca -->
   <div class="sidebar__brand">
-    <div class="sidebar__brand-logo" aria-hidden="true">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2C7.5 2 4 4.5 4 8c0 2.5 1.5 5 2.5 8 .8 2.3 2 4 3.5 4s2-3 2-5c0 2 .5 5 2 5s2.7-1.7 3.5-4c1-3 2.5-5.5 2.5-8 0-3.5-3.5-6-8-6z"/>
-      </svg>
+    <div class="sidebar__brand-logo">
+      <img src="brand/bellidental-logo.webp" alt="Bellidental" width="320" height="320" />
     </div>
-    @if (mode() !== 'icons') {
-      <div class="sidebar__brand-text">
-        <span class="sidebar__brand-title brand-script">Bellidental</span>
-      </div>
-    }
   </div>
 
   <!-- Lista de Navegación -->

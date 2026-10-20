@@ -42,17 +42,22 @@ export interface OpenEncounterDialogData {
           <label for="chief-complaint-input" class="open-encounter-dialog__label">
             Motivo de consulta
           </label>
-          <input
+          <textarea
             #inputEl
             id="chief-complaint-input"
-            type="text"
-            class="input"
+            rows="4"
+            class="input open-encounter-dialog__textarea"
+            aria-describedby="chief-complaint-hint"
             [ngModel]="chiefComplaint()"
             (ngModelChange)="chiefComplaint.set($event); errorMessage.set(null)"
+            (keydown)="onChiefComplaintKeydown($event)"
             name="chiefComplaint"
             [disabled]="submitting()"
             autocomplete="off"
-          />
+          ></textarea>
+          <span id="chief-complaint-hint" class="open-encounter-dialog__hint">
+            Ctrl + Enter para abrir la atención
+          </span>
         </div>
 
         <div class="open-encounter-dialog__footer">
@@ -84,7 +89,7 @@ export interface OpenEncounterDialogData {
       background-color: var(--white);
       border-radius: var(--radius-lg);
       padding: var(--space-xl);
-      max-width: 32rem;
+      max-width: 36rem;
       width: calc(100vw - 2rem);
       box-shadow: var(--shadow-xl);
       box-sizing: border-box;
@@ -126,6 +131,19 @@ export interface OpenEncounterDialogData {
       color: var(--slate-600);
     }
 
+    .open-encounter-dialog__textarea {
+      height: auto;
+      min-height: 7.5rem;
+      padding: var(--space-sm) var(--space-md);
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    .open-encounter-dialog__hint {
+      font-size: var(--fs-xs);
+      color: var(--slate-500);
+    }
+
     .open-encounter-dialog__footer {
       display: flex;
       align-items: center;
@@ -161,7 +179,7 @@ export class OpenEncounterDialogComponent {
   readonly submitting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
 
-  readonly inputEl = viewChild<ElementRef<HTMLInputElement>>('inputEl');
+  readonly inputEl = viewChild<ElementRef<HTMLTextAreaElement>>('inputEl');
 
   constructor() {
     afterNextRender(() => {
@@ -202,6 +220,13 @@ export class OpenEncounterDialogComponent {
         this.errorMessage.set(msg);
       },
     });
+  }
+
+  onChiefComplaintKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.onSubmit();
+    }
   }
 
   onCancel(): void {

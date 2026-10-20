@@ -78,7 +78,7 @@ describe('DentistBoardPage', () => {
     sessionStore = TestBed.inject(SessionStore);
     router = TestBed.inject(Router);
 
-    sessionStore.setSession('test-token', 86400000);
+    sessionStore.setSession('test-token', 86400);
     sessionStore.setCurrentUser({
       userId: 'user-prof-1',
       email: 'odontologa@bellidental.local',
@@ -249,7 +249,7 @@ describe('DentistBoardPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const inputEl = document.querySelector('#chief-complaint-input') as HTMLInputElement;
+    const inputEl = document.querySelector('#chief-complaint-input') as HTMLTextAreaElement;
     expect(inputEl).toBeTruthy();
     inputEl.value = 'Paciente refiere dolor';
     inputEl.dispatchEvent(new Event('input'));
@@ -340,7 +340,7 @@ describe('DentistBoardPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const inputEl = document.querySelector('#chief-complaint-input') as HTMLInputElement;
+    const inputEl = document.querySelector('#chief-complaint-input') as HTMLTextAreaElement;
     expect(inputEl).toBeTruthy();
     inputEl.value = 'Paciente refiere dolor';
     inputEl.dispatchEvent(new Event('input'));
