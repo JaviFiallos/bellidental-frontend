@@ -84,3 +84,38 @@
     max-width: 1400px;
   }
 }
+
+@media print {
+  :host {
+    background-color: transparent !important;
+    min-height: auto !important;
+  }
+
+  .shell-sidebar-container,
+  .drawer-backdrop,
+  .drawer-panel,
+  app-header {
+    display: none !important;
+  }
+
+  .shell-layout {
+    display: block !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .shell-main {
+    min-height: auto !important;
+  }
+
+  .shell-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .shell-content-inner {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+}

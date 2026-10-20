@@ -218,3 +218,21 @@ p {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
+
+/* --- Impresión --- */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  bd-toast-host {
+    display: none !important;
+  }
+}
+
