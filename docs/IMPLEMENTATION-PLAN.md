@@ -179,7 +179,9 @@ Así el director no ve la recepción aunque su rol ADMIN tenga esos permisos en 
 /pacientes/nuevo                    SECRETARIA           Alta de paciente               P6        005
 /pacientes/:id                      todos                SECRETARIA → ficha de recepción P5        005, 015
                                                          ODONTOLOGO/DIRECTOR → ficha clínica P13  014
+/pacientes/:id/033                  ODONTOLOGO, DIRECTOR Formulario 033 (vista e impresión) P18 018
 /consultorio                        ODONTOLOGO, DIRECTOR Mis citas de hoy (tablero)     P8        007
+/consultorio/atenciones             ODONTOLOGO, DIRECTOR Mis atenciones (día/semana/mes) P19      019
 /consultorio/atencion/:encounterId  ODONTOLOGO, DIRECTOR Atención                       P9–P12, P15  008–013
 /direccion/estadisticas             DIRECTOR             Estadísticas de la clínica     P16       016
 /direccion/auditoria                DIRECTOR             Auditoría                      P17       017
@@ -678,8 +680,9 @@ features/clinical/
 - Tareas: `docs/tasks/013a-receta-borrador.md`, `docs/tasks/013b-receta-emitir-pdf.md`.
 
 ### 5.14 Ficha clínica e historial inmediato — tarea 014 (P13) · backend clinical-summary
-- **Backend pendiente:** `GET /patients/{id}/clinical-summary` aún no existe (el plan del backend lo deja en una tarea
-  propia después de su 011). Esta tarea no se redacta hasta que tenga commit.
+- **Backend pendiente:** `GET /patients/{id}/clinical-summary` es la tarea 011c del backend
+  (`../bellidental-backend/docs/tasks/011c-historial-clinico.md`). Esta tarea no se redacta hasta que tenga commit.
+  El endpoint trae solo la cabecera de la historia y las sesiones; antecedentes y odontograma salen de sus endpoints.
 - **Ruta:** `/pacientes/:id` para ODONTOLOGO/DIRECTOR (y drawer "Historial ▸" en la atención).
 - **API:** `GET /patients/{id}/clinical-summary`.
 - **Comportamiento:** cabecera clínica (reutiliza `PatientClinicalHeader`), odontograma vigente en lectura,
@@ -713,6 +716,32 @@ features/clinical/
   diagnóstico, hallazgo, pago, cita, paciente…), paciente. Filtros: rango, usuario, tipo. Detalle en panel:
   campos antes → después. Desde la ficha de un paciente, el director ve "Historial de cambios".
 - **Test:** filtrar por usuario → `GET /audit?userId=` → filas visibles.
+
+### 5.18 Formulario 033: vista e impresión — tareas 018a y 018b (P18, RF09) · backend 011c
+- **Alcance:** RF09 pasa al MVP (usuario, 2026-10-19). **Ruta:** `/pacientes/:id/033` (ODONTOLOGO, DIRECTOR); enlaces
+  "Formulario 033" en `/pacientes/:id` y en la cabecera de la atención. Sin entrada en el menú (siempre es de un
+  paciente).
+- **API:** `GET /patients/{id}/clinical-summary` (backend 011c) + paciente, historia clínica, condiciones, catálogo,
+  odontograma y `GET /encounters/{id}` de la atención de referencia.
+- **Comportamiento:** réplica de `docs/Form_033.pdf` (misma numeración y distribución) en hojas A4 de ancho fijo;
+  lo impreso es lo que se ve (`window.print()` + `@page A4`), F-14. Secciones 1, 2, 4, 5, 7, 10 y 11 de la **atención
+  de referencia** (por defecto la sesión 1, de apertura; selector `?sesion=N`). Odontograma vigente con
+  `variant="form-033"`. Sección 12: 9 sesiones por hoja 2; más → hojas de continuación con NÚMERO DE HOJA.
+  Quedan en blanco (se llenan a mano): embarazada, grupos "programado", regiones del examen, higiene oral
+  simplificada, OTROS, fecha de control y firmas. 5–14 años → "no programado".
+- **018a:** ruta, carga, selector, hoja 1 y secciones 10–11, accesos. Test: abrir → hoja con la apertura; cambiar
+  de sesión → `GET /encounters/{id}` → cambian motivo y CIE.
+- **018b:** sección 12, hojas de continuación, "Imprimir" y estilos de impresión. Sin tests.
+- Tareas: `docs/tasks/018a-formulario-033-vista.md`, `docs/tasks/018b-formulario-033-tratamiento-e-impresion.md`.
+
+### 5.19 Consultorio: mis atenciones — tarea 019 (P19)
+- **Pedido del usuario (2026-10-19):** ver las atenciones propias anteriores por día, semana o mes y abrirlas para
+  continuar o corregir (la corrección sigue la D-6, sin plazo). Entrada "Mis atenciones" en el sidebar.
+- **API:** `GET /appointments?professionalId={me}&from&to` (sin backend nuevo); filas = citas con `encounterId`.
+- **Comportamiento:** período en la URL (`?periodo=dia|semana|mes&fecha=`), semana lunes–domingo por defecto;
+  tabla desc (fecha, hora, paciente, especialidad, estado, acción Continuar/Corregir/Ver); "Solo abiertas";
+  `< sm` tarjetas. `bd-date-nav` gana `label` y `unit`.
+- Tarea: `docs/tasks/019-mis-atenciones.md`.
 
 ---
 
@@ -831,6 +860,7 @@ incisal (`SurfaceLabelResolver`).
 | `POST /encounters/{id}/prescriptions` · `PUT /prescriptions/{id}` | body `{ encounterDiagnosisId, generalInstructions?, items[{ medicationId, medicationPresetId?, dose?, frequency?, duration?, quantity?, instructions? }] }` → `Prescription { id, encounterId, encounterDiagnosisId, icd10Code, icd10Description, status DRAFT/ISSUED, prescribedAt, generalInstructions, voided, items[{ id, medicationId, medicationName, presentation, concentration, medicationPresetId, dose, frequency, duration, quantity, instructions }] }` |
 | `GET /encounters/{id}/prescriptions` · `GET /prescriptions/{id}` · `POST /prescriptions/{id}/issue` · `/void` | `Prescription[]` (no anuladas) · `Prescription` |
 | `GET /prescriptions/{id}/pdf` | binario `application/pdf` (sin `ApiResponse`; 409 JSON si no está emitida) |
+| `GET /patients/{id}/clinical-summary` (backend 011c) | `{ patientId, clinicName, recordNumber, openedAt, openedBy{id,fullName,licenseNumber}, sessions[{ encounterId, sessionNumber, startAt, status, professional{…}, diagnoses[{id,code,description,certainty,notes}], treatments[{id,code,name,toothCode,surfaceCode,quantity}], prescriptions[{id,prescribedAt,generalInstructions,items[{medicationName,concentration,presentation,dose,frequency,duration,quantity}]}] }] }` (sesiones = atenciones no anuladas por `startAt`; recetas solo ISSUED) |
 
 Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta tabla.
 
@@ -839,7 +869,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 |---|---|---|---|---|
 | G-1 | `Appointment` no trae `encounterId` ni `encounterStatus` | "En atención" y "Continuar" (007), ir de la cita a la atención | Añadirlos (null si no hay atención) + `encounterVoided` (atención anulada: sin "Continuar") | **Resuelto** (backend 006e `5d7f145`) |
 | G-2 | `/auth/me` sin nombre para mostrar | Sidebar (002) | `displayName` (profesional: nombre; si no, username) | opcional |
-| G-3 | Tratamientos, recetas, cobros, clinical-summary | 012–015 | Tareas backend 010, 011, 012 y clinical-summary | Tratamientos y recetas **resueltos** (010a `10abf5f`, 010b `cf9a6c9`, 011a `8dbfbd5`, 011b `a631bbb`); faltan 012 y clinical-summary |
+| G-3 | Tratamientos, recetas, cobros, clinical-summary | 012–015 | Tareas backend 010, 011, 012 y clinical-summary | Tratamientos y recetas **resueltos** (010a `10abf5f`, 010b `cf9a6c9`, 011a `8dbfbd5`, 011b `a631bbb`); faltan 012 y clinical-summary (backend 011c, redactada) |
 | G-10 | Estado del recordatorio de WhatsApp por cita (enviado, confirmó, canceló) y consentimiento del aviso por paciente | Nada del MVP (opcional) | Si la clínica lo pide: `reminderStatus` en `Appointment` y `privacyConsentAt` en la ficha | posterior al MVP |
 | G-4 | `GET /appointments` no filtra por paciente | Citas en la ficha (005) | `patientId` opcional; con él, `from/to` opcionales | **Resuelto**: backend 006d (`8a8bf7f`, `PatientRecordApiIT`) |
 | G-5 | `PatientResponse` y `CreatePatientRequest` sin `adminNotes` (solo `UpdatePatientRequest` lo tiene) | Observaciones en la ficha (005) | Añadir `adminNotes` a ambos | **Resuelto**: backend 006d (`8a8bf7f`) |
@@ -864,6 +894,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | F-11 | Filas periodontales del 033: Recesión es la fila exterior y Movilidad va junto a los dientes, en espejo abajo (como el boceto) | Aprobada (usuario, 2026-10-12) |
 | F-12 | Bot de WhatsApp sin pantallas en el MVP: no hay bandeja de mensajes (la conversación vive en el agente, en memoria, y derivar = enlace al WhatsApp de recepción, D-3/D-19 del backend). Lo que hace el bot se ve en la agenda: citas `source=BOT` (ícono y "Agendada por el bot"), confirmaciones y cancelaciones del recordatorio como cambios de estado (refresco periódico), reprogramaciones con su cita nueva | Propuesta (2026-10-19) |
 | F-13 | PDFs (receta, comprobante) por `ApiClient.getBlob` + `URL.createObjectURL` en una pestaña abierta en el clic; fallback "Abrir PDF" | Propuesta (2026-10-19) |
+| F-14 | Formulario 033 (RF09, ahora en el MVP): vista e impresión con el mismo HTML A4 (`window.print()`), no PDF del backend, para reutilizar el odontograma SVG. Dentro de la hoja: colores oficiales como tokens `--form033-*` y unidades `mm`/`pt` (documento de tamaño fijo, excepción a §2.3 y a `responsive/SKILL.md`). Atención de referencia = apertura, con selector. Campos que el sistema no guarda, en blanco | Aprobada (usuario, 2026-10-19) |
 
 ## 9. Orden y seguimiento de tareas
 | Tarea | Pantalla | Depende de (frontend · backend) | Estado |
@@ -893,14 +924,17 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 012a | Tratamientos: catálogo, registro, total de la sesión y anular | 010b · backend 010a | Commit `201b522` (ejecutó Haiku) |
 | 012b | Tratamiento ligado a un hallazgo (rojo → azul) y "Tratar" en el panel | 012a · backend 010b | Commit `0113586` (ejecutó Haiku) |
 | 013a | Receta: armar y guardar el borrador | 008 · backend 011a | Commit `84ff88f` (ejecutó Haiku) |
-| 013b | Receta: emitir e imprimir (PDF), reimprimir y anular | 013a · backend 011b | Aprobada (ejecutó Haiku) |
+| 013b | Receta: emitir e imprimir (PDF), reimprimir y anular | 013a · backend 011b | Commit `1b22cc4` (ejecutó Haiku) |
 | 011 | Más del 033 | 008 | Commit `fa8d43b` (ejecutó Haiku) |
 | 014 | Ficha clínica e historial | 009 · backend clinical-summary | — |
 | 015 | Cobros y comprobante | 005 · backend 012 | — |
 | 016 | Estadísticas del director | 002 · G-6 · F-9 | — |
 | 017 | Auditoría | 002 · backend 013 + G-7 | — |
+| 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
+| 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
+| 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015.
-Orden de ejecución desde el 2026-10-19: 012a → 012b → 013a → 013b → 011; después 015 (cuando exista backend 012) y
-014 (cuando exista clinical-summary).
+Orden de ejecución desde el 2026-10-19: 012a → 012b → 013a → 013b → 011; después backend 011c → 018a → 018b → 014
+(las tres usan `clinical-summary`) y 015 cuando exista backend 012.

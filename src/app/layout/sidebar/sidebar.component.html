@@ -35,6 +35,7 @@
           <a
             [routerLink]="item.route"
             routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: !!item.exact }"
             [attr.aria-current]="rla.isActive ? 'page' : null"
             [attr.aria-label]="mode() === 'icons' ? item.label : null"
             #rla="routerLinkActive"

@@ -26,11 +26,13 @@ Plan: `docs/IMPLEMENTATION-PLAN.md`. Contexto y visibilidad por rol: `docs/CONTE
 | P10 | Odontograma tipo 033 (registro y lectura) | ODONTOLOGO, DIRECTOR | RF02 | lista |
 | P11 | Tratamientos en la atención (ligados a diagnóstico y hallazgo) | ODONTOLOGO, DIRECTOR | RF04, RF02 | lista (backend 010a, 010b) |
 | P12 | Receta (borrador → emitida) + PDF | ODONTOLOGO, DIRECTOR | RF04, RF05 | lista (backend 011a, 011b) |
-| P13 | Ficha clínica / historial inmediato | ODONTOLOGO, DIRECTOR | RF06 | falta (backend clinical-summary) |
+| P13 | Ficha clínica / historial inmediato | ODONTOLOGO, DIRECTOR | RF06 | falta (backend 011c `clinical-summary`) |
 | P14 | Cobro de abono y comprobante PDF | SECRETARIA | RF08 | falta (backend 012) |
 | P15 | "Más del 033": signos, examen, indicadores, planes (editable después) | ODONTOLOGO, DIRECTOR | RF01 | lista |
 | P16 | Estadísticas de la clínica | DIRECTOR | (gestión) | falta (G-6) |
 | P17 | Auditoría: quién cambió qué y cuándo | DIRECTOR | RNF02 | backend 013 + G-7 |
+| P18 | Formulario 033: vista con la numeración y distribución oficiales e impresión A4 (desde el 2026-10-19) | ODONTOLOGO, DIRECTOR | RF09 | falta (backend 011c) |
+| P19 | Mis atenciones: atenciones propias por día, semana o mes, para continuar o corregir (desde el 2026-10-19) | ODONTOLOGO, DIRECTOR | RF06 | falta |
 
 ## Bot de WhatsApp (RF10–RF15): sin pantallas
 El bot es un agente Python aparte que habla con el backend por `/api/v1/bot/*` (backend D-19). No tiene interfaz
@@ -46,7 +48,7 @@ en este frontend:
 
 ## Fuera del MVP (no implementar)
 Registro de usuarios y gestión de permisos · pantallas del bot (bandeja, conversaciones, configuración) ·
-impresión del 033 (RF09) · pantalla de exportación y respaldos (backend 018 sin UI) · notificaciones en tiempo real
+pantalla de exportación y respaldos (backend 018 sin UI) · notificaciones en tiempo real
 (WebSocket) · modo oscuro · PWA/offline del navegador (sin internet se usa la contingencia en papel) · i18n (solo
 español).
 

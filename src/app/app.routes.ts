@@ -66,6 +66,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'consultorio/atenciones',
+        canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
+        loadComponent: () =>
+          import('./features/clinical/pages/my-encounters/my-encounters.page').then(
+            (m) => m.MyEncountersPage
+          ),
+      },
+      {
         path: 'consultorio/atencion/:encounterId',
         canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
         loadComponent: () =>

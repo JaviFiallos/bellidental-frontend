@@ -8,6 +8,8 @@ import {
 import { ChevronLeft, ChevronRight } from 'lucide-angular';
 import { IconComponent, LucideIconData } from '../icon/icon.component';
 
+export type DateNavUnit = 'día' | 'semana' | 'mes';
+
 @Component({
   selector: 'bd-date-nav',
   standalone: true,
@@ -19,20 +21,20 @@ import { IconComponent, LucideIconData } from '../icon/icon.component';
         <button
           type="button"
           class="bd-date-nav__btn-icon"
-          aria-label="Día anterior"
+          [attr.aria-label]="unitLabel() + ' anterior'"
           (click)="prev.emit()"
         >
           <bd-icon [name]="chevronLeftIcon" [size]="18" />
         </button>
 
         <span class="bd-date-nav__date-text" aria-live="polite">
-          {{ formattedDate() }}
+          {{ displayText() }}
         </span>
 
         <button
           type="button"
           class="bd-date-nav__btn-icon"
-          aria-label="Día siguiente"
+          [attr.aria-label]="unitLabel() + ' siguiente'"
           (click)="next.emit()"
         >
           <bd-icon [name]="chevronRightIcon" [size]="18" />
@@ -148,6 +150,10 @@ import { IconComponent, LucideIconData } from '../icon/icon.component';
 export class DateNavComponent {
   readonly date = input.required<string>();
   readonly isToday = input<boolean>(false);
+  /** Texto que reemplaza a la fecha formateada (p. ej. un rango de semana). */
+  readonly label = input<string | null>(null);
+  /** Unidad de desplazamiento para los `aria-label` de las flechas. */
+  readonly unit = input<DateNavUnit>('día');
 
   readonly prev = output<void>();
   readonly next = output<void>();
@@ -155,6 +161,13 @@ export class DateNavComponent {
 
   readonly chevronLeftIcon: LucideIconData = ChevronLeft;
   readonly chevronRightIcon: LucideIconData = ChevronRight;
+
+  readonly unitLabel = computed(() => {
+    const unit = this.unit();
+    return unit.charAt(0).toUpperCase() + unit.slice(1);
+  });
+
+  readonly displayText = computed(() => this.label() ?? this.formattedDate());
 
   readonly formattedDate = computed(() => {
     const raw = this.date();
