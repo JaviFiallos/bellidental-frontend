@@ -279,6 +279,8 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (vitalSignChange)="store.setVitalSign($event.field, $event.value)"
             (indicatorChange)="store.setExtraField($event.field, $event.value)"
             (textChange)="store.setExtraField($event.field, $event.value)"
+            (regionToggle)="store.toggleStomatognathicRegion($event)"
+            (examToggle)="store.toggleDiagnosticExam($event)"
             (retrySave)="store.retrySave()"
           />
         </main>

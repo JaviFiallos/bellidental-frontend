@@ -9,9 +9,7 @@ export type VitalSignField =
 
 export type EncounterTextField =
   | 'stomatognathicExam'
-  | 'diagnosticPlan'
-  | 'therapeuticPlan'
-  | 'educationalPlan';
+  | 'planDescription';
 
 export type EncounterIndicatorField = 'periodontalDisease' | 'fluorosis' | 'malocclusion';
 

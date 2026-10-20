@@ -1207,4 +1207,72 @@ describe('EncounterPage', () => {
     expect(pdfWindow.close).toHaveBeenCalled();
     expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf')).toHaveLength(0);
   });
+
+  it('marca la región 5 y Rayos X → PUT con stomatognathicRegions [5] y diagnosticExams ["RAYOS_X"]', async () => {
+    vi.useFakeTimers();
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    // Carga inicial de la atención (fixtures existentes con stomatognathicRegions: [] y diagnosticExams: [])
+    const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    encReq.flush(mockEncounterApiResponse);
+
+    const patReq = httpMock.expectOne('/api/v1/patients/pat-1');
+    patReq.flush(mockPatientApiResponse);
+
+    const recordReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
+    recordReq.flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    // Abre "Más del 033"
+    const toggleBtn = fixture.nativeElement.querySelector('.encounter-extra__toggle') as HTMLButtonElement;
+    expect(toggleBtn).toBeTruthy();
+    toggleBtn.click();
+    fixture.detectChanges();
+
+    // Pulsa "5 Lengua" y "Rayos X"
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const lenguaBtn = buttons.find((b) => b.textContent?.includes('5 Lengua'));
+    expect(lenguaBtn, 'botón "5 Lengua"').toBeTruthy();
+    lenguaBtn!.click();
+    fixture.detectChanges();
+
+    const rayosXBtn = buttons.find((b) => b.textContent?.includes('Rayos X'));
+    expect(rayosXBtn, 'botón "Rayos X"').toBeTruthy();
+    rayosXBtn!.click();
+    fixture.detectChanges();
+
+    // Avanza el autosave (800 ms)
+    vi.advanceTimersByTime(800);
+
+    // expectOne del PUT y verifica las dos listas y que la descripción del examen empieza con 5. Lengua:
+    const putReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    expect(putReq.request.method).toBe('PUT');
+    expect(putReq.request.body.stomatognathicRegions).toEqual([5]);
+    expect(putReq.request.body.diagnosticExams).toEqual(['RAYOS_X']);
+    expect(putReq.request.body.stomatognathicExam).toMatch(/^5\.\s*Lengua:/);
+
+    // Responde con el JSON del backend
+    putReq.flush({
+      success: true,
+      message: 'Atención actualizada',
+      data: {
+        ...mockEncounterOpen,
+        stomatognathicRegions: [5],
+        diagnosticExams: ['RAYOS_X'],
+        stomatognathicExam: '5. Lengua: ',
+      },
+    });
+    fixture.detectChanges();
+
+    // Los dos botones quedan con aria-pressed="true"
+    expect(lenguaBtn!.getAttribute('aria-pressed')).toBe('true');
+    expect(rayosXBtn!.getAttribute('aria-pressed')).toBe('true');
+  });
 });

@@ -1,6 +1,6 @@
 import { MedicalHistoryCondition, HistoryEntry } from '../models/clinical-record.models';
 import { ClinicalSession, ClinicalSummaryDiagnosis } from '../models/clinical-summary.models';
-import { Diagnosis, Encounter } from '../models/encounter.models';
+import { Diagnosis, DiagnosticExam, Encounter } from '../models/encounter.models';
 
 export interface Form033AgeGroupMarks {
   menor1: boolean;
@@ -212,45 +212,21 @@ export function formatVitalSigns(encounter: Encounter | null): Form033VitalSigns
   return { bp, heartRate, temperature, respiratoryRate };
 }
 
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
-
 /**
  * Determina las casillas marcadas de planes y genera las líneas de texto.
  */
 export function getPlanMarks(
-  diagnosticPlan?: string | null,
-  therapeuticPlan?: string | null,
-  educationalPlan?: string | null
+  diagnosticExams?: readonly DiagnosticExam[] | null,
+  planDescription?: string | null
 ): { marks: Form033PlanMarks; lines: string[] } {
-  const normDiag = diagnosticPlan ? normalizeText(diagnosticPlan) : '';
-
-  const biometria = normDiag.includes('biometria');
-  const quimicaSanguinea = normDiag.includes('quimica sanguinea');
-  const rayosX = /\brx\b|\brayos[ -]x\b/.test(normDiag);
-
+  const exams = new Set(diagnosticExams ?? []);
   const marks: Form033PlanMarks = {
-    biometria,
-    quimicaSanguinea,
-    rayosX,
-    otros: false,
+    biometria: exams.has('BIOMETRIA'),
+    quimicaSanguinea: exams.has('QUIMICA_SANGUINEA'),
+    rayosX: exams.has('RAYOS_X'),
+    otros: exams.has('OTROS'),
   };
-
-  const lines: string[] = [];
-  if (diagnosticPlan?.trim()) {
-    lines.push(`Diagnóstico: ${diagnosticPlan.trim()}`);
-  }
-  if (therapeuticPlan?.trim()) {
-    lines.push(`Terapéutico: ${therapeuticPlan.trim()}`);
-  }
-  if (educationalPlan?.trim()) {
-    lines.push(`Educacional: ${educationalPlan.trim()}`);
-  }
-
+  const lines = splitTextLines(planDescription);
   return { marks, lines };
 }
 

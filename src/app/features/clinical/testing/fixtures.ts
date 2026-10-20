@@ -26,6 +26,9 @@ export const mockEncounterOpen: Encounter = {
   startAt: '2026-10-12T09:00:00-05:00',
   chiefComplaint: 'Paciente refiere dolor en molar',
   currentIllness: 'Evolución de 3 días con molestia',
+  stomatognathicRegions: [],
+  diagnosticExams: [],
+  planDescription: null,
   diagnoses: [],
 };
 

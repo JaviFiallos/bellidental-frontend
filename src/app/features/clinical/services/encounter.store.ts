@@ -8,6 +8,7 @@ import { ClinicalRecord } from '../models/clinical-record.models';
 import {
   AddDiagnosisRequest,
   Diagnosis,
+  DiagnosticExam,
   Encounter,
   UpdateEncounterRequest,
 } from '../models/encounter.models';
@@ -250,6 +251,33 @@ export class EncounterStore implements OnDestroy {
     this.triggerAutoSave();
   }
 
+  toggleStomatognathicRegion(region: number): void {
+    if (this.isReadOnly()) return;
+    this.encounter.update((curr) => {
+      if (!curr) return null;
+      const current = curr.stomatognathicRegions ?? [];
+      const next = current.includes(region)
+        ? current.filter((r) => r !== region)
+        : [...current, region].sort((a, b) => a - b);
+      return { ...curr, stomatognathicRegions: next };
+    });
+    this.triggerAutoSave();
+  }
+
+  toggleDiagnosticExam(exam: DiagnosticExam): void {
+    if (this.isReadOnly()) return;
+    this.encounter.update((curr) => {
+      if (!curr) return null;
+      const current = curr.diagnosticExams ?? [];
+      const examOrder: DiagnosticExam[] = ['BIOMETRIA', 'QUIMICA_SANGUINEA', 'RAYOS_X', 'OTROS'];
+      const next = current.includes(exam)
+        ? current.filter((e) => e !== exam)
+        : [...current, exam].sort((a, b) => examOrder.indexOf(a) - examOrder.indexOf(b));
+      return { ...curr, diagnosticExams: next };
+    });
+    this.triggerAutoSave();
+  }
+
   retrySave(): void {
     this.triggerAutoSave();
   }
@@ -292,9 +320,9 @@ export class EncounterStore implements OnDestroy {
       periodontalDisease: enc.periodontalDisease,
       fluorosis: enc.fluorosis,
       malocclusion: enc.malocclusion,
-      diagnosticPlan: enc.diagnosticPlan,
-      therapeuticPlan: enc.therapeuticPlan,
-      educationalPlan: enc.educationalPlan,
+      stomatognathicRegions: enc.stomatognathicRegions ?? [],
+      diagnosticExams: enc.diagnosticExams ?? [],
+      planDescription: enc.planDescription ?? null,
     };
 
     return this.encountersApi.update(enc.id, body).pipe(

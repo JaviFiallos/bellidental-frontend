@@ -145,6 +145,7 @@ import { Form033Store } from '../../services/form-033.store';
             <bd-form-033-exam
               [vitalSigns]="store.vitalSigns()"
               [stomatognathicExam]="store.referenceEncounter()?.stomatognathicExam ?? ''"
+              [markedRegions]="store.markedRegions()"
             />
 
             <bd-form-033-oral-health

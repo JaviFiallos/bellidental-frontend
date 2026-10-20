@@ -2,6 +2,8 @@ import { EncounterStatus } from '../../appointments';
 
 export type DiagnosisCertainty = 'PRESUMPTIVE' | 'DEFINITIVE';
 
+export type DiagnosticExam = 'BIOMETRIA' | 'QUIMICA_SANGUINEA' | 'RAYOS_X' | 'OTROS';
+
 export interface Diagnosis {
   id: string;
   icd10Id: number;
@@ -32,9 +34,9 @@ export interface Encounter {
   periodontalDisease?: string | null;
   fluorosis?: string | null;
   malocclusion?: string | null;
-  diagnosticPlan?: string | null;
-  therapeuticPlan?: string | null;
-  educationalPlan?: string | null;
+  stomatognathicRegions?: number[];
+  diagnosticExams?: DiagnosticExam[];
+  planDescription?: string | null;
   voidedAt?: string | null;
   voidReason?: string | null;
   diagnoses?: Diagnosis[];
@@ -56,9 +58,9 @@ export interface UpdateEncounterRequest {
   periodontalDisease?: string | null;
   fluorosis?: string | null;
   malocclusion?: string | null;
-  diagnosticPlan?: string | null;
-  therapeuticPlan?: string | null;
-  educationalPlan?: string | null;
+  stomatognathicRegions?: number[];
+  diagnosticExams?: DiagnosticExam[];
+  planDescription?: string | null;
 }
 
 export interface AddDiagnosisRequest {

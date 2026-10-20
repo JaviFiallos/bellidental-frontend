@@ -1,94 +1,55 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Encounter } from '../../models/encounter.models';
+import { Check } from 'lucide-angular';
+import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
+import { DiagnosticExam, Encounter } from '../../models/encounter.models';
 import { EncounterTextField } from '../../domain/encounter-completeness';
-
-const DIAGNOSTIC_SHORTCUTS = ['Biometría', 'Química sanguínea', 'Rayos X'];
-const NORMAL_EXAM_TEXT = 'Sin patología aparente';
+import { DIAGNOSTIC_EXAMS, formatMarkedExams } from '../../domain/stomatognathic-regions';
 
 @Component({
   selector: 'bd-encounter-plans',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="plans">
       <div class="plans__field">
-        <div class="plans__label-bar">
-          <label class="plans__label" for="stomatognathic-exam-input">
-            Examen del sistema estomatognático
-          </label>
-          @if (!isReadOnly()) {
-            <button type="button" class="plans__shortcut" (click)="setNormalExam()">
-              {{ normalExamText }}
-            </button>
-          }
-        </div>
+        <span class="plans__label" id="diagnostic-exams-label">Planes de diagnóstico</span>
         @if (isReadOnly()) {
-          <p class="plans__readonly">{{ values().stomatognathicExam || 'No registrado' }}</p>
+          <p class="plans__readonly">{{ readOnlyExamsText() }}</p>
         } @else {
-          <textarea
-            id="stomatognathic-exam-input"
-            class="input plans__textarea"
-            rows="3"
-            [ngModel]="values().stomatognathicExam ?? ''"
-            (ngModelChange)="onTextChange('stomatognathicExam', $event)"
-          ></textarea>
+          <div class="plans__exams-row" role="group" aria-labelledby="diagnostic-exams-label">
+            @for (exam of exams; track exam.code) {
+              <button
+                type="button"
+                class="exam-btn"
+                [class.exam-btn--checked]="isExamMarked(exam.code)"
+                [attr.aria-pressed]="isExamMarked(exam.code)"
+                (click)="toggleExam(exam.code)"
+              >
+                <span class="exam-btn__checkbox" aria-hidden="true">
+                  @if (isExamMarked(exam.code)) {
+                    <bd-icon [name]="checkIcon" [size]="14" />
+                  }
+                </span>
+                <span class="exam-btn__label">{{ exam.label }}</span>
+              </button>
+            }
+          </div>
         }
       </div>
 
       <div class="plans__field">
-        <div class="plans__label-bar">
-          <label class="plans__label" for="diagnostic-plan-input">Plan diagnóstico</label>
-          @if (!isReadOnly()) {
-            <div class="plans__shortcuts">
-              @for (shortcut of diagnosticShortcuts; track shortcut) {
-                <button type="button" class="plans__shortcut" (click)="addDiagnosticShortcut(shortcut)">
-                  + {{ shortcut }}
-                </button>
-              }
-            </div>
-          }
-        </div>
+        <label class="plans__label" for="plan-description-input">Descripción</label>
         @if (isReadOnly()) {
-          <p class="plans__readonly">{{ values().diagnosticPlan || 'No registrado' }}</p>
+          <p class="plans__readonly">{{ values().planDescription || 'No registrado' }}</p>
         } @else {
           <textarea
-            id="diagnostic-plan-input"
+            id="plan-description-input"
             class="input plans__textarea"
-            rows="2"
-            [ngModel]="values().diagnosticPlan ?? ''"
-            (ngModelChange)="onTextChange('diagnosticPlan', $event)"
-          ></textarea>
-        }
-      </div>
-
-      <div class="plans__field">
-        <label class="plans__label" for="therapeutic-plan-input">Plan terapéutico</label>
-        @if (isReadOnly()) {
-          <p class="plans__readonly">{{ values().therapeuticPlan || 'No registrado' }}</p>
-        } @else {
-          <textarea
-            id="therapeutic-plan-input"
-            class="input plans__textarea"
-            rows="2"
-            [ngModel]="values().therapeuticPlan ?? ''"
-            (ngModelChange)="onTextChange('therapeuticPlan', $event)"
-          ></textarea>
-        }
-      </div>
-
-      <div class="plans__field">
-        <label class="plans__label" for="educational-plan-input">Plan educacional</label>
-        @if (isReadOnly()) {
-          <p class="plans__readonly">{{ values().educationalPlan || 'No registrado' }}</p>
-        } @else {
-          <textarea
-            id="educational-plan-input"
-            class="input plans__textarea"
-            rows="2"
-            [ngModel]="values().educationalPlan ?? ''"
-            (ngModelChange)="onTextChange('educationalPlan', $event)"
+            rows="5"
+            [ngModel]="values().planDescription ?? ''"
+            (ngModelChange)="onDescriptionChange($event)"
           ></textarea>
         }
       </div>
@@ -108,47 +69,81 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
       min-width: 0;
     }
 
-    .plans__label-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-xs);
-    }
-
     .plans__label {
       font-size: var(--fs-xs);
       font-weight: 600;
       color: var(--slate-600);
     }
 
-    .plans__shortcuts {
+    .plans__exams-row {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-xs);
+      width: 100%;
     }
 
-    .plans__shortcut {
+    .exam-btn {
       display: inline-flex;
       align-items: center;
+      gap: var(--space-xs);
       min-height: 44px;
-      padding: 0 var(--space-sm);
+      padding: var(--space-xs) var(--space-sm);
       border: 1px solid var(--slate-300);
       border-radius: var(--radius-sm);
       background-color: var(--white);
-      color: var(--blue-900);
+      color: var(--slate-800);
       font-size: var(--fs-sm);
       font-weight: 500;
       cursor: pointer;
+      text-align: left;
+      user-select: none;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
 
       &:hover {
-        background-color: var(--blue-50);
+        background-color: var(--slate-50);
+        border-color: var(--slate-400);
       }
 
       &:focus-visible {
         outline: 2px solid var(--color-focus);
         outline-offset: 1px;
       }
+
+      &--checked {
+        background-color: var(--blue-50);
+        border-color: var(--blue-600);
+        color: var(--blue-950);
+        font-weight: 600;
+
+        &:hover {
+          background-color: var(--blue-100);
+        }
+      }
+    }
+
+    .exam-btn__checkbox {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.125rem;
+      height: 1.125rem;
+      border: 1.5px solid var(--slate-400);
+      border-radius: var(--radius-xs, 3px);
+      background-color: var(--white);
+      color: var(--white);
+      flex-shrink: 0;
+      box-sizing: border-box;
+
+      .exam-btn--checked & {
+        background-color: var(--blue-600);
+        border-color: var(--blue-600);
+        color: var(--white);
+      }
+    }
+
+    .exam-btn__label {
+      min-width: 0;
+      line-height: 1.25;
     }
 
     .plans__textarea {
@@ -160,7 +155,7 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
 
     .plans__readonly {
       margin: 0;
-      padding: 0.5rem 0;
+      padding: 0.25rem 0;
       font-size: var(--fs-sm);
       color: var(--slate-800);
       white-space: pre-line;
@@ -169,27 +164,30 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
 })
 export class EncounterPlansComponent {
   readonly values = input.required<
-    Pick<Encounter, 'stomatognathicExam' | 'diagnosticPlan' | 'therapeuticPlan' | 'educationalPlan'>
+    Pick<Encounter, 'diagnosticExams' | 'planDescription'>
   >();
   readonly isReadOnly = input<boolean>(false);
+
+  readonly examToggle = output<DiagnosticExam>();
   readonly textChange = output<{ field: EncounterTextField; value: string | null }>();
 
-  readonly diagnosticShortcuts = DIAGNOSTIC_SHORTCUTS;
-  readonly normalExamText = NORMAL_EXAM_TEXT;
+  readonly exams = DIAGNOSTIC_EXAMS;
+  readonly checkIcon: LucideIconData = Check;
 
-  onTextChange(field: EncounterTextField, value: string): void {
-    this.textChange.emit({ field, value });
+  readonly readOnlyExamsText = computed(() =>
+    formatMarkedExams(this.values().diagnosticExams)
+  );
+
+  isExamMarked(code: DiagnosticExam): boolean {
+    return this.values().diagnosticExams?.includes(code) ?? false;
   }
 
-  setNormalExam(): void {
-    this.textChange.emit({ field: 'stomatognathicExam', value: NORMAL_EXAM_TEXT });
+  toggleExam(code: DiagnosticExam): void {
+    if (this.isReadOnly()) return;
+    this.examToggle.emit(code);
   }
 
-  addDiagnosticShortcut(shortcut: string): void {
-    const current = this.values().diagnosticPlan?.trim() ?? '';
-    const items = current ? current.split(', ') : [];
-    if (items.includes(shortcut)) return;
-    const next = [...items, shortcut].join(', ');
-    this.textChange.emit({ field: 'diagnosticPlan', value: next });
+  onDescriptionChange(value: string): void {
+    this.textChange.emit({ field: 'planDescription', value });
   }
 }

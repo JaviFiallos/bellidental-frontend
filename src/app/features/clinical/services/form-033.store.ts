@@ -92,9 +92,13 @@ export class Form033Store {
     return formatVitalSigns(this.referenceEncounter());
   });
 
+  readonly markedRegions = computed<number[]>(() => {
+    return this.referenceEncounter()?.stomatognathicRegions ?? [];
+  });
+
   readonly planMarksAndLines = computed(() => {
     const enc = this.referenceEncounter();
-    return getPlanMarks(enc?.diagnosticPlan, enc?.therapeuticPlan, enc?.educationalPlan);
+    return getPlanMarks(enc?.diagnosticExams, enc?.planDescription);
   });
 
   readonly first4Diagnoses = computed(() => {

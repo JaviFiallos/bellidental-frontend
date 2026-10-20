@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { SaveStatus } from '../../services/encounter.store';
-import { Encounter } from '../../models/encounter.models';
+import { DiagnosticExam, Encounter } from '../../models/encounter.models';
 import {
   EncounterIndicatorField,
   EncounterTextField,
@@ -8,12 +8,18 @@ import {
 } from '../../domain/encounter-completeness';
 import { VitalSignsFieldsComponent } from '../vital-signs-fields/vital-signs-fields.component';
 import { ClinicalIndicatorsComponent } from '../clinical-indicators/clinical-indicators.component';
+import { StomatognathicExamComponent } from '../stomatognathic-exam/stomatognathic-exam.component';
 import { EncounterPlansComponent } from '../encounter-plans/encounter-plans.component';
 
 @Component({
   selector: 'bd-encounter-extra',
   standalone: true,
-  imports: [VitalSignsFieldsComponent, ClinicalIndicatorsComponent, EncounterPlansComponent],
+  imports: [
+    VitalSignsFieldsComponent,
+    ClinicalIndicatorsComponent,
+    StomatognathicExamComponent,
+    EncounterPlansComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="encounter-extra" aria-label="Más del 033">
@@ -52,16 +58,27 @@ import { EncounterPlansComponent } from '../encounter-plans/encounter-plans.comp
             (vitalSignChange)="vitalSignChange.emit($event)"
           />
 
-          <h3 class="encounter-extra__group-title">Examen e indicadores</h3>
-          <bd-encounter-plans
+          <h3 class="encounter-extra__group-title">Examen del sistema estomatognático</h3>
+          <bd-stomatognathic-exam
             [values]="encounter()"
             [isReadOnly]="isReadOnly()"
+            (regionToggle)="regionToggle.emit($event)"
             (textChange)="onTextChange($event)"
           />
+
+          <h3 class="encounter-extra__group-title">Indicadores de salud bucal</h3>
           <bd-clinical-indicators
             [values]="encounter()"
             [isReadOnly]="isReadOnly()"
             (indicatorChange)="onIndicatorChange($event)"
+          />
+
+          <h3 class="encounter-extra__group-title">Planes</h3>
+          <bd-encounter-plans
+            [values]="encounter()"
+            [isReadOnly]="isReadOnly()"
+            (examToggle)="examToggle.emit($event)"
+            (textChange)="onTextChange($event)"
           />
         </div>
       }
@@ -169,6 +186,8 @@ export class EncounterExtraComponent {
   readonly vitalSignChange = output<{ field: VitalSignField; value: number | null }>();
   readonly indicatorChange = output<{ field: EncounterIndicatorField; value: string | null }>();
   readonly textChange = output<{ field: EncounterTextField; value: string | null }>();
+  readonly regionToggle = output<number>();
+  readonly examToggle = output<DiagnosticExam>();
   readonly retrySave = output<void>();
 
   readonly expanded = signal<boolean>(false);

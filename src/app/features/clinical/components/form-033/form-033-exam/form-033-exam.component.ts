@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Form033VitalSigns, splitTextLines, toRuledLines } from '../../../domain/form-033';
+import { STOMATOGNATHIC_REGIONS } from '../../../domain/stomatognathic-regions';
 
 @Component({
   selector: 'bd-form-033-exam',
@@ -39,8 +40,8 @@ import { Form033VitalSigns, splitTextLines, toRuledLines } from '../../../domain
         <div class="regions-grid regions-grid--8">
           @for (reg of regionsRow1; track reg.id) {
             <div class="region-box">
-              <span class="region-label">{{ reg.id }}. {{ reg.name }}</span>
-              <span class="region-mark"></span>
+              <span class="region-label">{{ reg.id }}. {{ reg.shortName }}</span>
+              <span class="region-mark">{{ isRegionMarked(reg.id) ? 'X' : '' }}</span>
             </div>
           }
         </div>
@@ -48,8 +49,8 @@ import { Form033VitalSigns, splitTextLines, toRuledLines } from '../../../domain
         <div class="regions-grid regions-grid--8">
           @for (reg of regionsRow2; track reg.id) {
             <div class="region-box">
-              <span class="region-label">{{ reg.id }}. {{ reg.name }}</span>
-              <span class="region-mark"></span>
+              <span class="region-label">{{ reg.id }}. {{ reg.shortName }}</span>
+              <span class="region-mark">{{ isRegionMarked(reg.id) ? 'X' : '' }}</span>
             </div>
           }
           <div class="regions-filler"></div>
@@ -130,6 +131,12 @@ import { Form033VitalSigns, splitTextLines, toRuledLines } from '../../../domain
       width: 11pt;
       background-color: var(--form033-mark);
       border-left: 1px solid var(--form033-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6.5pt;
+      font-weight: 700;
+      color: var(--form033-ink);
     }
   `,
 })
@@ -141,24 +148,14 @@ export class Form033ExamComponent {
     respiratoryRate: '',
   });
   readonly stomatognathicExam = input<string>('');
+  readonly markedRegions = input<number[]>([]);
 
   readonly examLines = computed(() => toRuledLines(splitTextLines(this.stomatognathicExam()), 5));
 
-  readonly regionsRow1 = [
-    { id: 1, name: 'LABIOS' },
-    { id: 2, name: 'MEJILLAS' },
-    { id: 3, name: 'MAXILAR SUP.' },
-    { id: 4, name: 'MAXILAR INF.' },
-    { id: 5, name: 'LENGUA' },
-    { id: 6, name: 'PALADAR' },
-    { id: 7, name: 'PISO' },
-    { id: 8, name: 'CARRILLOS' },
-  ];
+  readonly regionsRow1 = STOMATOGNATHIC_REGIONS.slice(0, 8);
+  readonly regionsRow2 = STOMATOGNATHIC_REGIONS.slice(8, 12);
 
-  readonly regionsRow2 = [
-    { id: 9, name: 'GLÁNDULAS SALIVALES' },
-    { id: 10, name: 'OROFARINGE' },
-    { id: 11, name: 'A. T. M.' },
-    { id: 12, name: 'GANGLIOS' },
-  ];
+  isRegionMarked(id: number): boolean {
+    return this.markedRegions().includes(id);
+  }
 }
