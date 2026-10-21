@@ -112,3 +112,8 @@ Estado: APROBADO
 - `ng build` OK y `ng test`: 10 archivos, 48 tests pasan (corrida propia).
 - Pendiente de validar en GitHub Actions (no hay Docker local): el job `image` tras el merge a `main` y el tamaño
   de la imagen (< 60 MB). Si falla, tarea 022a con el log.
+
+Corrección (CI, 2026-10-21): `npm ci` fallaba en Actions con ERESOLVE: `lucide-angular` (incluso la 1.0.0) declara
+peer `@angular/common` hasta 21.x y el proyecto usa Angular 22. Se añadió `.npmrc` con `legacy-peer-deps=true` (npm lo
+lee en local, CI y Docker) y el `Dockerfile` copia `.npmrc` junto a `package-lock.json`. Cuando `lucide-angular`
+soporte Angular 22, quitar el `.npmrc`.
