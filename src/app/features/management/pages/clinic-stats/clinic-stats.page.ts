@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   untracked,
@@ -11,6 +12,7 @@ import { map } from 'rxjs/operators';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
+import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import {
   parseStatsPeriod,
   shiftStatsAnchor,
@@ -19,11 +21,29 @@ import {
 import { ClinicStatsStore } from '../../services/clinic-stats.store';
 import { StatsKpisComponent } from '../../components/stats-kpis/stats-kpis.component';
 import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats-period-bar.component';
+import { BarListComponent } from '../../components/bar-list/bar-list.component';
+import { ProfessionalStatsTableComponent } from '../../components/professional-stats-table/professional-stats-table.component';
+import { TopTreatmentsTableComponent } from '../../components/top-treatments-table/top-treatments-table.component';
+import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
+import {
+  appointmentStatusRows,
+  channelRows,
+  paymentMethodRows,
+} from '../../domain/stats-labels';
 
 @Component({
   selector: 'bd-clinic-stats-page',
   standalone: true,
-  imports: [AlertComponent, PageHeaderComponent, StatsKpisComponent, StatsPeriodBarComponent],
+  imports: [
+    AlertComponent,
+    BarListComponent,
+    PageHeaderComponent,
+    ProfessionalStatsTableComponent,
+    SkeletonComponent,
+    StatsKpisComponent,
+    StatsPeriodBarComponent,
+    TopTreatmentsTableComponent,
+  ],
   providers: [ClinicStatsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -44,6 +64,42 @@ import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats
         </bd-alert>
       } @else {
         <bd-stats-kpis [summary]="store.summary()" />
+
+        <div class="clinic-stats__panels">
+          @if (store.summary(); as stats) {
+            <section class="card clinic-stats__panel" aria-labelledby="stats-status-title">
+              <h2 id="stats-status-title" class="clinic-stats__panel-title">Citas por estado</h2>
+              <bd-bar-list [rows]="statusRows()" ariaLabel="Citas por estado" />
+            </section>
+
+            <section class="card clinic-stats__panel" aria-labelledby="stats-channel-title">
+              <h2 id="stats-channel-title" class="clinic-stats__panel-title">Citas por canal</h2>
+              <bd-bar-list [rows]="channelRowsView()" ariaLabel="Citas por canal" />
+            </section>
+
+            <section class="card clinic-stats__panel" aria-labelledby="stats-method-title">
+              <h2 id="stats-method-title" class="clinic-stats__panel-title">Cobrado por método</h2>
+              <bd-bar-list [rows]="methodRows()" ariaLabel="Cobrado por método" />
+            </section>
+
+            <section class="card clinic-stats__panel" aria-labelledby="stats-professional-title">
+              <h2 id="stats-professional-title" class="clinic-stats__panel-title">Por profesional</h2>
+              <bd-professional-stats-table [rows]="stats.byProfessional" />
+            </section>
+
+            <section class="card clinic-stats__panel" aria-labelledby="stats-treatment-title">
+              <h2 id="stats-treatment-title" class="clinic-stats__panel-title">Top 5 tratamientos</h2>
+              <bd-top-treatments-table [rows]="stats.topTreatments" />
+            </section>
+          } @else {
+            @for (index of placeholders; track index) {
+              <section class="card clinic-stats__panel" aria-busy="true">
+                <bd-skeleton height="1.25rem" width="50%" />
+                <bd-skeleton height="6rem" width="100%" />
+              </section>
+            }
+          }
+        </div>
       }
     </section>
   `,
@@ -66,6 +122,28 @@ import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats
     .clinic-stats .btn {
       min-height: 44px;
     }
+
+    .clinic-stats__panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+      gap: var(--space-md);
+      min-width: 0;
+    }
+
+    .clinic-stats__panel {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      min-width: 0;
+      margin: 0;
+    }
+
+    .clinic-stats__panel-title {
+      margin: 0;
+      font-size: var(--fs-md);
+      font-weight: 600;
+      color: var(--blue-950);
+    }
   `,
 })
 export class ClinicStatsPage {
@@ -73,6 +151,18 @@ export class ClinicStatsPage {
   private readonly router = inject(Router);
   private readonly clinicClock = inject(ClinicClock);
   readonly store = inject(ClinicStatsStore);
+  readonly placeholders = [1, 2, 3, 4, 5];
+
+  private readonly moneyPipe = new MoneyPipe();
+  readonly statusRows = computed(() =>
+    appointmentStatusRows(this.store.summary()?.appointments.byStatus ?? {})
+  );
+  readonly channelRowsView = computed(() => channelRows(this.store.summary()?.byChannel ?? []));
+  readonly methodRows = computed(() =>
+    paymentMethodRows(this.store.summary()?.billing.byMethod ?? {}, (value) =>
+      this.moneyPipe.transform(value)
+    )
+  );
 
   /** Período leído de la URL (`?periodo=&fecha=&desde=&hasta=`), para que "Atrás" lo conserve. */
   readonly period = toSignal(

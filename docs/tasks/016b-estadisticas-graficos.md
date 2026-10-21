@@ -92,6 +92,50 @@ Sin tests (sin llamada nueva a la API; `testing/SKILL.md`).
 4. Anchos 375, 768, 1024 y 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+- **Modificados:** `features/billing/index.ts` (export de `PAYMENT_METHOD_LABELS`); `management/models/dashboard.models.ts`
+  (+ `AppointmentStatusKey`, `ChannelKey`); `management/pages/clinic-stats/clinic-stats.page.ts` (5 paneles con
+  `card` + `<h2>`, grilla `auto-fit`, skeleton mientras carga, error solo con `bd-alert`).
+- **Creados:** `management/domain/stats-labels.ts`; `management/components/bar-list/bar-list.component.ts`;
+  `management/components/professional-stats-table/professional-stats-table.component.ts`;
+  `management/components/top-treatments-table/top-treatments-table.component.ts`.
+- **Sin peticiones nuevas:** sigue usando solo `GET /dashboard/summary` (store de la 016a sin cambios).
+- **Build:** OK (`npx ng build`). Aviso preexistente, no de esta tarea: `sidebar.component.scss` supera el presupuesto de 4.00 kB en 22 bytes.
+- **Tests:** `npx ng test --watch=false`:
+  ` Test Files  11 passed (11)`
+  `      Tests  54 passed (54)`
+- **Anchos revisados:** NO. No tengo navegador disponible en esta ejecución; 375, 768, 1024 y 1366 quedan por revisar en DevTools.
+- **Supuestos:**
+  - `bar-list` pone la etiqueta y la cifra encima de la barra en todos los anchos (cumple 375 px; en anchos mayores no se pone en paralelo).
+  - Las tablas usan `container-type` en el `:host` y pasan a tarjetas bajo 37.5rem del contenedor (como 015a).
+  - `channelRows` mapea el array `byChannel` en su orden; un canal desconocido muestra su `source` como etiqueta.
+  - `stats-labels.ts` importa el tipo `BarRow` desde el componente `bar-list` (`import type`), tal como pide la tarea.
+- **Problemas:** ninguno de API. Sin commit.
 
 ## Revisión
+Estado: APROBADO
+
+- Arquitectura: `management` usa `billing` solo por su `index.ts` (`PAYMENT_METHOD_LABELS`, `PaymentMethod`);
+  componentes dumb (solo `input()`), OnPush, sin `any`, sin hex (solo tokens de `_tokens.scss`), plantillas < 150
+  líneas. Dinero con `money` (tablas) y `MoneyPipe.transform` (valueText de métodos).
+- A11y: cada barra con etiqueta + cifra visible; barra `aria-hidden`; `<ul role="list" aria-label>`; paneles con
+  `<section aria-labelledby>` y `<h2>`. Vacíos: `bar-list` usa `some(value > 0)` y `widthOf` evita división por 0
+  (sin NaN); tablas con `bd-empty-state`.
+- Sin peticiones nuevas: la página solo deriva `computed` del store de la 016a; el spec de la 016a no cambió.
+- Build OK (solo el aviso preexistente de presupuesto de `sidebar.component.scss`, +22 B). Tests:
+  `Test Files 11 passed (11)` · `Tests 54 passed (54)`.
+- **Correcciones mínimas hechas por Claude:**
+  1. `professional-stats-table`: el backend (`DashboardRepository.encountersAndRevenueByProfessional`) no tiene
+     `ORDER BY`; se agregó `sortedRows` (`computed`, atenciones desc.) para cumplir el criterio de orden.
+  2. `top-treatments-table`: nombre y código envueltos en un `<span>`; en modo tarjeta el `td` es `flex` con
+     `space-between` y repartía etiqueta, nombre y código en tres columnas.
+- Anchos 375/768/1024/1366 no revisados por el ejecutor (sin navegador): quedan para la prueba manual del usuario.
+
+## Decisiones a revisar (tras la revisión)
+1. **Tablas casi siempre en modo tarjeta:** el umbral pedido (contenedor < 37.5rem) y la grilla de paneles
+   (`minmax(22rem, 1fr)`) hacen que en 1366 (3 columnas de ~22–24rem) las dos tablas se vean como tarjetas, no
+   como tabla. Funciona, pero ocupa más alto. Si al probar se prefiere tabla en laptop, bajar el umbral a ~22rem
+   (3–4 columnas cortas caben) o hacer que estos dos paneles ocupen 2 columnas.
+2. **Orden de `byProfessional` en el frontend:** si se prefiere que lo garantice el backend, añadir
+   `ORDER BY COUNT(...) DESC` a su consulta (cambio de backend, no bloqueante).
+3. **Etiqueta encima de la barra en todos los anchos** (supuesto del ejecutor): en 1366 no va en paralelo
+   etiqueta | barra | cifra. Es más simple y legible; cambiarlo solo si al probar se ve desaprovechado.

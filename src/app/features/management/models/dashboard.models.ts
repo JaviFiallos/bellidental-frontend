@@ -45,3 +45,13 @@ export interface DashboardSummary {
   byProfessional: ProfessionalStats[];
   byChannel: ChannelStat[];
 }
+
+export type AppointmentStatusKey =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'ATTENDED'
+  | 'NO_SHOW'
+  | 'CANCELLED'
+  | 'RESCHEDULED';
+
+export type ChannelKey = 'RECEPTION' | 'PROFESSIONAL' | 'BOT' | 'WALK_IN';

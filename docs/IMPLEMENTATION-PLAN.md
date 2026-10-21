@@ -734,7 +734,9 @@ features/clinical/
   top 5 diagnósticos CIE-10 ni `colorTag` por profesional.
 - **016a:** feature `management`, ruta, selector de período en la URL (Día · Semana · Mes · Rango; F-20), API,
   store, tarjetas. Mueve `clinical/domain/encounter-period.ts` a `shared/utils/calendar-period.ts`. Test de página.
-- **016b:** gráficos y tablas (sin tests).
+- **016b:** gráficos y tablas (sin tests). `bar-list` (barras CSS, cifra siempre visible) en `management`;
+  `billing/index.ts` exporta `PAYMENT_METHOD_LABELS`. `byProfessional` llega sin orden del backend: el frontend
+  lo ordena por atenciones desc.
 - **Responsive:** tarjetas 2×N en móvil (el director lo revisa en el teléfono).
 
 ### 5.17 Auditoría: historial de cambios en contexto — tarea 017 (P17) · backend 013 `64b68fd`
@@ -1002,7 +1004,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Aprobada (ejecutó Haiku) |
 | 015c | Cobros: lista de pagos del paciente (reimprimir, anular) | 015b · G-11 | — (bloqueada por G-11) |
 | 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Aprobada (ejecutó Haiku) |
-| 016b | Estadísticas: gráficos de barras y tablas | 016a | Redactada |
+| 016b | Estadísticas: gráficos de barras y tablas | 016a | Aprobada (ejecutó Haiku) |
 | 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Redactada |
 | 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Redactada |
 | 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Redactada |
