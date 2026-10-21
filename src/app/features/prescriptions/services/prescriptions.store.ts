@@ -12,7 +12,7 @@ import {
 } from '../models/prescription.models';
 import { MedicationsApi } from './medications.api';
 import { PrescriptionsApi } from './prescriptions.api';
-import { closePdfWindow, openBlankPdfWindow, showPdfInWindow } from './pdf-window';
+import { closePdfWindow, openBlankPdfWindow, showPdfInWindow } from '../../../shared/utils/pdf-window';
 
 const SEARCH_DEBOUNCE_MS = 250;
 

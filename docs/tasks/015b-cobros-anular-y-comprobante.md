@@ -134,6 +134,52 @@ como en el caso 1 de la 015a (POST → `Payment` `pay-1` `C-000045` → GET de l
 6. Anchos 375 y 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+**Archivos.** `git mv` de `prescriptions/services/pdf-window.ts` → `shared/utils/pdf-window.ts` (sin cambios de
+contenido) y su import en `prescriptions.store.ts`. `billing/services/billing.api.ts` (+`receipt`, +`voidPayment`).
+`billing/services/patient-account.store.ts` (+`lastPayment`, `printing`, `voiding`, `actionError`, `pendingReceipt`;
+`printReceipt`, `openPendingReceipt`, `voidLastPayment`; `lastPayment` se guarda al registrar el abono y se limpia al
+cambiar de paciente). Nuevo `billing/components/last-payment/last-payment.component.ts` (dumb).
+`patient-account-section.component.ts` (monta la franja y reemite las salidas). `patients/.../patient-reception.page.ts`
+(diálogo "Anular abono" con motivo obligatorio → `voidLastPayment(reason.trim())`) y `patient-reception.page.spec.ts` (+2 casos).
+
+**Build y tests.** `npx ng build`: OK (solo el aviso previo de budget de `sidebar.component.scss`, +22 bytes, ajeno).
+`npx ng test --watch=false`: `Test Files 10 passed (10)` · `Tests 52 passed (52)`.
+
+**Responsive.** NO revisado visualmente: no tengo navegador en esta sesión. Queda para la prueba manual en 375, 768, 1024
+y 1366. La franja usa `@container (min-width: 37.5rem)`: columna con botones a todo el ancho por debajo, fila con botones
+a la derecha por encima.
+
+**Problemas y supuestos.**
+- Un error de anulación (p. ej. 409) se muestra en la franja y no recarga la cuenta.
+- La franja de error de imprimir/anular usa `actionError` del store; se limpia al registrar otro abono o cambiar de paciente.
+- El botón "Imprimir comprobante" pasa a "Abrir PDF" cuando la pestaña fue bloqueada (un solo botón, no dos).
+- Sin cambios en `billing/index.ts` ni en el backend. Sin commit.
 
 ## Revisión
+Estado: APROBADO (2026-10-21, Claude Opus)
+
+- Contrato verificado contra `PaymentController`: `GET /payments/{id}/receipt` (`BILLING_READ`, `byte[]`),
+  `POST /payments/{id}/void` (`BILLING_CREATE`, `VoidPaymentRequest(@NotBlank voidReason)`), `PaymentResponse` igual
+  a `Payment`. `BillingApi` usa `getBlob` y `post` con URLs relativas.
+- `printReceipt` abre la pestaña antes de suscribirse (patrón de `PrescriptionsStore`); bloqueo → `pendingReceipt` +
+  "Abrir PDF"; error → `closePdfWindow` + `bd-alert`. Anular: diálogo en la página (dumb sin diálogos), motivo
+  obligatorio, toast, `reload()`; 409 → `message` en la franja. "Anular" solo con `BILLING_CREATE` y `!voided`.
+- `pdf-window.ts` movido con `git mv` (R100, sin cambios); único import en `prescriptions.store.ts` actualizado;
+  tests de recetas en verde. `billing/index.ts` sin cambios (`Payment` ya se exporta vía modelos).
+- Reglas: OnPush, `input()/output()`, sin `any`, solo tokens (`color-mix` sobre `--teal-700`), `money` y
+  `clinicTime`, botones `min-height: 44px`, estado = badge con texto, sin "Eliminar".
+- Correcciones mínimas de Claude en `last-payment.component.ts`: (1) `role="status"` pasa del contenedor a
+  `.last-payment__info` (no anunciar los botones); (2) `flex-wrap: wrap` en la fila `@container ≥ 37.5rem` para que
+  `.last-payment__error` (`flex-basis: 100%`) baje a su propia línea en lugar de comprimir la fila.
+- `npx ng build`: OK (solo el aviso previo de budget de `sidebar.component.scss`, +22 B). `npx ng test --watch=false`:
+  `Test Files 10 passed (10)` · `Tests 52 passed (52)`.
+- Pendiente del usuario: responsive (375, 768, 1024, 1366) y prueba manual 1–6 (Haiku no tenía navegador).
+
+## Decisiones a revisar (tras la revisión)
+1. **G-11 sigue abierto**: solo se imprime/anula el abono registrado en esta visita a la ficha; al recargar la franja
+   desaparece. Reimprimir comprobantes de otros días requiere `GET /patients/{id}/payments` en el backend (015c).
+2. "Imprimir comprobante" y "Abrir PDF" son el mismo botón (se reemplaza tras un bloqueo), no dos botones.
+3. Un error al anular (p. ej. 409) se muestra en la franja y no recarga la cuenta; si el 409 vino porque otro usuario
+   ya lo anuló, la franja sigue mostrando el abono como vigente hasta recargar.
+4. La impresión del comprobante no exige `BILLING_READ` en la UI: se asume que quien ve la sección ya lo tiene.
+5. F-21 (pdf-window a `shared/utils`) queda aplicada; en el plan sigue como "Propuesta" hasta que la confirmes.

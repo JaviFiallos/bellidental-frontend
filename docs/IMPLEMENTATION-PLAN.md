@@ -999,7 +999,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 011 | Más del 033 | 008 | Commit `fa8d43b` (ejecutó Haiku) |
 | 014 | Ficha clínica e historial | 009 · backend clinical-summary | — |
 | 015a | Cobros: estado de cuenta y registrar abono (ficha de recepción) | 005b · backend 012 `328c6fe` | Aprobada (ejecutó Haiku) |
-| 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Redactada |
+| 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Aprobada (ejecutó Haiku) |
 | 015c | Cobros: lista de pagos del paciente (reimprimir, anular) | 015b · G-11 | — (bloqueada por G-11) |
 | 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Redactada |
 | 016b | Estadísticas: gráficos de barras y tablas | 016a | Redactada |

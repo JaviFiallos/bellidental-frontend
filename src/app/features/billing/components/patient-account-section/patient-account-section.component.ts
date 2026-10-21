@@ -4,8 +4,9 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { balanceStatus } from '../../domain/account-display';
-import { CreatePaymentRequest, PatientAccount } from '../../models/billing.models';
+import { CreatePaymentRequest, PatientAccount, Payment } from '../../models/billing.models';
 import { AccountTableComponent } from '../account-table/account-table.component';
+import { LastPaymentComponent } from '../last-payment/last-payment.component';
 import { PaymentFormComponent } from '../payment-form/payment-form.component';
 
 /** Tarjeta "Estado de cuenta" de la ficha. Presentacional: los datos llegan por input() y las acciones salen por output(). */
@@ -19,6 +20,7 @@ import { PaymentFormComponent } from '../payment-form/payment-form.component';
     MoneyPipe,
     AccountTableComponent,
     PaymentFormComponent,
+    LastPaymentComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -68,6 +70,20 @@ import { PaymentFormComponent } from '../payment-form/payment-form.component';
             [errorMessage]="saveError()"
             (submitted)="submitPayment.emit($event)"
             (cancelled)="closeForm.emit()"
+          />
+        }
+
+        @if (lastPayment(); as payment) {
+          <bd-last-payment
+            [payment]="payment"
+            [canVoid]="canVoid()"
+            [printing]="printing()"
+            [voiding]="voiding()"
+            [hasPendingReceipt]="hasPendingReceipt()"
+            [errorMessage]="paymentActionError()"
+            (print)="printReceipt.emit()"
+            (openPending)="openPendingReceipt.emit()"
+            (voidPayment)="voidPayment.emit($event)"
           />
         }
 
@@ -156,11 +172,20 @@ export class PatientAccountSectionComponent {
   readonly saving = input<boolean>(false);
   readonly saveError = input<string | null>(null);
   readonly defaultEncounterId = input<string | null>(null);
+  readonly lastPayment = input<Payment | null>(null);
+  readonly canVoid = input<boolean>(false);
+  readonly printing = input<boolean>(false);
+  readonly voiding = input<boolean>(false);
+  readonly hasPendingReceipt = input<boolean>(false);
+  readonly paymentActionError = input<string | null>(null);
 
   readonly retry = output<void>();
   readonly openForm = output<void>();
   readonly closeForm = output<void>();
   readonly submitPayment = output<CreatePaymentRequest>();
+  readonly printReceipt = output<void>();
+  readonly openPendingReceipt = output<void>();
+  readonly voidPayment = output<Payment>();
 
   readonly balanceOf = balanceStatus;
 }

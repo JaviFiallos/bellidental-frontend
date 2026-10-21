@@ -20,8 +20,9 @@ import { ConfirmDialogService } from '../../../../shared/components/confirm-dial
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
+import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { Appointment, AppointmentsApi } from '../../../appointments';
-import { PatientAccountSectionComponent, PatientAccountStore } from '../../../billing';
+import { PatientAccountSectionComponent, PatientAccountStore, Payment } from '../../../billing';
 import { AdminNotesComponent } from '../../components/admin-notes/admin-notes.component';
 import { PatientAppointmentsComponent } from '../../components/patient-appointments/patient-appointments.component';
 import { PatientIdentityComponent } from '../../components/patient-identity/patient-identity.component';
@@ -91,10 +92,19 @@ import { PatientsApi } from '../../services/patients.api';
               [saving]="accountStore.saving()"
               [saveError]="accountStore.saveError()"
               [defaultEncounterId]="accountStore.defaultEncounterId()"
+              [lastPayment]="accountStore.lastPayment()"
+              [canVoid]="canRegisterPayment()"
+              [printing]="accountStore.printing()"
+              [voiding]="accountStore.voiding()"
+              [hasPendingReceipt]="accountStore.pendingReceipt() !== null"
+              [paymentActionError]="accountStore.actionError()"
               (retry)="accountStore.reload()"
               (openForm)="accountStore.openForm()"
               (closeForm)="accountStore.closeForm()"
               (submitPayment)="accountStore.registerPayment($event)"
+              (printReceipt)="accountStore.printReceipt()"
+              (openPendingReceipt)="accountStore.openPendingReceipt()"
+              (voidPayment)="onVoidPayment($event)"
             />
           }
 
@@ -190,6 +200,7 @@ export class PatientReceptionPage implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly clinicTimePipe = new ClinicTimePipe();
+  private readonly moneyPipe = new MoneyPipe();
   readonly accountStore = inject(PatientAccountStore);
 
   private readonly reloadPatient$ = new Subject<void>();
@@ -319,6 +330,25 @@ export class PatientReceptionPage implements OnInit {
         },
         error: (err: ApiError) => this.notificationService.error(err.message),
       });
+  }
+
+  /** Confirma la anulación de un abono con motivo obligatorio; la franja reporta el resultado. */
+  onVoidPayment(payment: Payment): void {
+    this.confirmDialog
+      .open({
+        title: 'Anular abono',
+        message: `El abono ${payment.receiptNumber} de ${this.moneyPipe.transform(payment.amount)} dejará de contar en el saldo. El comprobante quedará marcado como anulado.`,
+        confirmLabel: 'Anular abono',
+        cancelLabel: 'Volver',
+        tone: 'danger',
+        reasonLabel: 'Motivo de la anulación',
+        reasonRequired: true,
+      })
+      .pipe(
+        filter((result) => result.confirmed),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((result) => this.accountStore.voidLastPayment((result.reason ?? '').trim()));
   }
 
   private loadPatient(id: string): Observable<unknown> {

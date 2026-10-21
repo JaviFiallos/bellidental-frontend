@@ -4,6 +4,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { ApplicationRef } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CurrentUser } from '../../../../core/auth/auth.models';
 import { SessionStore } from '../../../../core/auth/session.store';
@@ -197,6 +198,50 @@ describe('PatientReceptionPage', () => {
     harness.detectChanges();
   }
 
+  /** Sustituye solo las APIs del navegador que usa la pestaña del PDF. */
+  function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
+    const pdfWindow = { location: { href: '' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(pdfWindow as unknown as Window);
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => 'blob:rx-1'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
+    return { pdfWindow };
+  }
+
+  /** Registra un abono de $ 25,00 en efectivo desde el formulario (POST) y responde la recarga de la cuenta. */
+  function registerPaymentFromForm(): void {
+    findButton('Registrar abono')!.click();
+    harness.detectChanges();
+    findButton('Guardar abono')!.click();
+
+    const paymentRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    const payment: ApiResponse<Payment> = {
+      success: true,
+      message: 'Abono registrado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000045',
+        paidAt: '2026-10-10T12:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: false,
+        voidReason: null,
+      },
+    };
+    paymentRequest.flush(payment);
+
+    const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    const reloaded: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
+    reloadRequest.flush(reloaded);
+    harness.detectChanges();
+  }
+
   function findButton(text: string): HTMLButtonElement | undefined {
     return Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
       (button) => button.textContent?.trim() === text
@@ -334,5 +379,74 @@ describe('PatientReceptionPage', () => {
 
     expect(element.textContent).toContain('La atención no pertenece a este paciente.');
     expect(findButton('Guardar abono')).toBeDefined();
+  });
+
+  it('Imprimir comprobante del abono → GET /payments/{id}/receipt → la pestaña recibe el PDF', async () => {
+    const { pdfWindow } = stubPdfBrowserApis();
+    await openAs(secretaria);
+    flushInitialLoad();
+    registerPaymentFromForm();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('Abono registrado');
+    expect(element.textContent).toContain('C-000045');
+
+    findButton('Imprimir comprobante')!.click();
+    harness.detectChanges();
+
+    const receiptRequest = httpMock.expectOne('/api/v1/payments/pay-1/receipt');
+    expect(receiptRequest.request.method).toBe('GET');
+    receiptRequest.flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    harness.detectChanges();
+
+    expect(pdfWindow.location.href).toBe('blob:rx-1');
+  });
+
+  it('Anular el abono con motivo → POST /payments/{id}/void → Anulado y cuenta recargada', async () => {
+    await openAs(secretaria);
+    flushInitialLoad();
+    registerPaymentFromForm();
+
+    const element = fixture.nativeElement as HTMLElement;
+    findButton('Anular')!.click();
+    harness.detectChanges();
+
+    const reasonInput = document.querySelector('.confirm-dialog__textarea') as HTMLTextAreaElement;
+    reasonInput.value = 'Monto mal digitado';
+    reasonInput.dispatchEvent(new Event('input'));
+    TestBed.inject(ApplicationRef).tick();
+
+    const confirmButton = document.querySelector('.confirm-dialog .btn-danger') as HTMLButtonElement;
+    confirmButton.click();
+
+    const voidRequest = httpMock.expectOne('/api/v1/payments/pay-1/void');
+    expect(voidRequest.request.method).toBe('POST');
+    expect(voidRequest.request.body).toEqual({ voidReason: 'Monto mal digitado' });
+    const voided: ApiResponse<Payment> = {
+      success: true,
+      message: 'Abono anulado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000045',
+        paidAt: '2026-10-10T12:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: true,
+        voidReason: 'Monto mal digitado',
+      },
+    };
+    voidRequest.flush(voided);
+
+    const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    const reloaded: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
+    reloadRequest.flush(reloaded);
+    harness.detectChanges();
+
+    expect(element.textContent).toContain('Anulado');
+    expect(element.textContent).toContain('Monto mal digitado');
+    expect(findButton('Anular')).toBeUndefined();
   });
 });

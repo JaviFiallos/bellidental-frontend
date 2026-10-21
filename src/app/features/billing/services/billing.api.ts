@@ -16,4 +16,13 @@ export class BillingApi {
   registerPayment(patientId: string, request: CreatePaymentRequest): Observable<Payment> {
     return this.api.post<Payment>(`/api/v1/patients/${patientId}/payments`, request);
   }
+
+  /** Comprobante A5 en PDF (binario, sin ApiResponse). */
+  receipt(paymentId: string): Observable<Blob> {
+    return this.api.getBlob(`/api/v1/payments/${paymentId}/receipt`);
+  }
+
+  voidPayment(paymentId: string, voidReason: string): Observable<Payment> {
+    return this.api.post<Payment>(`/api/v1/payments/${paymentId}/void`, { voidReason });
+  }
 }
