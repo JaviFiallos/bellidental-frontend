@@ -139,11 +139,14 @@ Se crean en la primera tarea que los necesita y se reutilizan después. Ningún 
 | `ConfirmDialog.reasonRequired` | motivo obligatorio al anular (tratamientos, pagos) | 012a |
 | `ApiClient.getBlob` (core) | descargar PDFs con el token; lee el `message` del error aunque llegue como `Blob` | 013b |
 | Utils `cedula.ts`, `e164.ts` (`shared/utils`) | validar cédula EC, convertir teléfono | 005 |
+| Util `pdf-window.ts` (`shared/utils`, movido desde prescriptions) | pestaña del PDF abierta en el clic | 013b → 015b (F-21) |
+| Util `calendar-period.ts` (`shared/utils`, movido desde `clinical/domain/encounter-period.ts`) | período día/semana/mes con etiqueta | 019 → 016a (F-20) |
 
 Por feature (exportados en su `index.ts`): `PatientSearchComponent` (patients, 002b), `AppointmentCard`
 (appointments, 003a), `OdontogramComponent` (odontogram, 009), `PatientClinicalHeader` (clinical, 008),
 `TreatmentsSectionComponent` + `TreatmentsStore` (treatments, 012a), `PrescriptionsSectionComponent` +
-`PrescriptionEditorComponent` + `PrescriptionsStore` (prescriptions, 013a).
+`PrescriptionEditorComponent` + `PrescriptionsStore` (prescriptions, 013a), `PatientAccountSectionComponent` +
+`PatientAccountStore` (billing, 015a), `AuditHistoryDialogService` (management, 017).
 Las secciones de la atención que viven en otro feature (odontograma, tratamientos, recetas) no importan de
 `clinical`: reciben tipos mínimos (`DiagnosisOption`, `FindingOption`) y la página de la atención los conecta.
 
@@ -164,8 +167,9 @@ El backend tiene roles; la interfaz se organiza en **tres perfiles** (`SessionSt
 |---|---|---|
 | `SECRETARIA` | roles incluye `SECRETARIA` | Recepción: agenda, pacientes (sin datos clínicos), horarios, cobros |
 | `ODONTOLOGO` | roles incluye `ODONTOLOGO` y no `ADMIN` | Consultorio: sus citas, atención, odontograma, ficha clínica |
-| `DIRECTOR` | roles incluye `ADMIN` | **La misma del odontólogo** + Estadísticas + Auditoría |
+| `DIRECTOR` | roles incluye `ADMIN` | **La misma del odontólogo** + Estadísticas + Usuarios + "Historial de cambios" en contexto (F-15) |
 
+Todos los perfiles: "Cambiar contraseña" al pie del sidebar (`/cuenta/contrasena`, 023b).
 Inicio: `SECRETARIA` → `/recepcion`; `ODONTOLOGO` y `DIRECTOR` → `/consultorio` (si el director no tuviera
 `professionalId`, → `/direccion/estadisticas`).
 Menús y rutas se deciden por **perfil**; botones y acciones por **permiso** (`hasPermission('APPOINTMENT_UPDATE')`).
@@ -177,26 +181,32 @@ Así el director no ve la recepción aunque su rol ADMIN tenga esos permisos en 
 /recepcion                          SECRETARIA           Agenda del día                 P3, P4    003, 004
 /recepcion/horarios                 SECRETARIA           Horarios de profesionales      P7        006
 /pacientes/nuevo                    SECRETARIA           Alta de paciente               P6        005
-/pacientes/:id                      todos                SECRETARIA → ficha de recepción P5        005, 015
-                                                         ODONTOLOGO/DIRECTOR → ficha clínica P13  014
+/pacientes/:id                      todos                SECRETARIA → ficha de recepción P5        005, 015a, 015b
+                                                         ODONTOLOGO/DIRECTOR → ficha clínica P13  014 (017: historial)
 /pacientes/:id/033                  ODONTOLOGO, DIRECTOR Formulario 033 (vista e impresión) P18 018
 /consultorio                        ODONTOLOGO, DIRECTOR Mis citas de hoy (tablero)     P8        007
 /consultorio/atenciones             ODONTOLOGO, DIRECTOR Mis atenciones (día/semana/mes) P19      019
-/consultorio/atencion/:encounterId  ODONTOLOGO, DIRECTOR Atención                       P9–P12, P15  008–013
-/direccion/estadisticas             DIRECTOR             Estadísticas de la clínica     P16       016
-/direccion/auditoria                DIRECTOR             Auditoría                      P17       017
+/consultorio/atencion/:encounterId  ODONTOLOGO, DIRECTOR Atención                       P9–P12, P15  008–013 (017: historial)
+/direccion/estadisticas             DIRECTOR             Estadísticas de la clínica     P16       016a, 016b
+/direccion/usuarios                 DIRECTOR             Usuarios                       P20       023a, 023c
+/cuenta/contrasena                  todos (sin profileGuard) Cambiar mi contraseña       P21       023b
 ```
 Todas bajo `MainLayout` con `authGuard`; cada grupo con `profileGuard([...])`. Perfil equivocado → su inicio.
+`/direccion/auditoria` **se quita** en la 017 (F-15): sin lista en el backend (G-7) no hay qué mostrar; el
+historial se abre desde el registro (paciente, atención).
 
 ### 3.3 Menú lateral por perfil
 | Secretaria | Odontólogo | Director |
 |---|---|---|
 | Agenda (inicio) | Mis citas (inicio) | Mis citas (inicio) |
+| — | Mis atenciones | Mis atenciones |
 | Pacientes ¹ | Pacientes ¹ | Pacientes ¹ |
 | Horarios | — | — |
 | — | — | Estadísticas |
-| — | — | Auditoría |
-| Cerrar sesión | Cerrar sesión | Cerrar sesión |
+| — | — | Usuarios (023a) |
+| Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión |
+
+"Auditoría" sale del menú en la 017 (F-15).
 
 ¹ "Pacientes" enfoca el buscador global (no hay listado: >1000 pacientes, siempre se busca). [F-1, F-2]
 
@@ -689,33 +699,55 @@ features/clinical/
   pendientes (hallazgos rojos), línea de tiempo de sesiones (N°, fecha, profesional, diagnósticos,
   procedimientos, recetas) como la sección 12 del 033; abrir una sesión muestra su detalle. Debe cargar < 1 s.
 - **Test:** carga → se ven sesiones en orden y antecedentes.
+- **Suma (2026-10-21):** el backend 011c ya tiene commit (`dc4ca61`). Para el DIRECTOR la ficha clínica muestra
+  además el estado de cuenta en solo lectura (`PatientAccountSectionComponent` de `billing/index.ts`, sin
+  "Registrar abono"; F-10) y el "Historial de cambios" del paciente (017). El ODONTOLOGO no ve la cuenta (403).
 
-### 5.15 Cobros y comprobante — tarea 015 (P14, completa P5) · backend 012
-- **Perfil:** SECRETARIA (registra y anula); ODONTOLOGO/DIRECTOR solo lectura en su ficha si se decide.
-- **API (backend 012):** `GET /patients/{id}/account` · `POST /payments` · anular con motivo ·
-  `GET /payments/{id}/receipt`.
-- **Comportamiento:** tabla de la ficha rápida (fecha, tratamiento, doctor, cargo, abono, saldo acumulado; sin Dg.)
-  en la ficha de recepción; "Registrar abono": monto (por defecto el saldo), método (efectivo por defecto),
-  sesión opcional → comprobante PDF `C-000001` con línea de firma; anular pide motivo. Saldo negativo = a favor.
-- **Test:** registrar abono → `POST /payments` → saldo actualizado y enlace al comprobante.
+### 5.15 Cobros y comprobante — tareas 015a y 015b (P14, completa P5) · backend 012 `328c6fe`
+- **Perfil:** SECRETARIA (`BILLING_READ` ve, `BILLING_CREATE` registra y anula). DIRECTOR (ADMIN tiene ambos
+  permisos): solo lectura dentro de su ficha clínica, **pendiente de la 014** (hoy `/pacientes/:id` le muestra solo
+  la identificación). ODONTOLOGO: **no** (sin `BILLING_*`, el backend responde 403) [F-10 corregida].
+- **API (backend 012):** `GET /patients/{patientId}/account` · `POST /patients/{patientId}/payments`
+  `{amount, method EFECTIVO|TRANSFERENCIA|TARJETA, encounterId?}` → `Payment` (201) ·
+  `POST /payments/{id}/void` `{voidReason}` → `Payment` · `GET /payments/{id}/receipt` (PDF A5, binario). DTO en §7.1.
+- **Estado de cuenta:** saldo **calculado** por el backend (nunca se guarda): cargos = tratamientos no anulados de
+  atenciones no anuladas; abonos = pagos no anulados. Una sesión por atención (fecha, profesional, tratamientos
+  «nombre x cantidad», cargo, abono, saldo acumulado) y, si hay pagos sin atención, una **sesión final con
+  `encounterId = null`**. Sin Dg. ni columna "Estado" (F-3). Saldo negativo = a favor.
+- **015a — estado de cuenta y abono:** feature `billing` (`PatientAccountSectionComponent` + `PatientAccountStore`
+  exportados) en la ficha de recepción, una sola columna (F-19). "Registrar abono" (acento): monto = saldo si > 0,
+  método Efectivo, sesión = la atención de hoy si existe (si no, "Sin sesión"); tras guardar se recarga la cuenta.
+- **015b — comprobante y anular:** el `Payment` del abono recién registrado queda en una franja "Abono registrado
+  C-000123" con "Imprimir comprobante" (`ApiClient.getBlob` + `URL.createObjectURL`, F-13) y "Anular" (motivo
+  obligatorio). **Sin G-11 no hay forma de reimprimir o anular abonos de otras visitas** (la cuenta no trae ids de
+  pago); eso queda para una 015c cuando exista `GET /patients/{id}/payments`. `pdf-window.ts` pasa a `shared/utils`.
+- **Test:** `patient-reception.page.spec.ts` (+2 casos en 015a, +2 en 015b).
 
-### 5.16 Estadísticas de la clínica — tarea 016 (P16) · [G-6]
-- **Perfil:** DIRECTOR. **Ruta:** `/direccion/estadisticas`. **API:** `GET /stats/summary?from&to` [G-6].
-- **Contenido [F-9]:** selector de periodo (hoy · semana · mes · rango). Tarjetas: atenciones
-  completadas, pacientes nuevos, inasistencias (n y %), ingresos cobrados, saldo pendiente total. Gráficos simples
-  en SVG/CSS (sin librería): atenciones por día y por profesional (barras apiladas con su `colorTag`), origen de las
-  citas (recepción · bot · sin cita), top 5 tratamientos y top 5 diagnósticos CIE-10.
+### 5.16 Estadísticas de la clínica — tareas 016a y 016b (P16) · backend 020 `81ee53d`
+- **Perfil:** DIRECTOR (endpoint solo `hasRole('ADMIN')`, D-26 del backend). **Ruta:** `/direccion/estadisticas`.
+- **API:** `GET /dashboard/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` (fechas de la clínica, inclusivas; ambas o
+  ninguna → por defecto el mes actual; `from > to` o > 366 días → 400). DTO en §7.1.
+- **Contenido real [F-9 corregida]:** tarjetas: atenciones completadas, pacientes nuevos (y activos), citas del
+  período, inasistencia (% y n), cobrado, saldo por cobrar (histórico). Barras horizontales en CSS (sin librería):
+  citas por estado y por canal (Recepción · Profesional · Bot · Sin cita), cobrado por método, atenciones y
+  producción por profesional, top 5 tratamientos. **Ya no existe** en el backend: atenciones por día (serie),
+  top 5 diagnósticos CIE-10 ni `colorTag` por profesional.
+- **016a:** feature `management`, ruta, selector de período en la URL (Día · Semana · Mes · Rango; F-20), API,
+  store, tarjetas. Mueve `clinical/domain/encounter-period.ts` a `shared/utils/calendar-period.ts`. Test de página.
+- **016b:** gráficos y tablas (sin tests).
 - **Responsive:** tarjetas 2×N en móvil (el director lo revisa en el teléfono).
-- **Test:** cambiar periodo → `GET /stats/summary` con `from/to` correctos → cifras visibles.
 
-### 5.17 Auditoría — tarea 017 (P17) · backend 013 + [G-7]
-- **Perfil:** DIRECTOR. **Ruta:** `/direccion/auditoria`.
-- **API:** `GET /audit?from&to&userId&entity&page` [G-7] (lista) · `GET /audit/{entity}/{id}` (backend 013,
-  detalle de un registro).
-- **Contenido:** tabla paginada: fecha y hora, usuario, acción (creó · modificó · anuló), qué (atención,
-  diagnóstico, hallazgo, pago, cita, paciente…), paciente. Filtros: rango, usuario, tipo. Detalle en panel:
-  campos antes → después. Desde la ficha de un paciente, el director ve "Historial de cambios".
-- **Test:** filtrar por usuario → `GET /audit?userId=` → filas visibles.
+### 5.17 Auditoría: historial de cambios en contexto — tarea 017 (P17) · backend 013 `64b68fd`
+- **Perfil:** DIRECTOR (endpoint `hasRole('ADMIN')`). **Sin ruta propia** (F-15): G-7 no se resolvió, el backend
+  solo da el historial de **un registro**: `GET /audit/{entity}/{id}` con `entity` ∈ `clinical-records`,
+  `medical-history-entries`, `encounters`, `encounter-diagnoses`, `dental-findings`, `performed-treatments`,
+  `prescriptions`, `prescription-items`, `payments`, `appointments`, `patients`.
+- **Comportamiento:** diálogo reutilizable "Historial de cambios" (`AuditHistoryDialogService` de
+  `management/index.ts`): por revisión, fecha y hora (Guayaquil), usuario, acción (Creó · Modificó · Anuló ·
+  Eliminó) y cambios "campo: antes → después" con nombres de campo en español. Entradas: ficha del paciente
+  (`patients`) y cabecera de la atención (`encounters`). Pagos (`payments`): cuando el director vea la cuenta (014).
+  Se quitan la ruta `/direccion/auditoria` y el ítem "Auditoría" del menú.
+- **Test:** `patient-reception.page.spec.ts` (+2 casos, director).
 
 ### 5.18 Formulario 033: vista e impresión — tareas 018a y 018b (P18, RF09) · backend 011c
 - **Alcance:** RF09 pasa al MVP (usuario, 2026-10-19). **Ruta:** `/pacientes/:id/033` (ODONTOLOGO, DIRECTOR); enlaces
@@ -742,6 +774,24 @@ features/clinical/
   tabla desc (fecha, hora, paciente, especialidad, estado, acción Continuar/Corregir/Ver); "Solo abiertas";
   `< sm` tarjetas. `bd-date-nav` gana `label` y `unit`.
 - Tarea: `docs/tasks/019-mis-atenciones.md`.
+
+### 5.20 Usuarios del director y cambio de contraseña — tareas 023a, 023b y 023c (P20, P21) · backend 019 `7fc03c2`
+- **Requerimiento nuevo del usuario** (backend D-24, reemplaza D-13): el director (ADMIN) gestiona las cuentas.
+  Contradecía el MVP-SCOPE ("sin UI de usuarios"); ya se actualizó.
+- **API:** `GET /users` (todas las cuentas sin borrado lógico, activas e inactivas, incluye la del bot) ·
+  `POST /users` `{email, username?, temporaryPassword, roles[]}` · `PUT /users/{id}/roles` `{roles[]}` ·
+  `POST /users/{id}/reset-password` `{temporaryPassword}` · `POST /users/{id}/deactivate` · `/activate` ·
+  `POST /professionals/{id}/access` `{email, temporaryPassword}` · `PUT /auth/password`
+  `{currentPassword, newPassword}` (cualquier usuario). Reglas: roles asignables solo `ODONTOLOGO` y `SECRETARIA`
+  (ADMIN → 400); contraseña ≥ 10 caracteres (400); temporal sin cambio forzado; no desactivarse a sí mismo (409);
+  cuentas `is_system` y roles de un ADMIN intocables (409); `PUT /auth/password` con la actual incorrecta → **401**.
+- **023a — lista, alta, activar/desactivar:** `/direccion/usuarios` en `management`; tabla con usuario, correo,
+  roles, profesional vinculado (de `GET /professionals`, `userId`), estado, último acceso; alta en `bd-side-sheet`
+  con contraseña temporal generable. Filas de ADMIN y sin roles (bot) sin acciones (F-17, G-12).
+- **023b — cambiar mi contraseña:** `/cuenta/contrasena` (feature `auth`), enlace al pie del sidebar para todos.
+  El `errorInterceptor` no cierra la sesión con el 401 de `/auth/password` (F-18).
+- **023c — roles, restablecer contraseña y acceso de profesionales:** acciones por fila y sección "Profesionales
+  sin cuenta" (`userId = null`) con "Dar acceso".
 
 ---
 
@@ -861,6 +911,17 @@ incisal (`SurfaceLabelResolver`).
 | `GET /encounters/{id}/prescriptions` · `GET /prescriptions/{id}` · `POST /prescriptions/{id}/issue` · `/void` | `Prescription[]` (no anuladas) · `Prescription` |
 | `GET /prescriptions/{id}/pdf` | binario `application/pdf` (sin `ApiResponse`; 409 JSON si no está emitida) |
 | `GET /patients/{id}/clinical-summary` (backend 011c) | `{ patientId, clinicName, recordNumber, openedAt, openedBy{id,fullName,licenseNumber}, sessions[{ encounterId, sessionNumber, startAt, status, professional{…}, diagnoses[{id,code,description,certainty,notes}], treatments[{id,code,name,toothCode,surfaceCode,quantity}], prescriptions[{id,prescribedAt,generalInstructions,items[{medicationName,concentration,presentation,dose,frequency,duration,quantity}]}] }] }` (sesiones = atenciones no anuladas por `startAt`; recetas solo ISSUED) |
+| `GET /patients/{patientId}/account` (`BILLING_READ`; backend 012) | `{ patientId, patientName, totalCharges, totalPayments, balance, sessions[{ encounterId (null = pagos sin atención, sesión final), date, professionalName (null en la final), treatments[] ("Profilaxis x1"), charge, payment, runningBalance }] }` (orden ascendente; montos `number` con 2 decimales; `balance` < 0 = a favor) |
+| `POST /patients/{patientId}/payments` (`BILLING_CREATE`) | body `{ amount (≥ 0.01, 8+2 dígitos), method EFECTIVO/TRANSFERENCIA/TARJETA, encounterId? }` → 201 `Payment { id, patientId, encounterId, amount, method, receiptNumber "C-000001", paidAt, receivedBy, voided, voidReason }` (atención de otro paciente o anulada → 409) |
+| `POST /payments/{id}/void` (`BILLING_CREATE`) | body `{ voidReason }` (obligatorio, 400) → `Payment` con `voided: true` (ya anulado → 409) |
+| `GET /payments/{id}/receipt` (`BILLING_READ`) | binario `application/pdf` A5 (sin `ApiResponse`; 404 JSON si no existe) |
+| `GET /audit/{entity}/{id}` (ADMIN; backend 013) | `[{ revision, at (Instant UTC, "…Z"), userId, username (null = proceso sin usuario), type ADD/MOD/DEL, changes[{ field (nombre Java: "chiefComplaint", "voidedAt"…), oldValue, newValue }] }]` (texto; de la más antigua a la más reciente; entidad desconocida → 404; registro sin historial → `[]`) |
+| `GET /dashboard/summary?from&to` (ADMIN; backend 020) | `{ from, to, patients{ totalActive, newInRange }, appointments{ total, byStatus{PENDING,CONFIRMED,ATTENDED,CANCELLED,NO_SHOW,RESCHEDULED}, noShowRate (0–100, 1 decimal), completedEncounters }, billing{ collected, byMethod{EFECTIVO,TRANSFERENCIA,TARJETA}, outstandingBalance }, topTreatments[{ code, name, quantity, amount }] (≤ 5), byProfessional[{ professionalId, name, encounters, revenue }], byChannel[{ source RECEPTION/PROFESSIONAL/BOT/WALK_IN, appointments }] }` |
+| `GET /users` · `GET /users/{id}` (ADMIN; backend 019) | `User { id, username, email, active, lastLoginAt, createdAt, roles[] }` (lista: todas las cuentas sin borrado lógico, por `createdAt` desc; sin `isSystem` ni profesional [G-12]) |
+| `POST /users` · `PUT /users/{id}/roles` · `POST /users/{id}/deactivate` · `/activate` | body `{ email, username?, temporaryPassword, roles[] }` → 201 `User` · `{ roles[] }` → `User` · sin body → `User` |
+| `POST /users/{id}/reset-password` · `PUT /auth/password` | `{ temporaryPassword }` · `{ currentPassword, newPassword }` → solo `message` ("Contraseña restablecida." / "Contraseña actualizada."); actual incorrecta → 401 con `message` "Credenciales inválidas" |
+| `POST /professionals/{id}/access` (ADMIN) | body `{ email, temporaryPassword }` → 201 `User` con rol ODONTOLOGO (ya tiene cuenta → 409) |
+| `GET /professionals` (completo) | además de lo de arriba: `userId` es **`null`** si el profesional no tiene cuenta; también `documentType, documentNumber, firstName, lastName, phoneE164, createdAt, updatedAt` |
 
 Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta tabla.
 
@@ -869,12 +930,15 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 |---|---|---|---|---|
 | G-1 | `Appointment` no trae `encounterId` ni `encounterStatus` | "En atención" y "Continuar" (007), ir de la cita a la atención | Añadirlos (null si no hay atención) + `encounterVoided` (atención anulada: sin "Continuar") | **Resuelto** (backend 006e `5d7f145`) |
 | G-2 | `/auth/me` sin nombre para mostrar | Sidebar (002) | `displayName` (profesional: nombre; si no, username) | opcional |
-| G-3 | Tratamientos, recetas, cobros, clinical-summary | 012–015 | Tareas backend 010, 011, 012 y clinical-summary | Tratamientos y recetas **resueltos** (010a `10abf5f`, 010b `cf9a6c9`, 011a `8dbfbd5`, 011b `a631bbb`); faltan 012 y clinical-summary (backend 011c, redactada) |
+| G-3 | Tratamientos, recetas, cobros, clinical-summary | 012–015 | Tareas backend 010, 011, 012 y clinical-summary | **Resuelto**: 010a `10abf5f`, 010b `cf9a6c9`, 011a `8dbfbd5`, 011b `a631bbb`, 011c `dc4ca61`, cobros 012 `328c6fe` |
 | G-10 | Estado del recordatorio de WhatsApp por cita (enviado, confirmó, canceló) y consentimiento del aviso por paciente | Nada del MVP (opcional) | Si la clínica lo pide: `reminderStatus` en `Appointment` y `privacyConsentAt` en la ficha | posterior al MVP |
 | G-4 | `GET /appointments` no filtra por paciente | Citas en la ficha (005) | `patientId` opcional; con él, `from/to` opcionales | **Resuelto**: backend 006d (`8a8bf7f`, `PatientRecordApiIT`) |
 | G-5 | `PatientResponse` y `CreatePatientRequest` sin `adminNotes` (solo `UpdatePatientRequest` lo tiene) | Observaciones en la ficha (005) | Añadir `adminNotes` a ambos | **Resuelto**: backend 006d (`8a8bf7f`) |
-| G-6 | No hay estadísticas | 016 | `GET /stats/summary?from&to` (ADMIN) con las cifras de §5.16 | nueva, tras backend 012 |
-| G-7 | Auditoría solo por registro (`GET /audit/{entity}/{id}`) | Lista de la 017 | `GET /audit?from&to&userId&entity&page` (ADMIN) | ampliar backend 013 |
+| G-6 | No hay estadísticas | 016 | `GET /stats/summary?from&to` (ADMIN) con las cifras de §5.16 | **Resuelto con cambios** (backend 020 `81ee53d`): `GET /dashboard/summary`; sin atenciones por día ni top CIE-10 (F-9) |
+| G-7 | Auditoría solo por registro (`GET /audit/{entity}/{id}`) | Lista de la 017 | `GET /audit?from&to&userId&entity&page` (ADMIN), o al menos `?patientId=` | **No resuelto** (backend 013 `64b68fd` solo por registro). La 017 usa historial en contexto (F-15); la pantalla `/direccion/auditoria` vuelve si se hace |
+| G-11 | Ningún endpoint lista los pagos de un paciente con su `id` (`AccountResponse` solo trae sumas por sesión; no hay `GET /payments/{id}`) | Reimprimir el comprobante o anular un abono de otra visita (015c) | `GET /patients/{patientId}/payments` (`BILLING_READ`) → `Payment[]` por `paidAt` desc, con anulados | nueva (backend), opcional para el MVP |
+| G-12 | `UserResponse` no trae `system` ni el profesional vinculado | 023a/023c: el frontend no sabe qué cuentas son del sistema (bot) | Añadir `system: boolean` (y `professionalId?`) a `UserResponse` | opcional; mientras tanto, heurística F-17 |
+| G-13 | `PUT /auth/password` con la actual incorrecta responde 401 "Credenciales inválidas" (el handler global de `BadCredentialsException` pisa el mensaje "La contraseña actual no es correcta.") | 023b muestra un texto propio | Que el handler use `ex.getMessage()` o lanzar otra excepción (400/409) | opcional |
 | G-8 | Ningún endpoint de `ScheduleController` usa `ApiResponse` (GET y POST `/professionals/{id}/schedules`, `…/effective`, `PUT /schedules/{id}`, `POST /schedules/{id}/deactivate`) | Agenda (003a), horarios (006) | Envolver en `ApiResponse` como el resto (decisión del usuario: corregir el backend) | **Resuelto**: backend 006c (`ScheduleApiIT`) |
 | G-9 | `ClinicalRecordController` no usa `ApiResponse` (clinical-record, PUT, conditions, history-entries, void); `currentMedication` vacía no se puede borrar | Cabecera clínica (008a: recibe `undefined` contra el backend real) y antecedentes (008b) | Envolver en `ApiResponse` y que `currentMedication` vacía pase a `null` | **Resuelto** (backend 005b `6fd4ab5`) |
 
@@ -888,13 +952,20 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | F-5 | Paleta de `paleta.txt` ampliada en tonos azulados con antagonistas dorado/coral (§2.3) | Aprobada (usuario) |
 | F-6 | Dentición temporal siempre visible, como en el 033 | Aprobada |
 | F-7 | Íconos `lucide-angular` (locales) | Aprobada |
-| F-8 | Tres perfiles; director = odontólogo + estadísticas + auditoría, sin vista de recepción (§3.1) | Aprobada (usuario) |
-| F-9 | Estadísticas: atenciones, pacientes nuevos, inasistencias, ingresos, saldo pendiente, origen de citas, top 5 tratamientos y diagnósticos (§5.16) | Aprobada |
-| F-10 | Odontólogo y director ven el estado de cuenta en la ficha clínica, solo lectura | Aprobada |
+| F-8 | Tres perfiles; director = odontólogo + estadísticas + ~~auditoría~~ usuarios + historial de cambios en contexto (F-15), sin vista de recepción (§3.1) | Aprobada (usuario); ampliada 2026-10-21 (usuarios, backend D-24) |
+| F-9 | Estadísticas: ~~atenciones, pacientes nuevos, inasistencias, ingresos, saldo pendiente, origen de citas, top 5 tratamientos y diagnósticos~~ → **lo que da `GET /dashboard/summary`**: atenciones completadas, pacientes nuevos y activos, citas por estado y canal, inasistencia %, cobrado (total y por método), saldo por cobrar, atenciones y producción por profesional, top 5 tratamientos. Sin serie por día ni top CIE-10 (§5.16) | Corregida (2026-10-21, backend 020) |
+| F-10 | ~~Odontólogo y~~ El director ve el estado de cuenta en su ficha clínica, solo lectura (014). El odontólogo **no**: no tiene `BILLING_READ` (403). Si la clínica lo quiere, el backend debe darle ese permiso | Corregida (2026-10-21, backend 012) |
 | F-11 | Filas periodontales del 033: Recesión es la fila exterior y Movilidad va junto a los dientes, en espejo abajo (como el boceto) | Aprobada (usuario, 2026-10-12) |
 | F-12 | Bot de WhatsApp sin pantallas en el MVP: no hay bandeja de mensajes (la conversación vive en el agente, en memoria, y derivar = enlace al WhatsApp de recepción, D-3/D-19 del backend). Lo que hace el bot se ve en la agenda: citas `source=BOT` (ícono y "Agendada por el bot"), confirmaciones y cancelaciones del recordatorio como cambios de estado (refresco periódico), reprogramaciones con su cita nueva | Propuesta (2026-10-19) |
 | F-13 | PDFs (receta, comprobante) por `ApiClient.getBlob` + `URL.createObjectURL` en una pestaña abierta en el clic; fallback "Abrir PDF" | Propuesta (2026-10-19) |
 | F-14 | Formulario 033 (RF09, ahora en el MVP): vista e impresión con el mismo HTML A4 (`window.print()`), no PDF del backend, para reutilizar el odontograma SVG. Dentro de la hoja: colores oficiales como tokens `--form033-*` y unidades `mm`/`pt` (documento de tamaño fijo, excepción a §2.3 y a `responsive/SKILL.md`). Atención de referencia = apertura, con selector. Campos que el sistema no guarda, en blanco | Aprobada (usuario, 2026-10-19) |
+| F-15 | Auditoría sin pantalla propia mientras no exista G-7: diálogo "Historial de cambios" (entidad + id) solo para el perfil DIRECTOR, abierto desde la ficha del paciente y la cabecera de la atención (pagos, cuando el director vea la cuenta en la 014). Se quitan `/direccion/auditoria` y "Auditoría" del menú: una búsqueda por tipo + UUID no le sirve al director, que nunca ve UUID | Propuesta (2026-10-21) |
+| F-16 | Feature `management` (ya previsto en `architecture/SKILL.md`) agrupa estadísticas, historial de cambios y usuarios del director; otros features solo usan su `index.ts` (`AuditHistoryDialogService`) | Propuesta (2026-10-21) |
+| F-17 | Usuarios: filas con rol ADMIN (el director) o sin roles (cuenta del bot) se muestran sin acciones (el backend respondería 409); heurística hasta G-12. Contraseña temporal visible y con botón "Generar" (12 caracteres con `crypto.getRandomValues`) para dictarla; sin cambio forzado en el primer ingreso (backend D-24). Cambio de email (`PUT /users/{id}`) fuera de alcance | Propuesta (2026-10-21) |
+| F-18 | "Cambiar contraseña" como página `/cuenta/contrasena` (todos los perfiles) enlazada al pie del sidebar; el `errorInterceptor` excluye `/auth/password` del cierre de sesión por 401 y la página muestra "La contraseña actual no es correcta." (G-13) | Propuesta (2026-10-21) |
+| F-19 | Cobro en la ficha de recepción: estado de cuenta en una sola columna, antes de "Citas" (la tabla de 6 columnas no cabe a media página). Abono: monto = saldo si > 0, método Efectivo, sesión = atención de hoy si la hay. Comprobante y anular solo del abono recién registrado hasta G-11 | Propuesta (2026-10-21) |
+| F-20 | Estadísticas: período en la URL (`?periodo=` día, semana, mes o rango, con `fecha` o `desde`/`hasta`), mes actual por defecto; siempre se envían `from` y `to`; barras horizontales en CSS sin `colorTag`. Las funciones de período de la 019 pasan a `shared/utils/calendar-period.ts` (las usan clinical y management) | Propuesta (2026-10-21) |
+| F-21 | `pdf-window.ts` (abrir pestaña en el clic, poner el blob, liberar la URL) pasa de `prescriptions/services` a `shared/utils`: lo usan recetas y cobros | Propuesta (2026-10-21) |
 
 ## 9. Orden y seguimiento de tareas
 | Tarea | Pantalla | Depende de (frontend · backend) | Estado |
@@ -927,9 +998,15 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 013b | Receta: emitir e imprimir (PDF), reimprimir y anular | 013a · backend 011b | Commit `1b22cc4` (ejecutó Haiku) |
 | 011 | Más del 033 | 008 | Commit `fa8d43b` (ejecutó Haiku) |
 | 014 | Ficha clínica e historial | 009 · backend clinical-summary | — |
-| 015 | Cobros y comprobante | 005 · backend 012 | — |
-| 016 | Estadísticas del director | 002 · G-6 · F-9 | — |
-| 017 | Auditoría | 002 · backend 013 + G-7 | — |
+| 015a | Cobros: estado de cuenta y registrar abono (ficha de recepción) | 005b · backend 012 `328c6fe` | Redactada |
+| 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Redactada |
+| 015c | Cobros: lista de pagos del paciente (reimprimir, anular) | 015b · G-11 | — (bloqueada por G-11) |
+| 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Redactada |
+| 016b | Estadísticas: gráficos de barras y tablas | 016a | Redactada |
+| 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Redactada |
+| 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Redactada |
+| 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Redactada |
+| 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Redactada |
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
 | 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
@@ -940,6 +1017,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 022b | Job `deploy` por SSH al VPS de Contabo (cuando el VPS y los secretos estén listos) | 022 · backend 018a | Aprobada (ejecutó Haiku) |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
-Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015.
+Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015a → 015b.
 Orden de ejecución desde el 2026-10-19: 012a → 012b → 013a → 013b → 011; después backend 011c → 018a → 018b → 014
 (las tres usan `clinical-summary`) y 015 cuando exista backend 012.
+Orden desde el 2026-10-21 (backend 012, 013, 019 y 020 terminados): **015a → 015b → 016a → 016b → 017 → 023a →
+023b → 023c**, después 014 (ficha clínica; suma la cuenta de solo lectura del director y el historial de pagos) y
+015c cuando exista G-11. 016a va antes de 017 y 023a porque crea el feature `management`.

@@ -12,7 +12,7 @@ El "por qué" completo está en `docs/reference/CONTEXT-dominio.md` (copia del b
 |---|---|---|---|
 | Secretaria | SECRETARIA | PC de recepción (1920 px o 1366 px), todo el día | Agenda, filiación, check-in, cobros |
 | Odontólogo (odontóloga y especialistas) | ODONTOLOGO | laptop o tablet del consultorio, con el paciente en el sillón | Atención, odontograma, diagnósticos, receta |
-| Director | ADMIN + ODONTOLOGO | laptop / móvil | Lo mismo que el odontólogo + estadísticas y auditoría |
+| Director | ADMIN + ODONTOLOGO | laptop / móvil | Lo mismo que el odontólogo + estadísticas, usuarios e historial de cambios |
 
 Escena real del odontólogo: guantes, poco tiempo, paciente en el sillón. Pocos clics, objetivos grandes, nada de
 formularios largos durante la consulta.
@@ -36,7 +36,7 @@ formularios largos durante la consulta.
 | **Odontograma** | ✘ **no lo ve** | ✔ |
 | Tabla: Fecha, Tratamiento, Doctor | ✔ | ✔ |
 | Tabla: **Dg.** (diagnóstico CIE-10) | ✘ **no lo ve** | ✔ |
-| Tabla: Abono, Saldo | ✔ (registra el abono) | lectura (opcional) |
+| Tabla: Abono, Saldo | ✔ (registra y anula el abono) | solo el director, lectura (ADMIN tiene `BILLING_READ`); el odontólogo no (403) |
 | Factura | N° de comprobante interno (`C-000001`) | — |
 | Firma | Línea de firma en el comprobante impreso | — |
 
