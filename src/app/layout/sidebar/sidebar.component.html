@@ -53,6 +53,19 @@
         <span class="sidebar__user-name" [title]="userName()">{{ userName() }}</span>
         <span class="sidebar__user-area">{{ areaLabel() }}</span>
       </div>
+      <a
+        routerLink="/cuenta/contrasena"
+        routerLinkActive="is-active"
+        class="sidebar__logout-btn"
+        [attr.aria-label]="mode() === 'icons' ? 'Cambiar contraseña' : null"
+      >
+        <bd-icon [name]="accountIcon" [size]="18" />
+        @if (mode() !== 'icons') {
+          <span class="sidebar__account-text">Cambiar contraseña</span>
+        } @else {
+          <span class="sidebar__tooltip" role="tooltip">Cambiar contraseña</span>
+        }
+      </a>
       <button
         type="button"
         class="sidebar__logout-btn"

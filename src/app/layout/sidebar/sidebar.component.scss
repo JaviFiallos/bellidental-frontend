@@ -9,7 +9,6 @@
   height: 100%;
   background: linear-gradient(180deg, var(--blue-900), var(--blue-800));
   color: var(--white);
-  box-sizing: border-box;
   user-select: none;
 
   &--full,
@@ -23,16 +22,15 @@
     .sidebar__brand {
       height: 64px;
       padding: 0;
+    }
 
-      .sidebar__brand-logo img {
-        width: 3rem;
-        height: 3rem;
-        padding: 0.15rem;
-      }
+    .sidebar__brand-logo img {
+      width: 3rem;
+      height: 3rem;
+      padding: 0.15rem;
     }
 
     .sidebar__link {
-      width: 100%;
       justify-content: center;
       padding: 0.75rem 0;
     }
@@ -45,8 +43,7 @@
       border: none;
     }
 
-    .sidebar__link:is(:hover, :focus-visible) .sidebar__tooltip,
-    .sidebar__logout-btn:is(:hover, :focus-visible) .sidebar__tooltip {
+    :is(.sidebar__link, .sidebar__logout-btn):is(:hover, :focus-visible) .sidebar__tooltip {
       opacity: 1;
       visibility: visible;
       transform: translateY(-50%) translateX(0);
@@ -73,7 +70,6 @@
         display: block;
         width: 5.5rem;
         height: 5.5rem;
-        box-sizing: border-box;
         padding: 0.25rem;
         background: var(--white);
         border-radius: 50%;
@@ -86,15 +82,10 @@
     flex: 1;
     list-style: none;
     padding: var(--space-md) 0;
-    margin: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
     overflow-y: auto;
-
-    &-item {
-      width: 100%;
-    }
   }
 
   &__link {
@@ -102,7 +93,6 @@
     display: flex;
     align-items: center;
     width: 100%;
-    text-align: left;
     font: inherit;
     gap: var(--space-sm);
     padding: 0.75rem var(--space-md);
@@ -114,7 +104,6 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    box-sizing: border-box;
     transition: all var(--transition-fast);
 
     &:hover {
@@ -217,6 +206,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-xs);
+    text-decoration: none;
     background: transparent;
     border: 1px solid color-mix(in srgb, var(--white) 15%, transparent);
     color: var(--white);
@@ -231,6 +221,11 @@
     &:hover {
       background-color: color-mix(in srgb, var(--white) 10%, transparent);
       border-color: color-mix(in srgb, var(--white) 30%, transparent);
+    }
+
+    &.is-active {
+      background-color: color-mix(in srgb, var(--white) 12%, transparent);
+      border-color: color-mix(in srgb, var(--gold-400) 60%, transparent);
     }
 
     &:focus-visible {

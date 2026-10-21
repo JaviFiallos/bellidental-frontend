@@ -1,0 +1,134 @@
+# Descripción del odontograma
+
+## 1. Representación general
+
+El odontograma es una representación gráfica de la cavidad bucal utilizada para registrar el estado de cada pieza dental, las patologías presentes y los tratamientos realizados o requeridos.
+
+La dentición se representa mediante dos arcadas, superior e inferior. Cada arcada se divide en dos cuadrantes, lo que genera cuatro cuadrantes en total.
+
+La distribución visual se presenta desde la perspectiva del paciente: su lado derecho aparece a la izquierda del observador.
+
+### Distribución de cuadrantes
+
+- Cuadrante 1: superior derecho.
+- Cuadrante 2: superior izquierdo.
+- Cuadrante 3: inferior izquierdo.
+- Cuadrante 4: inferior derecho.
+
+En la dentición permanente, cada cuadrante contiene ocho posiciones, numeradas del 1 al 8. El número 1 corresponde al incisivo central y el 8 al tercer molar.
+
+En la dentición decidua, los cuadrantes se numeran del 5 al 8 y cada cuadrante contiene cinco posiciones, del 1 al 5.
+
+La numeración FDI utiliza dos dígitos: el primero identifica el cuadrante y el segundo identifica la posición del diente. Por ejemplo, 11 corresponde al incisivo central superior derecho y 21 al incisivo central superior izquierdo.
+
+## 2. Representación de una pieza dental
+
+Cada pieza dental se representa mediante un cuadrado dividido en cinco regiones. Cuatro regiones corresponden a las caras periféricas y una región central corresponde a la superficie oclusal.
+
+Las cinco caras son:
+
+- **Vestibular o bucal:** superficie orientada hacia los labios o las mejillas.
+- **Lingual:** superficie orientada hacia la lengua, principalmente en la arcada inferior.
+- **Palatina:** superficie orientada hacia el paladar, en la arcada superior.
+- **Mesial:** superficie orientada hacia la línea media de la arcada dental.
+- **Distal:** superficie opuesta a la mesial, alejada de la línea media.
+- **Oclusal:** superficie masticatoria central de los dientes posteriores.
+
+En los dientes anteriores, la superficie funcional correspondiente se denomina incisal; el esquema de cinco regiones descrito corresponde principalmente a la representación de dientes posteriores.
+
+### Esquema textual mediante guiones y barras verticales
+
+La siguiente representación es una simplificación textual de las cinco regiones:
+
+```text
+                 VESTIBULAR
+                      |
+           +---------------------+
+           |     VESTIBULAR      |
++----------+---------------------+----------+
+|  DISTAL  |       OCLUSAL       |  MESIAL  |
++----------+---------------------+----------+
+           |      PALATINA       |
+           +---------------------+
+                      |
+```
+
+Este esquema sirve para identificar las regiones mediante caracteres de texto. No reproduce exactamente la geometría gráfica del odontograma original, en el que las cinco regiones se disponen dentro de un cuadrado mediante divisiones diagonales y un área central.
+
+Los caracteres `+`, `-` y `|` representan límites y divisiones. No son símbolos clínicos ni indican por sí mismos una patología.
+
+## 3. Orientación de las caras según la arcada
+
+La posición de las caras cambia según la arcada y el lado del paciente.
+
+### Arcada superior
+
+- Parte superior del cuadrado: vestibular.
+- Parte inferior: palatina.
+- Región central: oclusal.
+- En el diente 11, distal a la izquierda y mesial a la derecha.
+- En el diente 21, mesial a la izquierda y distal a la derecha.
+
+### Arcada inferior
+
+- Parte superior del cuadrado: lingual.
+- Parte inferior: vestibular.
+- Región central: oclusal.
+- En el diente 41, distal a la izquierda y mesial a la derecha.
+- En el diente 31, mesial a la izquierda y distal a la derecha.
+
+Las flechas que aparecen en los esquemas anatómicos indican la dirección de cada cara. Las flechas diagonales dirigidas hacia el centro de la arcada señalan la orientación oclusal.
+
+## 4. Registro clínico
+
+Cada pieza dental debe poder identificarse individualmente y registrar su estado clínico mediante símbolos asociados a una cara específica o a la pieza completa, según el tipo de hallazgo.
+
+La evaluación puede utilizar inspección, palpación, percusión y transiluminación, junto con instrumental odontológico básico.
+
+También se contempla el registro periodontal:
+
+**Movilidad dental, clasificación de Miller:**
+- Grado 0: movilidad fisiológica de 0,1 a 0,2 mm.
+- Grado 1: movilidad horizontal de hasta 1 mm.
+- Grado 2: movilidad horizontal superior a 1 mm.
+- Grado 3: movilidad horizontal y vertical.
+
+**Recesión gingival, clasificación de Miller:**
+- Clase I: no alcanza la línea mucogingival y no existe pérdida interdental de tejidos.
+- Clase II: alcanza o sobrepasa ligeramente la línea mucogingival, sin pérdida interdental de tejidos.
+- Clase III: se extiende más allá de la línea mucogingival y existe pérdida periodontal proximal.
+- Clase IV: existe pérdida periodontal proximal grave, asociada a una recesión extensa.
+
+## 5. Simbología clínica del odontograma
+
+Los símbolos se diferencian por su forma, color, relleno y patrón de línea. Su significado debe mantenerse consistente en toda la aplicación.
+
+| Símbolo | Significado |
+|---|---|
+| Asterisco rojo | Sellante necesario. |
+| Asterisco azul | Sellante realizado. |
+| X roja | Extracción indicada. |
+| X azul | Pérdida dental por caries. |
+| Círculo rojo sin relleno | Caries. |
+| Círculo azul sin relleno con X negra | Pérdida dental por una causa diferente de caries. |
+| Triángulo rojo sin relleno | Endodoncia necesaria. |
+| Triángulo azul sin relleno | Endodoncia realizada. |
+| Línea punteada con cuadrados negros | Prótesis fija. |
+| Tres puntos entre paréntesis | Prótesis removible. |
+| Signo igual negro | Prótesis total. |
+| Cuadrado doble con borde azul y sin relleno | Corona. |
+| Círculo azul con borde y sin relleno | Obturación realizada. |
+| Rectángulo azul relleno | Tratamiento realizado. |
+| Rectángulo rojo relleno | Patología actual o tratamiento necesario. |
+
+Los colores tienen significado clínico: el rojo indica determinadas condiciones actuales o tratamientos requeridos, mientras que el azul identifica determinados tratamientos realizados o estados registrados. Cada símbolo debe interpretarse de acuerdo con su definición específica, sin asumir que el color tiene un significado universal.
+
+## 6. Consideraciones de representación
+
+- Cada diente debe conservar su identificador FDI.
+- Cada cara dental debe poder distinguirse de las otras cuatro.
+- La orientación mesial y distal debe respetar el lado del paciente y la arcada.
+- Los símbolos clínicos deben distinguirse visualmente por forma, color, relleno y patrón de línea.
+- Debe diferenciarse el estado de cada cara del estado general de la pieza dental.
+- La información de movilidad y recesión debe registrarse como información periodontal diferenciada de los símbolos que indican caries, obturaciones u otros tratamientos.
+- La representación visual debe mantener una disposición coherente entre las dos arcadas y los cuatro cuadrantes.

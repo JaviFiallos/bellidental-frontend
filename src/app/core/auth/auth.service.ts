@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { ApiClient } from '../api/api-client';
-import { AuthResponse, CurrentUser, LoginRequest } from './auth.models';
+import { AuthResponse, ChangePasswordRequest, CurrentUser, LoginRequest } from './auth.models';
 import { SessionStore } from './session.store';
 
 @Injectable({
@@ -51,6 +51,10 @@ export class AuthService {
         return of(false);
       })
     );
+  }
+
+  changePassword(request: ChangePasswordRequest): Observable<string> {
+    return this.api.put<string>('/api/v1/auth/password', request);
   }
 
   logout(): void {

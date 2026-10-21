@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FileText } from 'lucide-angular';
+import { FileText, History } from 'lucide-angular';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { Patient } from '../../../patients';
 import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.models';
@@ -78,6 +78,14 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
             <bd-icon [name]="fileTextIcon" [size]="16" />
             <span>Formulario 033</span>
           </a>
+
+          <!-- Historial de cambios (solo director) -->
+          @if (canViewChanges()) {
+            <button type="button" class="btn-form-033" (click)="viewChanges.emit()">
+              <bd-icon [name]="historyIcon" [size]="16" />
+              <span>Historial de cambios</span>
+            </button>
+          }
         </div>
       </div>
     </header>
@@ -267,9 +275,13 @@ export class PatientClinicalHeaderComponent {
   readonly patient = input.required<Patient>();
   readonly clinicalRecord = input<ClinicalRecord | null>(null);
 
+  readonly canViewChanges = input<boolean>(false);
+
   readonly openHistory = output<void>();
+  readonly viewChanges = output<void>();
 
   readonly fileTextIcon = FileText;
+  readonly historyIcon = History;
 
   readonly isUnregistered = computed<boolean>(() => {
     const rec = this.clinicalRecord();

@@ -7,10 +7,10 @@ import { SessionStore } from '../../../core/auth/session.store';
 import { ClinicClock } from '../../../core/services/clinic-clock.service';
 import { Appointment, AppointmentsApi } from '../../appointments';
 import { isEncounterOpen } from '../domain/encounter-log';
-import { EncounterPeriod } from '../domain/encounter-period';
+import { CalendarPeriod } from '../../../shared/utils/calendar-period';
 
 interface PeriodRequest {
-  period: EncounterPeriod;
+  period: CalendarPeriod;
   professionalId: string;
 }
 
@@ -22,7 +22,7 @@ export class MyEncountersStore {
 
   private readonly requests = new Subject<PeriodRequest>();
 
-  readonly period = signal<EncounterPeriod | null>(null);
+  readonly period = signal<CalendarPeriod | null>(null);
   readonly appointments = signal<Appointment[]>([]);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
@@ -51,7 +51,7 @@ export class MyEncountersStore {
       .subscribe();
   }
 
-  load(period: EncounterPeriod): void {
+  load(period: CalendarPeriod): void {
     this.period.set(period);
     const professionalId = this.sessionStore.currentUser()?.professionalId;
     if (!professionalId) {

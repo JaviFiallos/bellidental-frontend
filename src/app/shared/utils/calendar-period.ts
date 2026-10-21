@@ -1,7 +1,7 @@
-export type EncounterPeriodKind = 'dia' | 'semana' | 'mes';
+export type CalendarPeriodKind = 'dia' | 'semana' | 'mes';
 
-export interface EncounterPeriod {
-  kind: EncounterPeriodKind;
+export interface CalendarPeriod {
+  kind: CalendarPeriodKind;
   unit: 'día' | 'semana' | 'mes';
   /** Fecha que ancla el período (YYYY-MM-DD). Se guarda en la URL. */
   anchorDate: string;
@@ -13,7 +13,7 @@ export interface EncounterPeriod {
   isToday: boolean;
 }
 
-const UNIT_BY_KIND: Record<EncounterPeriodKind, EncounterPeriod['unit']> = {
+const UNIT_BY_KIND: Record<CalendarPeriodKind, CalendarPeriod['unit']> = {
   dia: 'día',
   semana: 'semana',
   mes: 'mes',
@@ -60,7 +60,7 @@ export function isValidDateString(value: string | null): value is string {
   return value !== null && DATE_PATTERN.test(value) && toDateString(toUtcDate(value)) === value;
 }
 
-function rangeFor(kind: EncounterPeriodKind, anchorDate: string): { from: string; to: string } {
+function rangeFor(kind: CalendarPeriodKind, anchorDate: string): { from: string; to: string } {
   if (kind === 'dia') {
     return { from: anchorDate, to: anchorDate };
   }
@@ -81,7 +81,7 @@ function dayLabel(anchorDate: string): string {
   return `${WEEKDAYS_LONG[date.getUTCDay()]}, ${date.getUTCDate()} de ${MONTHS_LONG[date.getUTCMonth()]} de ${date.getUTCFullYear()}`;
 }
 
-function weekLabel(from: string, to: string): string {
+export function rangeLabel(from: string, to: string): string {
   const start = toUtcDate(from);
   const end = toUtcDate(to);
   const startYear = start.getUTCFullYear();
@@ -89,6 +89,9 @@ function weekLabel(from: string, to: string): string {
   const startMonth = MONTHS_SHORT[start.getUTCMonth()];
   const endMonth = MONTHS_SHORT[end.getUTCMonth()];
 
+  if (from === to) {
+    return `${end.getUTCDate()} ${endMonth} ${endYear}`;
+  }
   if (startYear !== endYear) {
     return `${start.getUTCDate()} ${startMonth} ${startYear} – ${end.getUTCDate()} ${endMonth} ${endYear}`;
   }
@@ -104,14 +107,14 @@ function monthLabel(anchorDate: string): string {
 }
 
 /** Construye el período que contiene `anchorDate` según el tipo (día, semana lunes–domingo o mes). */
-export function buildEncounterPeriod(
-  kind: EncounterPeriodKind,
+export function buildCalendarPeriod(
+  kind: CalendarPeriodKind,
   anchorDate: string,
   todayDate: string
-): EncounterPeriod {
+): CalendarPeriod {
   const { from, to } = rangeFor(kind, anchorDate);
   const label =
-    kind === 'dia' ? dayLabel(anchorDate) : kind === 'semana' ? weekLabel(from, to) : monthLabel(anchorDate);
+    kind === 'dia' ? dayLabel(anchorDate) : kind === 'semana' ? rangeLabel(from, to) : monthLabel(anchorDate);
   return {
     kind,
     unit: UNIT_BY_KIND[kind],
@@ -124,20 +127,20 @@ export function buildEncounterPeriod(
 }
 
 /** Lee `periodo` y `fecha` de la URL; valores ausentes o inválidos caen en semana y hoy. */
-export function parseEncounterPeriod(
+export function parseCalendarPeriod(
   kindParam: string | null,
   dateParam: string | null,
   todayDate: string
-): EncounterPeriod {
-  const kind: EncounterPeriodKind =
+): CalendarPeriod {
+  const kind: CalendarPeriodKind =
     kindParam === 'dia' || kindParam === 'semana' || kindParam === 'mes' ? kindParam : 'semana';
   const anchorDate = isValidDateString(dateParam) ? dateParam : todayDate;
-  return buildEncounterPeriod(kind, anchorDate, todayDate);
+  return buildCalendarPeriod(kind, anchorDate, todayDate);
 }
 
 /** Nueva fecha de ancla al mover ‹ (-1) o › (+1): día = 1 día, semana = 7 días, mes = 1 mes (día 1). */
-export function shiftEncounterAnchor(
-  period: Pick<EncounterPeriod, 'kind' | 'anchorDate'>,
+export function shiftCalendarAnchor(
+  period: Pick<CalendarPeriod, 'kind' | 'anchorDate'>,
   direction: -1 | 1
 ): string {
   if (period.kind === 'dia') {

@@ -85,15 +85,22 @@ export const routes: Routes = [
         path: 'direccion/estadisticas',
         canActivate: [profileGuard('DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Estadísticas', task: 'tarea 016' },
+          import('./features/management/pages/clinic-stats/clinic-stats.page').then(
+            (m) => m.ClinicStatsPage
+          ),
       },
       {
-        path: 'direccion/auditoria',
+        path: 'direccion/usuarios',
         canActivate: [profileGuard('DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Auditoría', task: 'tarea 017' },
+          import('./features/management/pages/users/users.page').then((m) => m.UsersPage),
+      },
+      {
+        path: 'cuenta/contrasena',
+        loadComponent: () =>
+          import('./features/auth/pages/change-password/change-password.page').then(
+            (m) => m.ChangePasswordPage
+          ),
       },
     ],
   },

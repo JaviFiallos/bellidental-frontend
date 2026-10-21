@@ -24,3 +24,8 @@ export interface StoredSession {
   accessToken: string;
   expiresAt: number;
 }
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
