@@ -22,8 +22,28 @@ export interface CreateUserRequest {
   roles: AssignableRole[];
 }
 
-/** Aviso con la contraseña temporal de la última cuenta creada (se muestra una sola vez). */
-export interface CreatedUserNotice {
+/** Qué operación generó el aviso de contraseña temporal (se muestra una sola vez). */
+export type TemporaryPasswordAction = 'created' | 'reset' | 'access';
+
+/** Aviso con la contraseña temporal de la última cuenta creada, restablecida o con acceso nuevo. */
+export interface TemporaryPasswordNotice {
+  action: TemporaryPasswordAction;
   username: string;
+  temporaryPassword: string;
+}
+
+/** Cuerpo de `PUT /api/v1/users/{id}/roles`. Solo se admiten Odontólogo y Secretaria; no puede estar vacío. */
+export interface UpdateUserRolesRequest {
+  roles: AssignableRole[];
+}
+
+/** Cuerpo de `POST /api/v1/users/{id}/reset-password`. */
+export interface ResetPasswordRequest {
+  temporaryPassword: string;
+}
+
+/** Cuerpo de `POST /api/v1/professionals/{id}/access`. La cuenta nace con rol Odontólogo. */
+export interface GrantAccessRequest {
+  email: string;
   temporaryPassword: string;
 }

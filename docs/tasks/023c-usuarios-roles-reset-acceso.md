@@ -132,6 +132,51 @@ Se amplía `features/management/pages/users/users.page.spec.ts` (+**2 casos**; m
 5. Anchos 375, 768, 1024 y 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+- **Archivos modificados:** `models/user.models.ts` (+`UpdateUserRolesRequest`, `ResetPasswordRequest`, `GrantAccessRequest`;
+  `CreatedUserNotice` → `TemporaryPasswordNotice` con `action: 'created' | 'reset' | 'access'`), `services/users.api.ts`
+  (+`updateRoles` PUT, `resetPassword` POST que devuelve el `message`, `grantAccess` POST a `/professionals/{id}/access`),
+  `services/users.store.ts` (reescrito: `activePanel` único, `selectedUser`/`selectedProfessional`, `professionals`
+  con `computed` `professionalsByUserId` y `professionalsWithoutAccess`, `updateRoles`, `resetPassword`, `grantAccess`
+  → `load()`), `components/user-table/user-table.component.ts` (+botones "Roles" y "Restablecer contraseña" solo en
+  filas gestionables, salidas `editRoles` y `resetPassword`), `pages/users/users.page.ts` (panel único con `@switch`,
+  título de panel en la página, aviso reutilizado), `pages/users/users.page.spec.ts` (+2 casos).
+- **Archivos nuevos:** `components/user-roles-form/`, `components/reset-password-form/`, `components/grant-access-form/`,
+  `components/professionals-without-access/` (todos dumb, OnPush, standalone).
+- **Build:** OK (`Application bundle generation complete`, sin errores).
+- **Tests:** `Test Files  13 passed (13)` · `Tests  62 passed (62)` (incluye los 4 de la página de Usuarios: 2 de la 023a y 2 nuevos).
+- **Anchos revisados:** no hay navegador disponible en esta sesión; **no se revisó 375/768/1024/1366 visualmente**. Queda pendiente para la prueba manual.
+- **Supuestos:**
+  1. El título del panel (`Roles de «x»`, `Acceso para …`, etc.) lo pone la página en el encabezado del `bd-side-sheet`, no cada formulario, para no repetirlo.
+  2. `resetPassword` devuelve el `message` del backend porque `ApiClient.unwrap` usa `message` cuando `data` es `null`; el toast muestra ese texto.
+  3. `Dar acceso` se llama desde `UsersApi` (feature management), que ya es el único que escribe cuentas; `ProfessionalsApi` sigue siendo solo lectura.
+  4. El aviso de contraseña de la 023a pasa a ser único para crear, restablecer y dar acceso (cambia solo el texto).
+  5. Las filas de "Profesionales sin cuenta" son tarjetas en la rejilla responsive (`auto-fill`), no se verificó visualmente.
+- **Problemas:** ninguno de la API; el backend respondió con el contrato de la tarea (los tests usan respuestas simuladas con esa forma).
 
 ## Revisión
+Estado: APROBADO
+
+- Contrato verificado contra el backend (`UserController` PUT `/{id}/roles`, POST `/{id}/reset-password` →
+  `ApiResponse<Void>`; `ProfessionalAccessController` POST `/{id}/access` → 201): rutas, métodos y cuerpos coinciden.
+- Criterios: acciones solo en filas gestionables (`isManageable` sin cambios); roles solo `ODONTOLOGO`/`SECRETARIA`
+  con "Elige al menos un rol."; reset y acceso con ≥ 10 y "Generar"; errores 400/409 con el `message` en el panel;
+  botones con carga y sin doble envío (`saving`); `management` importa solo `professionals/index.ts`; sin `any`,
+  sin `console`, solo tokens, OnPush, botones ≥ 44 px; plantilla de la página ~110 líneas.
+- `npx ng build`: OK. `npx ng test --watch=false`: `Test Files 13 passed (13)` · `Tests 62 passed (62)`.
+- **Corrección hecha por el revisor:** en `lg+` el `bd-side-sheet` no es modal, así que se puede pulsar "Roles",
+  "Restablecer contraseña" o "Dar acceso" de otra fila con el panel abierto; el `@case` reutilizaba el formulario
+  y quedaban los roles precargados, el correo o la contraseña de la persona anterior (riesgo de crear un acceso con
+  el correo equivocado). Se añadió `panelKey` (panel + id elegido) y un `@for … track key` en `users.page.ts`
+  para recrear el formulario, y `openPanel()` del store ahora limpia `selectedUser`/`selectedProfessional` antes
+  de fijar la nueva selección.
+- Pendiente del usuario: revisión visual en 375, 768, 1024 y 1366 (Haiku no tuvo navegador).
+
+## Decisiones a revisar (tras la revisión)
+1. El título del panel ("Roles de «x»", "Acceso para …") lo pone la página, no cada formulario (Supuesto 1).
+2. El toast del restablecimiento usa el `message` del backend ("Contraseña restablecida."), que `ApiClient` devuelve
+   cuando `data` es `null`; el resto de toasts son textos fijos del frontend.
+3. "Roles" y "Restablecer contraseña" también se ofrecen en cuentas inactivas (el backend lo permite); si se prefiere,
+   ocultarlas hasta activar.
+4. Guardar roles reemplaza el conjunto completo: si una cuenta gestionable tuviera un rol distinto de Odontólogo o
+   Secretaria, se perdería (hoy no hay ninguno; las cuentas ADMIN no muestran acciones).
+5. Inconveniente G-12 sigue: qué filas son "del sistema" lo decide la heurística de la 023a.

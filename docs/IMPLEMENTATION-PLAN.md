@@ -798,7 +798,9 @@ features/clinical/
 - **023b — cambiar mi contraseña:** `/cuenta/contrasena` (feature `auth`), enlace al pie del sidebar para todos.
   El `errorInterceptor` no cierra la sesión con el 401 de `/auth/password` (F-18).
 - **023c — roles, restablecer contraseña y acceso de profesionales:** acciones por fila y sección "Profesionales
-  sin cuenta" (`userId = null`) con "Dar acceso".
+  sin cuenta" (`userId = null`) con "Dar acceso". Un solo `bd-side-sheet` con `activePanel`
+  (`create | roles | reset | access`); el contenido se recrea al cambiar de fila con el panel abierto (en `lg+` el
+  panel no es modal). El aviso de contraseña temporal de la 023a es único para crear, restablecer y dar acceso.
 
 ---
 
@@ -1005,15 +1007,15 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 013b | Receta: emitir e imprimir (PDF), reimprimir y anular | 013a · backend 011b | Commit `1b22cc4` (ejecutó Haiku) |
 | 011 | Más del 033 | 008 | Commit `fa8d43b` (ejecutó Haiku) |
 | 014 | Ficha clínica e historial | 009 · backend clinical-summary | — |
-| 015a | Cobros: estado de cuenta y registrar abono (ficha de recepción) | 005b · backend 012 `328c6fe` | Aprobada (ejecutó Haiku) |
-| 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Aprobada (ejecutó Haiku) |
+| 015a | Cobros: estado de cuenta y registrar abono (ficha de recepción) | 005b · backend 012 `328c6fe` | Commit `f27db19` (ejecutó Haiku) |
+| 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Commit `d5f8197` (ejecutó Haiku) |
 | 015c | Cobros: lista de pagos del paciente (reimprimir, anular) | 015b · G-11 | — (bloqueada por G-11) |
-| 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Aprobada (ejecutó Haiku) |
-| 016b | Estadísticas: gráficos de barras y tablas | 016a | Aprobada (ejecutó Haiku) |
-| 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Aprobada (ejecutó Haiku) |
-| 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Aprobada (ejecutó Haiku) |
-| 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Aprobada (ejecutó Haiku) |
-| 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Redactada |
+| 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Commit `70aa583` (ejecutó Haiku) |
+| 016b | Estadísticas: gráficos de barras y tablas | 016a | Commit `da13db1` (ejecutó Haiku) |
+| 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Commit `2c3845f` (ejecutó Haiku) |
+| 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Commit `235a3dc` (ejecutó Haiku) |
+| 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Commit `c3fd494` (ejecutó Haiku) |
+| 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Aprobada (ejecutó Haiku) |
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
 | 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
@@ -1028,5 +1030,6 @@ Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 0
 Orden de ejecución desde el 2026-10-19: 012a → 012b → 013a → 013b → 011; después backend 011c → 018a → 018b → 014
 (las tres usan `clinical-summary`) y 015 cuando exista backend 012.
 Orden desde el 2026-10-21 (backend 012, 013, 019 y 020 terminados): **015a → 015b → 016a → 016b → 017 → 023a →
-023b → 023c**, después 014 (ficha clínica; suma la cuenta de solo lectura del director y el historial de pagos) y
-015c cuando exista G-11. 016a va antes de 017 y 023a porque crea el feature `management`.
+023b → 023c** — tanda completa y aprobada el 2026-10-21 (023c aún sin commit). Sigue **014** (ficha clínica; suma la cuenta de
+solo lectura del director y el historial de pagos) y 015c cuando exista G-11 (bloqueada). 016a fue antes de 017 y
+023a porque crea el feature `management`.

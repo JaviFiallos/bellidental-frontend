@@ -212,4 +212,112 @@ describe('UsersPage', () => {
     );
     expect(document.querySelector('#user-email')).not.toBeNull();
   });
+
+  it('Dar acceso a un profesional sin cuenta → POST /professionals/{id}/access → aparece vinculado', async () => {
+    const harness = await RouterTestingHarness.create('/direccion/usuarios');
+    await loadList(harness, httpMock);
+
+    const withoutAccess = harness.fixture.nativeElement.textContent as string;
+    expect(withoutAccess).toContain('Profesionales sin cuenta');
+    expect(withoutAccess).toContain('Hugo Soria');
+
+    findButton('Dar acceso')?.click();
+    await settle(harness);
+    typeInto('#grant-email', 'hugo.soria@bellidental.local');
+    typeInto('#grant-temporary-password', 'Temporal.2026');
+    await settle(harness);
+    findButton('Crear acceso')?.click();
+    await settle(harness);
+
+    const grantRequest = httpMock.expectOne({
+      method: 'POST',
+      url: '/api/v1/professionals/77777777-7777-7777-7777-777777777777/access',
+    });
+    expect(grantRequest.request.body).toEqual({
+      email: 'hugo.soria@bellidental.local',
+      temporaryPassword: 'Temporal.2026',
+    });
+    grantRequest.flush(
+      {
+        success: true,
+        message: 'Cuenta de acceso creada.',
+        data: {
+          id: '99999999-9999-9999-9999-999999999999',
+          username: 'hugo.soria',
+          email: 'hugo.soria@bellidental.local',
+          active: true,
+          lastLoginAt: null,
+          createdAt: '2026-10-21T10:00:00-05:00',
+          roles: ['ODONTOLOGO'],
+        },
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    await settle(harness);
+
+    httpMock.expectOne('/api/v1/users').flush({
+      success: true,
+      message: 'OK',
+      data: [
+        ...USERS,
+        {
+          id: '99999999-9999-9999-9999-999999999999',
+          username: 'hugo.soria',
+          email: 'hugo.soria@bellidental.local',
+          active: true,
+          lastLoginAt: null,
+          createdAt: '2026-10-21T10:00:00-05:00',
+          roles: ['ODONTOLOGO'],
+        },
+      ],
+    });
+    httpMock.expectOne('/api/v1/professionals').flush({
+      success: true,
+      message: 'OK',
+      data: PROFESSIONALS.map((professional) =>
+        professional.id === '77777777-7777-7777-7777-777777777777'
+          ? { ...professional, userId: '99999999-9999-9999-9999-999999999999' }
+          : professional
+      ),
+    });
+    await settle(harness);
+
+    const text = harness.fixture.nativeElement.textContent as string;
+    expect(text).toContain('hugo.soria');
+    expect(text).not.toContain('Profesionales sin cuenta');
+  });
+
+  it('Restablecer contraseña rechazada por el backend → 409 → mensaje en el panel', async () => {
+    const harness = await RouterTestingHarness.create('/direccion/usuarios');
+    await loadList(harness, httpMock);
+
+    document
+      .querySelector<HTMLButtonElement>('button[aria-label="Restablecer contraseña de secretaria"]')
+      ?.click();
+    await settle(harness);
+    typeInto('#reset-temporary-password', 'Temporal.2026');
+    await settle(harness);
+    findButton('Restablecer')?.click();
+    await settle(harness);
+
+    const resetRequest = httpMock.expectOne({
+      method: 'POST',
+      url: '/api/v1/users/33333333-3333-3333-3333-333333333333/reset-password',
+    });
+    expect(resetRequest.request.body).toEqual({ temporaryPassword: 'Temporal.2026' });
+    resetRequest.flush(
+      {
+        success: false,
+        message: 'Los usuarios del sistema no se pueden modificar.',
+        data: null,
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+    await settle(harness);
+
+    expect(harness.fixture.nativeElement.textContent).toContain(
+      'Los usuarios del sistema no se pueden modificar.'
+    );
+    expect(document.querySelector('#reset-temporary-password')).not.toBeNull();
+  });
 });
