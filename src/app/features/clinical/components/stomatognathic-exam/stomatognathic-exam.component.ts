@@ -2,18 +2,27 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
+  inject,
   input,
   output,
-  viewChild,
+  signal,
+  viewChildren,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { filter } from 'rxjs/operators';
 import { Check } from 'lucide-angular';
 import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
+import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
 import { Encounter } from '../../models/encounter.models';
 import { EncounterTextField } from '../../domain/encounter-completeness';
 import {
-  formatMarkedRegions,
+  parseStomatognathicExam,
+  serializeStomatognathicExam,
+} from '../../domain/stomatognathic-exam-text';
+import {
   STOMATOGNATHIC_REGIONS,
   StomatognathicRegion,
 } from '../../domain/stomatognathic-regions';
@@ -35,7 +44,7 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
           <button
             type="button"
             class="exam__shortcut"
-            [disabled]="hasMarkedRegions()"
+            [disabled]="hasMarkedRegions() || hasGeneralField()"
             (click)="setNormalExam()"
           >
             {{ normalExamText }}
@@ -44,14 +53,23 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
       </div>
 
       @if (isReadOnly()) {
-        <div class="exam__field">
-          <span class="exam__sublabel">Regiones:</span>
-          <p class="exam__readonly">{{ readOnlyRegionsText() }}</p>
-        </div>
-        <div class="exam__field">
-          <span class="exam__sublabel">Descripción:</span>
-          <p class="exam__readonly">{{ values().stomatognathicExam || 'No registrado' }}</p>
-        </div>
+        <ul class="exam__readonly-list">
+          @for (region of markedRegions(); track region.id) {
+            <li class="exam__field">
+              <span class="exam__sublabel">{{ regionLabel(region) }}</span>
+              <p class="exam__readonly">{{ regionText(region.id) || 'Sin descripción' }}</p>
+            </li>
+          }
+          @if (hasGeneralField()) {
+            <li class="exam__field">
+              <span class="exam__sublabel">Observación general</span>
+              <p class="exam__readonly">{{ parts().general }}</p>
+            </li>
+          }
+          @if (!hasMarkedRegions() && !hasGeneralField()) {
+            <li><p class="exam__readonly">No registrado</p></li>
+          }
+        </ul>
       } @else {
         <div class="exam__regions-grid" role="group" aria-labelledby="stomatognathic-regions-label">
           @for (reg of regions; track reg.id) {
@@ -72,16 +90,43 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
           }
         </div>
 
-        <div class="exam__field">
-          <label class="exam__sublabel" for="stomatognathic-exam-input">Descripción</label>
-          <textarea
-            #examTextarea
-            id="stomatognathic-exam-input"
-            class="input exam__textarea"
-            rows="3"
-            [ngModel]="values().stomatognathicExam ?? ''"
-            (ngModelChange)="onTextChange($event)"
-          ></textarea>
+        @if (hasGeneralField()) {
+          <div class="exam__field">
+            <div class="exam__field-header">
+              <label class="exam__sublabel" for="stomatognathic-general-input">
+                Observación general
+              </label>
+              <button type="button" class="exam__remove" (click)="removeGeneralField()">
+                Quitar
+              </button>
+            </div>
+            <textarea
+              id="stomatognathic-general-input"
+              class="input exam__textarea"
+              rows="2"
+              [ngModel]="parts().general"
+              (ngModelChange)="onGeneralTextChange($event)"
+            ></textarea>
+          </div>
+        }
+
+        <div class="exam__regions-fields">
+          @for (region of markedRegions(); track region.id) {
+            <div class="exam__field">
+              <label class="exam__sublabel" [attr.for]="regionInputId(region.id)">
+                {{ regionLabel(region) }}
+              </label>
+              <textarea
+                #regionTextarea
+                class="input exam__textarea"
+                rows="2"
+                [id]="regionInputId(region.id)"
+                [attr.data-region-id]="region.id"
+                [ngModel]="regionText(region.id)"
+                (ngModelChange)="onRegionTextChange(region.id, $event)"
+              ></textarea>
+            </div>
+          }
         </div>
       }
     </div>
@@ -113,7 +158,8 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
       color: var(--slate-600);
     }
 
-    .exam__shortcut {
+    .exam__shortcut,
+    .exam__remove {
       display: inline-flex;
       align-items: center;
       min-height: 44px;
@@ -212,6 +258,19 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
       line-height: 1.25;
     }
 
+    .exam__regions-fields {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    @media (min-width: 64rem) {
+      .exam__regions-fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+      }
+    }
+
     .exam__field {
       display: flex;
       flex-direction: column;
@@ -219,11 +278,28 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
       min-width: 0;
     }
 
+    .exam__field-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xs);
+    }
+
     .exam__textarea {
       width: 100%;
       min-width: 0;
       resize: vertical;
       box-sizing: border-box;
+    }
+
+    .exam__readonly-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      margin: 0;
+      padding: 0;
+      list-style: none;
     }
 
     .exam__readonly {
@@ -236,6 +312,9 @@ const NORMAL_EXAM_TEXT = 'Sin patología aparente';
   `,
 })
 export class StomatognathicExamComponent {
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly values = input.required<
     Pick<Encounter, 'stomatognathicExam' | 'stomatognathicRegions'>
   >();
@@ -244,70 +323,156 @@ export class StomatognathicExamComponent {
   readonly regionToggle = output<number>();
   readonly textChange = output<{ field: EncounterTextField; value: string | null }>();
 
-  readonly examTextarea = viewChild<ElementRef<HTMLTextAreaElement>>('examTextarea');
+  private readonly regionTextareas =
+    viewChildren<ElementRef<HTMLTextAreaElement>>('regionTextarea');
 
   readonly regions = STOMATOGNATHIC_REGIONS;
   readonly normalExamText = NORMAL_EXAM_TEXT;
   readonly checkIcon: LucideIconData = Check;
 
-  readonly hasMarkedRegions = computed(
-    () => (this.values().stomatognathicRegions?.length ?? 0) > 0
+  /** El usuario abrió o editó la observación general; mantiene el campo visible aunque quede vacío. */
+  private readonly generalFieldOpened = signal<boolean>(false);
+
+  readonly markedRegionIds = computed(() => this.values().stomatognathicRegions ?? []);
+
+  readonly hasMarkedRegions = computed(() => this.markedRegionIds().length > 0);
+
+  readonly markedRegions = computed(() =>
+    STOMATOGNATHIC_REGIONS.filter((region) => this.markedRegionIds().includes(region.id))
   );
 
-  readonly readOnlyRegionsText = computed(() =>
-    formatMarkedRegions(this.values().stomatognathicRegions)
+  readonly parts = computed(() =>
+    parseStomatognathicExam(this.values().stomatognathicExam, this.markedRegionIds())
+  );
+
+  readonly hasGeneralField = computed(
+    () => this.generalFieldOpened() || this.parts().general.trim().length > 0
   );
 
   isRegionMarked(id: number): boolean {
-    return this.values().stomatognathicRegions?.includes(id) ?? false;
+    return this.markedRegionIds().includes(id);
   }
 
-  toggleRegion(reg: StomatognathicRegion): void {
+  regionText(id: number): string {
+    return this.parts().regions[id] ?? '';
+  }
+
+  regionLabel(region: StomatognathicRegion): string {
+    return `${region.id} · ${region.name}`;
+  }
+
+  regionInputId(id: number): string {
+    return `stomatognathic-region-${id}`;
+  }
+
+  toggleRegion(region: StomatognathicRegion): void {
     if (this.isReadOnly()) return;
 
-    const isCurrentlyMarked = this.isRegionMarked(reg.id);
-    if (!isCurrentlyMarked) {
-      const currentText = this.values().stomatognathicExam ?? '';
-      const prefix = `${reg.id}.`;
-      const lines = currentText.split(/\r?\n/);
-      const alreadyHasLine = lines.some((line) => line.trim().startsWith(prefix));
-
-      if (!alreadyHasLine) {
-        const lineToAdd = `${reg.id}. ${reg.name}: `;
-        const trimmed = currentText.trimEnd();
-        let nextText: string;
-        if (trimmed.length === 0 || trimmed === NORMAL_EXAM_TEXT) {
-          nextText = lineToAdd;
-        } else {
-          nextText = `${trimmed}\n${lineToAdd}`;
-        }
-        this.textChange.emit({ field: 'stomatognathicExam', value: nextText });
-      }
-
-      this.regionToggle.emit(reg.id);
-      this.focusTextarea();
-    } else {
-      this.regionToggle.emit(reg.id);
+    if (!this.isRegionMarked(region.id)) {
+      this.emitText(this.parts().general, this.parts().regions, [
+        ...this.markedRegionIds(),
+        region.id,
+      ]);
+      this.regionToggle.emit(region.id);
+      this.focusRegion(region.id);
+      return;
     }
+
+    if (this.regionText(region.id).trim().length === 0) {
+      this.unmarkRegion(region.id);
+      return;
+    }
+
+    this.confirmDialog
+      .open({
+        title: `Desmarcar ${this.regionLabel(region)}`,
+        message: 'Se borrará la descripción de esta región. ¿Continuar?',
+        confirmLabel: 'Desmarcar',
+        tone: 'danger',
+      })
+      .pipe(
+        filter((result) => result.confirmed),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => this.unmarkRegion(region.id));
   }
 
   setNormalExam(): void {
-    if (this.isReadOnly() || this.hasMarkedRegions()) return;
-    this.textChange.emit({ field: 'stomatognathicExam', value: NORMAL_EXAM_TEXT });
+    if (this.isReadOnly() || this.hasMarkedRegions() || this.hasGeneralField()) return;
+    this.generalFieldOpened.set(true);
+    this.emitText(NORMAL_EXAM_TEXT, {}, []);
   }
 
-  onTextChange(value: string): void {
-    this.textChange.emit({ field: 'stomatognathicExam', value });
+  onRegionTextChange(id: number, value: string): void {
+    if (this.isReadOnly()) return;
+    this.emitText(
+      this.parts().general,
+      { ...this.parts().regions, [id]: value },
+      this.markedRegionIds()
+    );
   }
 
-  private focusTextarea(): void {
+  onGeneralTextChange(value: string): void {
+    if (this.isReadOnly()) return;
+    this.generalFieldOpened.set(true);
+    this.emitText(value, this.parts().regions, this.markedRegionIds());
+  }
+
+  removeGeneralField(): void {
+    if (this.isReadOnly()) return;
+    const general = this.parts().general;
+    if (general.trim().length === 0 || general === NORMAL_EXAM_TEXT) {
+      this.clearGeneralField();
+      return;
+    }
+
+    this.confirmDialog
+      .open({
+        title: 'Quitar observación general',
+        message: 'Se borrará el texto de la observación general. ¿Continuar?',
+        confirmLabel: 'Quitar',
+        tone: 'danger',
+      })
+      .pipe(
+        filter((result) => result.confirmed),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => this.clearGeneralField());
+  }
+
+  private unmarkRegion(id: number): void {
+    const regions = { ...this.parts().regions };
+    delete regions[id];
+    this.emitText(
+      this.parts().general,
+      regions,
+      this.markedRegionIds().filter((markedId) => markedId !== id)
+    );
+    this.regionToggle.emit(id);
+  }
+
+  private clearGeneralField(): void {
+    this.generalFieldOpened.set(false);
+    this.emitText('', this.parts().regions, this.markedRegionIds());
+  }
+
+  private emitText(
+    general: string,
+    regions: Readonly<Record<number, string>>,
+    markedRegionIds: readonly number[]
+  ): void {
+    this.textChange.emit({
+      field: 'stomatognathicExam',
+      value: serializeStomatognathicExam(general, regions, markedRegionIds),
+    });
+  }
+
+  private focusRegion(id: number): void {
     setTimeout(() => {
-      const el = this.examTextarea()?.nativeElement;
-      if (el) {
-        el.focus();
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      }
+      const textarea = this.regionTextareas().find(
+        (item) => item.nativeElement.dataset['regionId'] === String(id)
+      );
+      textarea?.nativeElement.focus();
     });
   }
 }

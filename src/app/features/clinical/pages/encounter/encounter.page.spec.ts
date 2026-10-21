@@ -32,6 +32,7 @@ import {
 } from '../../testing/fixtures';
 import { Finding, PatientOdontogram } from '../../../odontogram';
 import { ApplicationRef } from '@angular/core';
+import type { Encounter } from '../../models/encounter.models';
 
 import { EncounterPage } from './encounter.page';
 
@@ -1208,57 +1209,77 @@ describe('EncounterPage', () => {
     expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf')).toHaveLength(0);
   });
 
-  it('marca la región 5 y Rayos X → PUT con stomatognathicRegions [5] y diagnosticExams ["RAYOS_X"]', async () => {
-    vi.useFakeTimers();
-
+  async function openExamPanelWithEncounter(encounterData: Encounter): Promise<void> {
     fixture = TestBed.createComponent(EncounterPage);
     fixture.detectChanges();
     flushTreatments(httpMock);
     flushPrescriptions(httpMock);
 
-    // Carga inicial de la atención (fixtures existentes con stomatognathicRegions: [] y diagnosticExams: [])
-    const encReq = httpMock.expectOne('/api/v1/encounters/enc-1');
-    encReq.flush(mockEncounterApiResponse);
-
-    const patReq = httpMock.expectOne('/api/v1/patients/pat-1');
-    patReq.flush(mockPatientApiResponse);
-
-    const recordReq = httpMock.expectOne('/api/v1/patients/pat-1/clinical-record');
-    recordReq.flush(mockClinicalRecordApiResponse);
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      success: true,
+      message: 'Atención obtenida',
+      data: encounterData,
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
 
     fixture.detectChanges();
     flushOdontogram(httpMock);
     fixture.detectChanges();
 
-    // Abre "Más del 033"
     const toggleBtn = fixture.nativeElement.querySelector('.encounter-extra__toggle') as HTMLButtonElement;
     expect(toggleBtn).toBeTruthy();
     toggleBtn.click();
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
 
-    // Pulsa "5 Lengua" y "Rayos X"
+  function regionButton(label: string): HTMLButtonElement {
     const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
-    const lenguaBtn = buttons.find((b) => b.textContent?.includes('5 Lengua'));
-    expect(lenguaBtn, 'botón "5 Lengua"').toBeTruthy();
-    lenguaBtn!.click();
+    const button = buttons.find((b) => b.textContent?.includes(label));
+    expect(button, `botón "${label}"`).toBeTruthy();
+    return button!;
+  }
+
+  function regionTextarea(label: string): HTMLTextAreaElement {
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('label')) as HTMLLabelElement[];
+    const regionLabel = labels.find((l) => l.textContent?.trim() === label);
+    expect(regionLabel, `etiqueta "${label}"`).toBeTruthy();
+    const textarea = fixture.nativeElement.querySelector(
+      `#${regionLabel!.htmlFor}`
+    ) as HTMLTextAreaElement;
+    expect(textarea, `textarea de "${label}"`).toBeTruthy();
+    return textarea;
+  }
+
+  it('marca la región 5 y Rayos X → PUT con stomatognathicRegions [5] y diagnosticExams ["RAYOS_X"]', async () => {
+    vi.useFakeTimers();
+    await openExamPanelWithEncounter(mockEncounterOpen);
+
+    // Pulsa "5 Lengua" y "Rayos X"; al marcar 5 aparece su campo
+    regionButton('5 Lengua').click();
+    fixture.detectChanges();
+    regionButton('Rayos X').click();
     fixture.detectChanges();
 
-    const rayosXBtn = buttons.find((b) => b.textContent?.includes('Rayos X'));
-    expect(rayosXBtn, 'botón "Rayos X"').toBeTruthy();
-    rayosXBtn!.click();
+    // Escribe en el campo "5 · Lengua"
+    const lenguaField = regionTextarea('5 · Lengua');
+    lenguaField.value = 'saburra';
+    lenguaField.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
     // Avanza el autosave (800 ms)
     vi.advanceTimersByTime(800);
 
-    // expectOne del PUT y verifica las dos listas y que la descripción del examen empieza con 5. Lengua:
     const putReq = httpMock.expectOne('/api/v1/encounters/enc-1');
     expect(putReq.request.method).toBe('PUT');
     expect(putReq.request.body.stomatognathicRegions).toEqual([5]);
     expect(putReq.request.body.diagnosticExams).toEqual(['RAYOS_X']);
-    expect(putReq.request.body.stomatognathicExam).toMatch(/^5\.\s*Lengua:/);
+    expect(putReq.request.body.stomatognathicExam).toBe('5. Lengua: saburra');
 
-    // Responde con el JSON del backend
     putReq.flush({
       success: true,
       message: 'Atención actualizada',
@@ -1266,13 +1287,63 @@ describe('EncounterPage', () => {
         ...mockEncounterOpen,
         stomatognathicRegions: [5],
         diagnosticExams: ['RAYOS_X'],
-        stomatognathicExam: '5. Lengua: ',
+        stomatognathicExam: '5. Lengua: saburra',
       },
     });
     fixture.detectChanges();
 
-    // Los dos botones quedan con aria-pressed="true"
-    expect(lenguaBtn!.getAttribute('aria-pressed')).toBe('true');
-    expect(rayosXBtn!.getAttribute('aria-pressed')).toBe('true');
+    expect(regionButton('5 Lengua').getAttribute('aria-pressed')).toBe('true');
+    expect(regionButton('Rayos X').getAttribute('aria-pressed')).toBe('true');
+    expect(regionTextarea('5 · Lengua').value).toBe('saburra');
+  });
+
+  it('desmarcar una región con texto → confirma → PUT sin la región ni su renglón', async () => {
+    vi.useFakeTimers();
+    await openExamPanelWithEncounter({
+      ...mockEncounterOpen,
+      stomatognathicRegions: [5, 8],
+      stomatognathicExam: '5. Lengua: saburra\n8. Carrillos: línea alba',
+    });
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(regionTextarea('5 · Lengua').value).toBe('saburra');
+    expect(regionTextarea('8 · Carrillos').value).toBe('línea alba');
+
+    // Pulsa "5 Lengua" → pide confirmación porque tiene texto
+    regionButton('5 Lengua').click();
+    fixture.detectChanges();
+
+    const dialog = (document.querySelector('.confirm-dialog') ||
+      document.querySelector('[role="alertdialog"]')) as HTMLElement;
+    expect(dialog).toBeTruthy();
+    expect(dialog.textContent).toContain('Se borrará la descripción de esta región');
+
+    const confirmBtn = dialog.querySelector('.btn-danger') as HTMLButtonElement;
+    confirmBtn.click();
+    fixture.detectChanges();
+    vi.advanceTimersByTime(800);
+
+    const putReq = httpMock.expectOne('/api/v1/encounters/enc-1');
+    expect(putReq.request.method).toBe('PUT');
+    expect(putReq.request.body.stomatognathicRegions).toEqual([8]);
+    expect(putReq.request.body.stomatognathicExam).toBe('8. Carrillos: línea alba');
+
+    putReq.flush({
+      success: true,
+      message: 'Atención actualizada',
+      data: {
+        ...mockEncounterOpen,
+        stomatognathicRegions: [8],
+        stomatognathicExam: '8. Carrillos: línea alba',
+      },
+    });
+    fixture.detectChanges();
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(regionButton('5 Lengua').getAttribute('aria-pressed')).toBe('false');
+    expect(regionTextarea('8 · Carrillos').value).toBe('línea alba');
+    expect(fixture.nativeElement.querySelector('#stomatognathic-region-5')).toBeNull();
   });
 });
