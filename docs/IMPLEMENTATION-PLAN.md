@@ -937,7 +937,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 021 | Casillas del 033: regiones del examen (sección 5), exámenes del plan y descripción única (sección 10) | 011 · 018a · backend 008b `eac5068` | Aprobada (ejecutó Gemini) |
 | 021a | Examen estomatognático: un campo por región marcada, confirmación al desmarcar | 021 | Aprobada (ejecutó Haiku) |
 | 022 | Imagen Docker (nginx) y CI a GHCR (push a `main`+`develop`; imagen solo en `main`) | backend 018a | Aprobada (ejecutó Haiku) |
-| 022b | Job `deploy` por SSH al VPS de Contabo (cuando el VPS y los secretos estén listos) | 022 · backend 018a | Pendiente |
+| 022b | Job `deploy` por SSH al VPS de Contabo (cuando el VPS y los secretos estén listos) | 022 · backend 018a | Aprobada (ejecutó Haiku) |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015.
