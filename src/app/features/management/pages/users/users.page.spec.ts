@@ -1,0 +1,215 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { ApiResponse } from '../../../../core/api/api.models';
+import { Professional } from '../../../professionals';
+import { User } from '../../models/user.models';
+
+const USERS: User[] = [
+  {
+    id: '11111111-1111-1111-1111-111111111111',
+    username: 'director',
+    email: 'director@bellidental.local',
+    active: true,
+    lastLoginAt: '2026-10-21T08:02:11-05:00',
+    createdAt: '2026-09-01T10:00:00-05:00',
+    roles: ['ADMIN', 'ODONTOLOGO'],
+  },
+  {
+    id: '22222222-2222-2222-2222-222222222222',
+    username: 'odontologa',
+    email: 'odontologa@bellidental.local',
+    active: true,
+    lastLoginAt: '2026-10-20T07:55:00-05:00',
+    createdAt: '2026-09-01T10:00:00-05:00',
+    roles: ['ODONTOLOGO'],
+  },
+  {
+    id: '33333333-3333-3333-3333-333333333333',
+    username: 'secretaria',
+    email: 'secretaria@bellidental.local',
+    active: true,
+    lastLoginAt: null,
+    createdAt: '2026-09-01T10:00:00-05:00',
+    roles: ['SECRETARIA'],
+  },
+  {
+    id: '44444444-4444-4444-4444-444444444444',
+    username: 'bot_whatsapp',
+    email: 'bot@bellidental.local',
+    active: true,
+    lastLoginAt: null,
+    createdAt: '2026-09-01T10:00:00-05:00',
+    roles: [],
+  },
+];
+
+const ANA: User = {
+  id: '55555555-5555-5555-5555-555555555555',
+  username: 'ana.perez',
+  email: 'ana.perez@bellidental.local',
+  active: true,
+  lastLoginAt: null,
+  createdAt: '2026-10-21T09:00:00-05:00',
+  roles: ['SECRETARIA'],
+};
+
+const PROFESSIONALS: Professional[] = [
+  {
+    id: '88888888-8888-8888-8888-888888888888',
+    userId: '11111111-1111-1111-1111-111111111111',
+    fullName: 'Director Clínico',
+    licenseNumber: 'MSP-1000',
+    colorTag: '#1d4ed8',
+    specialties: [],
+    active: true,
+  },
+  {
+    id: '66666666-6666-6666-6666-666666666666',
+    userId: '22222222-2222-2222-2222-222222222222',
+    fullName: 'Odontóloga Principal',
+    licenseNumber: 'MSP-1001',
+    colorTag: '#0f766e',
+    specialties: [],
+    active: true,
+  },
+  {
+    id: '77777777-7777-7777-7777-777777777777',
+    userId: null,
+    fullName: 'Hugo Soria',
+    licenseNumber: 'MSP-1002',
+    colorTag: '#b45309',
+    specialties: [],
+    active: true,
+  },
+];
+
+function settle(harness: RouterTestingHarness): Promise<void> {
+  harness.fixture.detectChanges();
+  return harness.fixture.whenStable().then(() => harness.fixture.detectChanges());
+}
+
+function findButton(text: string): HTMLButtonElement | undefined {
+  return Array.from(document.querySelectorAll('button')).find(
+    (button) => button.textContent?.trim() === text
+  );
+}
+
+function typeInto(selector: string, value: string): void {
+  const input = document.querySelector<HTMLInputElement>(selector);
+  if (!input) {
+    throw new Error(`No existe ${selector}`);
+  }
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
+}
+
+async function loadList(harness: RouterTestingHarness, httpMock: HttpTestingController) {
+  await settle(harness);
+  httpMock.expectOne('/api/v1/users').flush({ success: true, message: 'OK', data: USERS });
+  const professionalsBody: ApiResponse<Professional[]> = {
+    success: true,
+    message: 'OK',
+    data: PROFESSIONALS,
+  };
+  httpMock.expectOne('/api/v1/professionals').flush(professionalsBody);
+  await settle(harness);
+}
+
+async function openCreatePanelWithForm(harness: RouterTestingHarness) {
+  findButton('Nuevo usuario')?.click();
+  await settle(harness);
+
+  typeInto('#user-email', 'ana.perez@bellidental.local');
+  const secretaria = document.querySelector<HTMLInputElement>('#user-role-secretaria');
+  secretaria?.click();
+  typeInto('#user-temporary-password', 'Temporal.2026');
+  await settle(harness);
+}
+
+describe('UsersPage', () => {
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([
+          {
+            path: 'direccion/usuarios',
+            loadComponent: () => import('./users.page').then((module) => module.UsersPage),
+          },
+        ]),
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  it('abrir Usuarios → lista con roles y profesional; Nuevo usuario → POST /users → la lista se recarga', async () => {
+    const harness = await RouterTestingHarness.create('/direccion/usuarios');
+    await loadList(harness, httpMock);
+
+    const listText = harness.fixture.nativeElement.textContent as string;
+    expect(listText).toContain('odontologa');
+    expect(listText).toContain('Odontóloga Principal');
+    expect(listText).toContain('Cuenta del sistema');
+    expect(listText).toContain('4 cuentas · 4 activas');
+
+    await openCreatePanelWithForm(harness);
+    findButton('Crear usuario')?.click();
+    await settle(harness);
+
+    const createRequest = httpMock.expectOne({ method: 'POST', url: '/api/v1/users' });
+    expect(createRequest.request.body).toEqual({
+      email: 'ana.perez@bellidental.local',
+      temporaryPassword: 'Temporal.2026',
+      roles: ['SECRETARIA'],
+    });
+    createRequest.flush(
+      { success: true, message: 'Usuario creado.', data: ANA },
+      { status: 201, statusText: 'Created' }
+    );
+    await settle(harness);
+
+    const reloadRequest = httpMock.expectOne('/api/v1/users');
+    reloadRequest.flush({ success: true, message: 'OK', data: [ANA, ...USERS] });
+    await settle(harness);
+
+    const text = harness.fixture.nativeElement.textContent as string;
+    expect(text).toContain('ana.perez');
+    expect(text).toContain('Temporal.2026');
+  });
+
+  it('correo repetido → 409 → mensaje en el formulario', async () => {
+    const harness = await RouterTestingHarness.create('/direccion/usuarios');
+    await loadList(harness, httpMock);
+    await openCreatePanelWithForm(harness);
+
+    findButton('Crear usuario')?.click();
+    await settle(harness);
+
+    const createRequest = httpMock.expectOne({ method: 'POST', url: '/api/v1/users' });
+    createRequest.flush(
+      {
+        success: false,
+        message: "El email 'ana.perez@bellidental.local' ya está en uso.",
+        data: null,
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+    await settle(harness);
+
+    expect(harness.fixture.nativeElement.textContent).toContain(
+      "El email 'ana.perez@bellidental.local' ya está en uso."
+    );
+    expect(document.querySelector('#user-email')).not.toBeNull();
+  });
+});

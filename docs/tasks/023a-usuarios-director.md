@@ -181,6 +181,66 @@ con la odontóloga (`userId: '2222…'`), el director (`userId: '1111…'`) y "H
 5. Anchos 375 (tarjetas, alta a pantalla completa), 768, 1024 y 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+**Archivos nuevos** (`features/management/`): `models/user.models.ts`, `services/users.api.ts`,
+`services/users.store.ts`, `domain/user-display.ts`, `components/user-table/user-table.component.ts`,
+`components/user-create-form/user-create-form.component.ts`, `pages/users/users.page.ts` y `users.page.spec.ts`.
+
+**Modificados:** `app.routes.ts` (ruta `direccion/usuarios`, `profileGuard('DIRECTOR')`), `layout/nav-items.ts`
+(«Usuarios», `UserCog`, DIRECTOR), `features/professionals/models/professional.models.ts` (`userId: string | null`).
+`management/index.ts` sin cambios.
+
+**Build:** OK (`Application bundle generation complete`). Aviso preexistente, no de esta tarea:
+`sidebar.component.scss exceeded maximum budget ... by 22 bytes` (archivo no tocado).
+
+**Tests:**
+- `npx ng test --watch=false --include='src/app/features/management/**/*.spec.ts'`:
+  `Test Files  2 passed (2)` · `Tests  4 passed (4)` (incluye los 2 de clinic-stats y los 2 nuevos de users).
+- `npx ng test --watch=false`: `Test Files  12 passed (12)` · `Tests  58 passed (58)`.
+
+**Responsive:** NO revisado en navegador (no hay navegador ni DevTools en esta sesión). Pendiente: 375, 768, 1024 y
+1366. Implementado según la tarea: tabla a tarjetas con `@container (max-width: 37.49rem)`; alta en `bd-side-sheet`
+con `fullscreenBelowMd`; `padding-inline-end: 26rem` en `≥ lg` con el panel abierto.
+
+**Problemas:** ninguno con la API; el contrato de 019 se usó tal cual.
+
+**Supuestos tomados:**
+- El correo se envía recortado (sin minúsculas: lo hace el backend). `username` solo se envía si no está vacío.
+- Los roles se validan al intentar enviar ("Elige al menos un rol."); el resto de validaciones, al tocar el campo o al enviar.
+- Mientras hay una petición de activar/desactivar, todos los botones de la tabla quedan deshabilitados (evita envíos
+  concurrentes); el botón de la fila muestra «Guardando…».
+- "Desactivar" pide confirmación en la página; el store solo ejecuta la acción.
+- El formulario se crea al abrir el panel (`@if`), así que al cancelar se pierde lo escrito.
+- El aviso con la contraseña temporal queda hasta pulsar «Entendido» (decisión 2 de la tarea).
+
+**Prueba manual:** la de la tarea. Requiere backend 019 levantado y la cuenta `director` de la semilla.
 
 ## Revisión
+Estado: APROBADO
+
+- Contrato verificado contra backend 019 (`UserController`, `UserResponse`, `CreateUserRequest`): rutas, campos y
+  códigos coinciden. Arquitectura correcta (`management` solo importa de `professionals/index.ts`; `index.ts` de
+  `management` sin cambios), OnPush, sin `any`, solo tokens, plantillas < 150 líneas, "Desactivar/Activar" (sin
+  "Eliminar"), heurística F-17 (`roles` vacío o con `ADMIN` → sin acciones) correcta, sin `console.*`, contraseña
+  fuera del store salvo el aviso (store provisto por la página: se destruye al salir). Tabla → tarjetas con
+  `@container`, botones ≥ 44 px.
+- `npx ng build`: OK (solo el aviso preexistente del presupuesto de `sidebar.component.scss`, +22 B).
+  `npx ng test --watch=false`: `Test Files 12 passed (12)` · `Tests 58 passed (58)`.
+- Correcciones mínimas del revisor:
+  1. `users.page.spec.ts`: el caso 1 no comprobaba la lista; se separó `loadList()` y se verifican "odontologa",
+     "Odontóloga Principal", "Cuenta del sistema" y "4 cuentas · 4 activas". Se agregó el profesional del director
+     (`userId: '1111…'`) al fixture, como pedía la tarea.
+  2. Contraseña temporal: `autocomplete="new-password"` (evita que el navegador autocomplete la del director),
+     `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"` (en tablet el teclado capitalizaba la primera
+     letra y la contraseña creada no coincidía con la anotada). Nombre de usuario: `autocapitalize="off"`,
+     `spellcheck="false"`.
+  3. `users.page.ts`: se quitó la regla `.users-page__notice .bd-alert` (no aplicaba por el encapsulamiento).
+- Responsive no revisado en navegador: queda para la prueba manual del usuario (375, 768, 1024, 1366).
+
+## Decisiones a revisar (tras la revisión)
+1. **Contraseña temporal en `type="text"`** (decisión 2 de la tarea, para dictarla): no se usó `type="password"`.
+   Si se prefiere ocultarla, cambiar a `password` con un botón "Mostrar".
+2. **Aviso con la contraseña** queda visible hasta "Entendido" o hasta salir de la página (no se persiste).
+3. **En el aviso, "Entendido"** queda junto al texto sin saltar de línea en 375 px (el `bd-alert` no envuelve);
+   revisar a mano; si se ve apretado, agregar un input `wrap` a `bd-alert` en una tarea posterior.
+4. Mientras se activa/desactiva una fila, **todas** las acciones de la tabla quedan deshabilitadas (evita envíos
+   concurrentes).

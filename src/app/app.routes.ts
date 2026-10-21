@@ -89,6 +89,12 @@ export const routes: Routes = [
             (m) => m.ClinicStatsPage
           ),
       },
+      {
+        path: 'direccion/usuarios',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./features/management/pages/users/users.page').then((m) => m.UsersPage),
+      },
     ],
   },
   {

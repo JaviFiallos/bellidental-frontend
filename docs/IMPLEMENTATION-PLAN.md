@@ -1010,7 +1010,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Aprobada (ejecutó Haiku) |
 | 016b | Estadísticas: gráficos de barras y tablas | 016a | Aprobada (ejecutó Haiku) |
 | 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Aprobada (ejecutó Haiku) |
-| 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Redactada |
+| 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Aprobada (ejecutó Haiku) |
 | 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Redactada |
 | 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Redactada |
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |

@@ -1,4 +1,12 @@
-import { CalendarDays, Clock, CalendarCheck, ChartColumn, History, Users } from 'lucide-angular';
+import {
+  CalendarDays,
+  Clock,
+  CalendarCheck,
+  ChartColumn,
+  History,
+  UserCog,
+  Users,
+} from 'lucide-angular';
 import { LucideIconData } from '../shared/components/icon/icon.component';
 import { Profile } from '../core/auth/auth.models';
 
@@ -31,6 +39,7 @@ export function getNavItemsForProfile(profile: Profile | null): NavItem[] {
         { label: 'Mis atenciones', icon: History, route: '/consultorio/atenciones' },
         { label: 'Pacientes', icon: Users, isSearchAction: true },
         { label: 'Estadísticas', icon: ChartColumn, route: '/direccion/estadisticas' },
+        { label: 'Usuarios', icon: UserCog, route: '/direccion/usuarios' },
       ];
     default:
       return [];

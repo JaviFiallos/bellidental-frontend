@@ -6,7 +6,8 @@ export interface Specialty {
 
 export interface Professional {
   id: string;
-  userId: string;
+  /** `null` cuando el profesional no tiene cuenta de usuario. */
+  userId: string | null;
   fullName: string;
   licenseNumber: string;
   colorTag: string;
