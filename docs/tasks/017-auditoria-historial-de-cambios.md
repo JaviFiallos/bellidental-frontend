@@ -211,6 +211,57 @@ con `TestBed.inject(Dialog).closeAll()` si quedan abiertos.
 5. Anchos 375 y 1366 (diálogo con scroll interno).
 
 ## Resultado
-(lo llena el ejecutor)
+**Archivos creados** (`features/management`): `index.ts`, `models/audit.models.ts`, `services/audit.api.ts`,
+`services/audit-history-dialog.service.ts`, `domain/audit-display.ts`,
+`components/audit-history-dialog/audit-history-dialog.component.ts`.
+
+**Archivos modificados:** `app.routes.ts` (quitada la ruta `direccion/auditoria`), `layout/nav-items.ts` (quitado
+"Auditoría" y el import `ShieldCheck`), `patients/pages/patient-reception/patient-reception.page.ts` (botón
+"Historial de cambios" solo DIRECTOR, junto a "Formulario 033"), `patient-reception.page.spec.ts` (+2 casos),
+`clinical/components/patient-clinical-header/...component.ts` (inputs/outputs `canViewChanges`/`viewChanges`),
+`clinical/pages/encounter/encounter.page.ts` (`isDirector`, `onOpenChangesHistory`).
+
+**Build:** `npx ng build` OK (bundle generado). Aviso no bloqueante: `sidebar.component.scss` supera el presupuesto
+de 4 kB en 22 bytes (archivo no tocado en esta tarea).
+
+**Tests:** `Test Files 11 passed (11)` · `Tests 56 passed (56)` (la suite completa). Reception spec: 8 passed (8).
+
+**Anchos revisados:** NO. No tengo navegador en esta sesión; la revisión visual en 375/768/1024/1366 queda pendiente
+para el usuario (ver Prueba manual).
+
+**Problemas y supuestos:**
+- `management/index.ts` no existía (la 016a/016b no lo creó); se crea con `AuditHistoryDialogService` y los modelos.
+- `AuditEntry.userId` tipado como `string | null` (el contrato muestra string; se dejó nullable por seguridad).
+- El botón de la cabecera de la atención reutiliza la clase `btn-form-033` (mismo estilo que el enlace 033).
+- `patient-reception__btn-033` renombrado a `patient-reception__btn` (aplica a ambos botones).
+- `layout/coming-soon/coming-soon.page.ts` queda sin uso; no se borró (fuera de alcance).
+- Tono de la acción: `Creó`→scheduled, `Modificó`→waiting, `Anuló`→cancelled, `Eliminó`→no-show (el `bd-status-badge`
+  ya tiene esos tonos).
+- Sin cambios en backend ni en otros features; sin commit.
+
+**Cómo probar:** levantar backend con auditoría activa y un usuario DIRECTOR (roles ADMIN + ODONTOLOGO) para ver los
+botones; `/direccion/auditoria` ya no existe.
 
 ## Revisión
+Estado: APROBADO
+
+- Contrato verificado contra `AuditController`/`AuditEntryResponse`/`AuditService` del backend: ruta, nombres de
+  entidad y campos coinciden (`userId` `UUID` nullable → `string | null` correcto).
+- Criterios: botón solo con `profile() === 'DIRECTOR'` en ficha y cabecera de la atención (sin nombres de rol);
+  revisiones invertidas (más reciente primero), badge con color + texto, `clinicDate`/`clinicTime` y formateador
+  con `America/Guayaquil`; campos internos ocultos; "Anuló" por `voidedAt` null → valor; carga/vacío/error con el
+  mensaje de `api-error-messages` (403 → "No tienes permiso para esta acción."); CDK Dialog con `ariaLabelledBy`,
+  Esc y restauración de foco por defecto; ruta y menú retirados. `patients`/`clinical` importan solo de
+  `../../../management` (index.ts); `management` no importa de ellos. Solo tokens, sin `any`, OnPush.
+- Corrección del revisor: borrado `src/app/layout/coming-soon/coming-soon.page.ts` (huérfano, sin referencias en
+  `src/` ni en tareas pendientes); plan §2/§5.2 actualizado.
+- `npx ng build`: OK (aviso previo: `sidebar.component.scss` excede 4 kB por 22 bytes, no es de esta tarea).
+  `npx ng test --watch=false`: Test Files 11 passed (11) · Tests 56 passed (56).
+
+## Decisiones a revisar (tras la revisión)
+1. **Responsive sin revisar**: Haiku no tuvo navegador; el usuario debe probar el diálogo en 375 y 1366 (scroll
+   interno, "antes → después" en dos líneas) y la cabecera de la atención con el botón extra.
+2. **F-15 sigue "Propuesta"** en el plan (§10): confirmar que no se quiere pantalla `/direccion/auditoria` hasta G-7.
+3. Los cambios de diagnósticos, hallazgos, tratamientos y recetas **no** aparecen en el historial de la atención
+   (son entidades aparte en el backend); si se necesitan, harían falta botones por ítem o un endpoint agrupado.
+4. Se borró `layout/coming-soon/`: una tarea futura que necesite una ruta provisional tendrá que recrearlo.

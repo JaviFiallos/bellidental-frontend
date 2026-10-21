@@ -10,7 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, filter, finalize, forkJoin, map, merge, Observable, of, Subject, switchMap, tap } from 'rxjs';
-import { FileText } from 'lucide-angular';
+import { FileText, History } from 'lucide-angular';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiError } from '../../../../core/api/api.models';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
@@ -23,6 +23,7 @@ import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { Appointment, AppointmentsApi } from '../../../appointments';
 import { PatientAccountSectionComponent, PatientAccountStore, Payment } from '../../../billing';
+import { AuditHistoryDialogService } from '../../../management';
 import { AdminNotesComponent } from '../../components/admin-notes/admin-notes.component';
 import { PatientAppointmentsComponent } from '../../components/patient-appointments/patient-appointments.component';
 import { PatientIdentityComponent } from '../../components/patient-identity/patient-identity.component';
@@ -62,13 +63,23 @@ import { PatientsApi } from '../../services/patients.api';
           @if (canViewForm033()) {
             <div class="patient-reception__actions">
               <a
-                class="btn btn-outline patient-reception__btn-033"
+                class="btn btn-outline patient-reception__btn"
                 [routerLink]="['/pacientes', current.id, '033']"
                 aria-label="Ver Formulario 033"
               >
                 <bd-icon [name]="fileTextIcon" [size]="18" />
                 <span>Formulario 033</span>
               </a>
+              @if (isDirector()) {
+                <button
+                  type="button"
+                  class="btn btn-outline patient-reception__btn"
+                  (click)="onOpenChangesHistory(current)"
+                >
+                  <bd-icon [name]="historyIcon" [size]="18" />
+                  <span>Historial de cambios</span>
+                </button>
+              }
             </div>
           }
         </div>
@@ -154,10 +165,12 @@ import { PatientsApi } from '../../services/patients.api';
 
     .patient-reception__actions {
       display: flex;
+      flex-wrap: wrap;
       justify-content: flex-end;
+      gap: var(--space-sm);
     }
 
-    .patient-reception__btn-033 {
+    .patient-reception__btn {
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
@@ -199,6 +212,7 @@ export class PatientReceptionPage implements OnInit {
   private readonly clinicClock = inject(ClinicClock);
   private readonly notificationService = inject(NotificationService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly auditHistory = inject(AuditHistoryDialogService);
   private readonly clinicTimePipe = new ClinicTimePipe();
   private readonly moneyPipe = new MoneyPipe();
   readonly accountStore = inject(PatientAccountStore);
@@ -223,6 +237,8 @@ export class PatientReceptionPage implements OnInit {
     return prof === 'ODONTOLOGO' || prof === 'DIRECTOR';
   });
   readonly fileTextIcon = FileText;
+  readonly historyIcon = History;
+  readonly isDirector = computed(() => this.sessionStore.profile() === 'DIRECTOR');
   readonly canEdit = computed(
     () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')
   );
@@ -271,6 +287,14 @@ export class PatientReceptionPage implements OnInit {
     if (patient) {
       this.router.navigate(['/pacientes', patient.id, 'editar']);
     }
+  }
+
+  onOpenChangesHistory(patient: Patient): void {
+    this.auditHistory.open({
+      entity: 'patients',
+      id: patient.id,
+      title: 'Historial de cambios · ' + patient.fullName,
+    });
   }
 
   onSaveNotes(adminNotes: string): void {

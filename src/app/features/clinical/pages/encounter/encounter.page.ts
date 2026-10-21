@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SessionStore } from '../../../../core/auth/session.store';
+import { AuditHistoryDialogService } from '../../../management';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
@@ -151,7 +152,9 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           <bd-patient-clinical-header
             [patient]="store.patient()!"
             [clinicalRecord]="store.clinicalRecord()"
+            [canViewChanges]="isDirector()"
             (openHistory)="historyStore.open()"
+            (viewChanges)="onOpenChangesHistory()"
           />
 
           <!-- 2. Odontograma vigente (solo lectura) -->
@@ -456,6 +459,9 @@ export class EncounterPage implements OnInit {
   private readonly router = inject(Router);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly notificationService = inject(NotificationService);
+  private readonly auditHistory = inject(AuditHistoryDialogService);
+
+  readonly isDirector = computed<boolean>(() => this.sessionStore.profile() === 'DIRECTOR');
 
   readonly odontogramEditable = computed<boolean>(() => {
     return !this.store.isReadOnly() && this.sessionStore.hasPermission('RECORD_CREATE');
@@ -518,6 +524,16 @@ export class EncounterPage implements OnInit {
       this.treatmentsStore.load(encounterId);
       this.prescriptionsStore.load(encounterId);
     }
+  }
+
+  onOpenChangesHistory(): void {
+    const encounterId = this.route.snapshot.paramMap.get('encounterId');
+    if (!encounterId) return;
+    this.auditHistory.open({
+      entity: 'encounters',
+      id: encounterId,
+      title: 'Historial de cambios de la atención',
+    });
   }
 
   onRetry(): void {

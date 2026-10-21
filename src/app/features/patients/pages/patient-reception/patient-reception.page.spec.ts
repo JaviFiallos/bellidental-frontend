@@ -5,12 +5,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { ApplicationRef } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CurrentUser } from '../../../../core/auth/auth.models';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiResponse } from '../../../../core/api/api.models';
 import { Appointment } from '../../../appointments';
 import { CreatePaymentRequest, PatientAccount, Payment } from '../../../billing';
+import { AuditEntry } from '../../../management';
 import { Patient } from '../../models/patient.models';
 import { PatientReceptionPage } from './patient-reception.page';
 
@@ -42,6 +44,41 @@ const patientResponse: Patient = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 };
+
+const director: CurrentUser = {
+  userId: '11111111-1111-1111-1111-111111111111',
+  email: 'director@bellidental.local',
+  roles: ['ADMIN', 'ODONTOLOGO'],
+  permissions: ['PATIENT_READ', 'RECORD_READ', 'BILLING_READ'],
+  professionalId: '55555555-5555-5555-5555-555555555555',
+};
+
+const auditResponse: AuditEntry[] = [
+  {
+    revision: 10,
+    at: '2026-10-02T14:05:00Z',
+    userId: '33333333-3333-3333-3333-333333333333',
+    username: 'secretaria',
+    type: 'ADD',
+    changes: [
+      { field: 'active', oldValue: null, newValue: 'true' },
+      { field: 'firstName', oldValue: null, newValue: 'David' },
+      { field: 'id', oldValue: null, newValue: 'pat-1' },
+      { field: 'phoneE164', oldValue: null, newValue: '593987654321' },
+    ],
+  },
+  {
+    revision: 15,
+    at: '2026-10-09T15:42:10Z',
+    userId: '33333333-3333-3333-3333-333333333333',
+    username: 'secretaria',
+    type: 'MOD',
+    changes: [
+      { field: 'phoneE164', oldValue: '593987654321', newValue: '593991112233' },
+      { field: 'updatedAt', oldValue: '2026-10-02T09:05-05:00', newValue: '2026-10-09T10:42:10-05:00' },
+    ],
+  },
+];
 
 const secretaria: CurrentUser = {
   userId: 'user-sec',
@@ -171,6 +208,7 @@ describe('PatientReceptionPage', () => {
   }
 
   afterEach(() => {
+    TestBed.inject(Dialog).closeAll();
     httpMock.verify();
     vi.useRealTimers();
   });
@@ -448,5 +486,51 @@ describe('PatientReceptionPage', () => {
     expect(element.textContent).toContain('Anulado');
     expect(element.textContent).toContain('Monto mal digitado');
     expect(findButton('Anular')).toBeUndefined();
+  });
+
+  it('director abre Historial de cambios → GET /audit/patients/{id} → revisiones de la más reciente a la más antigua', async () => {
+    await openAs(director);
+    const patientRequest = httpMock.expectOne('/api/v1/patients/pat-1');
+    const patientBody: ApiResponse<Patient> = { success: true, message: 'Paciente obtenido', data: patientResponse };
+    patientRequest.flush(patientBody);
+    harness.detectChanges();
+
+    findButton('Historial de cambios')!.click();
+    harness.detectChanges();
+
+    const auditRequest = httpMock.expectOne('/api/v1/audit/patients/pat-1');
+    expect(auditRequest.request.method).toBe('GET');
+    const auditBody: ApiResponse<AuditEntry[]> = { success: true, message: 'Historial obtenido', data: auditResponse };
+    auditRequest.flush(auditBody);
+    TestBed.inject(ApplicationRef).tick();
+
+    const dialog = document.querySelector('.audit-history') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const firstRevision = dialog.querySelector('.audit-history__entry') as HTMLElement;
+    expect(firstRevision.textContent).toContain('Modificó');
+    expect(firstRevision.textContent).toContain('Teléfono');
+    expect(dialog.textContent).toContain('Creó');
+    expect(dialog.textContent).toContain('secretaria');
+    expect(dialog.textContent).not.toContain('updatedAt');
+  });
+
+  it('historial sin permiso → 403 → mensaje en el diálogo', async () => {
+    await openAs(director);
+    const patientRequest = httpMock.expectOne('/api/v1/patients/pat-1');
+    const patientBody: ApiResponse<Patient> = { success: true, message: 'Paciente obtenido', data: patientResponse };
+    patientRequest.flush(patientBody);
+    harness.detectChanges();
+
+    findButton('Historial de cambios')!.click();
+    harness.detectChanges();
+
+    httpMock.expectOne('/api/v1/audit/patients/pat-1').flush(
+      { success: false, message: 'No tiene permisos para realizar esta acción.', data: null },
+      { status: 403, statusText: 'Forbidden' }
+    );
+    TestBed.inject(ApplicationRef).tick();
+
+    const dialog = document.querySelector('.audit-history') as HTMLElement;
+    expect(dialog.textContent).toContain('No tienes permiso para esta acción.');
   });
 });

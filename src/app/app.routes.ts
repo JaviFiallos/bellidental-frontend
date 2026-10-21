@@ -89,13 +89,6 @@ export const routes: Routes = [
             (m) => m.ClinicStatsPage
           ),
       },
-      {
-        path: 'direccion/auditoria',
-        canActivate: [profileGuard('DIRECTOR')],
-        loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Auditoría', task: 'tarea 017' },
-      },
     ],
   },
   {

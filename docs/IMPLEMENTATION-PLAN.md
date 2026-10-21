@@ -192,7 +192,7 @@ Así el director no ve la recepción aunque su rol ADMIN tenga esos permisos en 
 /cuenta/contrasena                  todos (sin profileGuard) Cambiar mi contraseña       P21       023b
 ```
 Todas bajo `MainLayout` con `authGuard`; cada grupo con `profileGuard([...])`. Perfil equivocado → su inicio.
-`/direccion/auditoria` **se quita** en la 017 (F-15): sin lista en el backend (G-7) no hay qué mostrar; el
+`/direccion/auditoria` **se quitó** en la 017 (F-15): sin lista en el backend (G-7) no hay qué mostrar; el
 historial se abre desde el registro (paciente, atención).
 
 ### 3.3 Menú lateral por perfil
@@ -206,7 +206,7 @@ historial se abre desde el registro (paciente, atención).
 | — | — | Usuarios (023a) |
 | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión |
 
-"Auditoría" sale del menú en la 017 (F-15).
+"Auditoría" salió del menú en la 017 (F-15).
 
 ¹ "Pacientes" enfoca el buscador global (no hay listado: >1000 pacientes, siempre se busca). [F-1, F-2]
 
@@ -261,7 +261,7 @@ lg+ (≥1200)                                              xs–md (<900)
   (próxima cita) · `GET /professionals/{id}` (nombre del odontólogo para el sidebar mientras no exista G-2).
 - **Estructura:**
 ```
-layout/main-layout/  sidebar/  header/  coming-soon/  nav-items.ts (menú por perfil, §3.3)
+layout/main-layout/  sidebar/  header/  nav-items.ts (menú por perfil, §3.3; coming-soon/ se borró en la 017)
 core/guards/profile.guard.ts · core/services/{clinic-clock,notification}.service.ts
 shared/components/{icon,toast-host,combobox,page-header} · shared/pipes/{clinic-date,clinic-time,phone}.pipe.ts
 features/patients/index.ts → PatientSearchComponent, PatientSearchStore, PatientsApi (search, getById), Patient
@@ -750,6 +750,10 @@ features/clinical/
   (`patients`) y cabecera de la atención (`encounters`). Pagos (`payments`): cuando el director vea la cuenta (014).
   Se quitan la ruta `/direccion/auditoria` y el ítem "Auditoría" del menú.
 - **Test:** `patient-reception.page.spec.ts` (+2 casos, director).
+- **Hecho (017):** `management/index.ts` exporta `AuditHistoryDialogService` y los tipos de `audit.models`; reglas de
+  presentación puras en `management/domain/audit-display.ts` (campos ocultos, etiquetas, `formatAuditValue`); el
+  diálogo es CDK `Dialog` (foco y Esc del CDK). `PatientClinicalHeaderComponent` tiene `canViewChanges`/`viewChanges`.
+  Se borró `layout/coming-soon` (ya sin uso).
 
 ### 5.18 Formulario 033: vista e impresión — tareas 018a y 018b (P18, RF09) · backend 011c
 - **Alcance:** RF09 pasa al MVP (usuario, 2026-10-19). **Ruta:** `/pacientes/:id/033` (ODONTOLOGO, DIRECTOR); enlaces
@@ -1005,7 +1009,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 015c | Cobros: lista de pagos del paciente (reimprimir, anular) | 015b · G-11 | — (bloqueada por G-11) |
 | 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Aprobada (ejecutó Haiku) |
 | 016b | Estadísticas: gráficos de barras y tablas | 016a | Aprobada (ejecutó Haiku) |
-| 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Redactada |
+| 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Aprobada (ejecutó Haiku) |
 | 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Redactada |
 | 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Redactada |
 | 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Redactada |
