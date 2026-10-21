@@ -1,0 +1,57 @@
+1. Encabezado e identificación institucional
+Ubicado en la parte superior y centrado de la hoja. Contiene:
+
+Logotipo de la clínica
+
+Marca tipográfica en color azul.
+
+Datos que permiten identificar a la institución odontológica.
+
+2. Filiación y antecedentes médicos del paciente
+Corresponde al bloque inicial destinado a registrar la información personal, administrativa y clínica del paciente.
+
+Campo	Información a registrar
+Nombre	Identificación completa del paciente.
+Fecha de nacimiento	Fecha de nacimiento del paciente.
+Edad	Edad del paciente.
+Cédula	Número de documento legal de identidad.
+Teléfono	Número de contacto del paciente o representante.
+Antcds. (Antecedentes)	Patologías previas, alergias, enfermedades y otras condiciones médicas relevantes.
+Factura	Número de comprobante o factura emitida.
+Observaciones	Notas generales, información adicional o particularidades del paciente.
+Dg. (digitalizado)	
+
+3. Odontograma esquemático
+Representa gráficamente las piezas dentales mediante una cuadrícula organizada según la nomenclatura FDI de dos dígitos.
+
+Distribución de las piezas dentales
+Arcada	Cuadrante	Piezas
+Superior	Superior derecho	18, 17, 16, 15, 14, 13, 12, 11
+Superior	Superior izquierdo	21, 22, 23, 24, 25, 26, 27, 28
+Inferior	Inferior derecho	48, 47, 46, 45, 44, 43, 42, 41
+Inferior	Inferior izquierdo	31, 32, 33, 34, 35, 36, 37, 38
+
+Estructura de cada pieza dental
+Cada diente está representado mediante un cuadrado subdividido en cinco secciones, correspondientes a:
+
+Oclusal/incisal
+Vestibular
+Lingual/palatina
+Mesial
+Distal
+
+Estas divisiones permiten colorear, señalar o registrar patologías, tratamientos e intervenciones realizadas en cada pieza dental.
+
+4. Tabla de evolución clínica y control financiero
+Ubicada en la mitad inferior de la hoja. Funciona como un registro cronológico de las atenciones realizadas al paciente y, simultáneamente, como control de los pagos efectuados.
+
+La tabla está organizada en 7 columnas:
+
+Columna	Descripción
+Fecha	Día en que se realizó el procedimiento o atención.
+Dg.	Código o tipo de diagnóstico correspondiente a la sesión, por ejemplo, códigos CIE-10 como K02.1.
+Tratamiento	Descripción del procedimiento realizado, como profilaxis, restauraciones con resina, curaciones, etc.
+Dr./a	Identificación, nombre o iniciales del odontólogo responsable de la atención.
+Abono	Monto de dinero cancelado por el paciente durante la sesión.
+Saldo	Valor pendiente de pago después del abono realizado.
+Firma	Firma del paciente como constancia y conformidad del tratamiento recibido y de los valores regist

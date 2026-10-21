@@ -223,6 +223,56 @@ Durante el desarrollo: `npx ng test --watch=false --include='src/app/features/pa
 8. Anchos 375 (tarjetas), 768, 1024, 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+**Archivos creados** (feature `billing`, sin `.gitkeep`):
+- `billing/models/billing.models.ts`, `billing/services/billing.api.ts` (`BillingApi`, `providedIn: root`),
+  `billing/services/patient-account.store.ts` (`PatientAccountStore`, `@Injectable()`), `billing/domain/account-display.ts`,
+  `billing/components/patient-account-section/…`, `billing/components/account-table/…`, `billing/components/payment-form/…`,
+  `billing/index.ts`.
+**Archivos modificados**: `patients/pages/patient-reception/patient-reception.page.ts` (provee el store, sección entre
+notas y Citas, permisos `canViewAccount` / `canRegisterPayment`, `store.load(id)` en `loadPatient`) y
+`patient-reception.page.spec.ts` (helper `openAs`, flush de la cuenta, +2 casos).
+**Borrado**: `billing/.gitkeep`.
+
+**Build**: OK (`Application bundle generation complete`; único aviso ajeno: budget de `sidebar.component.scss`, ya existía).
+**Tests** (`npx ng test --watch=false`, copiado de consola):
+` Test Files  10 passed (10)` y `      Tests  50 passed (50)`. Los del spec de ficha: 4 (2 existentes adaptados + 2 nuevos), todos verdes.
+
+**Anchos revisados**: NO. No tengo navegador en esta sesión: 375/768/1024/1366 no se revisaron en DevTools. Quedan
+implementados con container queries (`37.5rem`: tarjetas en la tabla, formulario apilado; el contenedor es la sección).
+Pendiente de revisión manual por el usuario.
+
+**Cómo probar a mano**: secretaria con permisos `BILLING_READ`/`BILLING_CREATE` (el backend 012 ya los da), paciente con atenciones.
+
+**Problemas y supuestos**:
+1. El spec existente de "Citas anteriores" usaba `querySelector('table')`; ahora hay otra tabla antes, así que se
+   cambió a `table[aria-label="Citas anteriores del paciente"]`. Es el único cambio de los casos existentes aparte del helper.
+2. `PatientAccountStore.reload()` muestra la tabla sin skeleton (el skeleton solo sale si aún no hay cuenta).
+3. `defaultEncounterId` compara la fecha de la sesión con `clinicClock.addDays(new Date(...), 0)`, como indica la tarea.
+4. El formulario muestra el error de monto solo al enviar y lo limpia al escribir.
+5. Sin cambios en backend ni en alcance; no hay commit.
 
 ## Revisión
+**Estado: APROBADO** (revisó Claude Opus, 2026-10-21).
+
+- Build OK (solo el aviso previo de budget de `sidebar.component.scss`, +22 bytes, ajeno). Tests: `Test Files 10 passed
+  (10)` · `Tests 50 passed (50)`.
+- Contrato verificado contra el backend (`AccountResponse`, `AccountSessionResponse`, `CreatePaymentRequest`,
+  `PaymentResponse`, `PaymentController`: rutas y permisos `BILLING_READ`/`BILLING_CREATE`): coincide.
+- Criterios: los 8 se cumplen. Visibilidad con `profile() === 'SECRETARIA'` + `hasPermission`; odontólogo/director no
+  llaman a `load()`. Monto por defecto "25,00", `encounterId` omitido si `''`, doble envío bloqueado (botón
+  deshabilitado + guarda en el store), recarga con GET tras guardar, error en el formulario abierto. `billing` no importa
+  de `patients`; la página importa solo de `../../../billing`. Sin `any`, sin hex, OnPush, sin "Eliminar", montos con
+  `money`, "hoy" con `ClinicClock`. Botones ≥ 44 px; tabla → tarjetas con `@container` < 37.5rem.
+- Corrección mínima hecha por Claude: `role="alert"` en el error en línea del monto (`payment-form.component.ts`), para
+  que el lector de pantalla lo anuncie al enviar.
+- Pendiente del usuario: revisión visual en 375/768/1024/1366 (Haiku no tuvo navegador).
+
+## Decisiones a revisar (tras la revisión)
+1. Las 8 decisiones de arriba siguen vigentes (una columna, sesión de hoy por defecto, formulario en línea, sin
+   comprobante hasta la 015b, director y odontólogo sin cuenta en esta pantalla).
+2. Si falla la **recarga** de la cuenta (no la carga inicial), el `bd-alert` reemplaza la tabla hasta "Reintentar". Es
+   aceptable para el MVP.
+3. Para la 015b: hoy el store no guarda el `Payment` devuelto (solo usa `receiptNumber` en el toast); la 015b debe
+   añadir un signal `lastPayment` para la franja "Abono registrado · Imprimir · Anular".
+4. El hint "Quedará un saldo a favor de $ X" con saldo previo a favor muestra el total a favor resultante (monto +
+   crédito previo), no solo el excedente de este abono. Es correcto contablemente; confirmar que el texto se entiende.

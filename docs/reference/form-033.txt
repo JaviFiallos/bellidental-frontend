@@ -1,0 +1,129 @@
+| ESTABLECIMIENTO | NOMBRE | APELLIDO | SEXO (M-F) | EDAD | N° HISTORIA CLINICA |
+|-----------------|--------|----------|------------|------|---------------------|
+| Bellidenttal    |        |          |            |      |                     |
+
+| 1 MOTIVO DE CONSULTA |
+|----------------------|
+| PACIENTE / REPRESENTANTE REFIERE "" |
+
+| LO QUE EL PCT DICE AL LLEGAR "" |
+|----------------------------------|
+| ASINTOMATICO                     |
+| PASAR A LA DOC                    |
+
+| 2 ENFERMEDAD O PROBLEMA ACTUAL |
+|--------------------------------|
+| ASINTOMATICO                   |
+
+| 3 ANTECEDENTES PERSONALES Y FAMILIARES |
+|----------------------------------------|
+| 1. ALERGIA ANTIBIOTICO | 2. ANESTESIA | 3. HEMORRAGIA | 4. VIH/SIDA | 5. TUBERCULOSIS | 6. ASMA | 7. DIABETES | 8. HIPERTENSION | 9. ENF. CARDIACA | 10. OTRO |
+|------------------------|--------------|---------------|------------|-----------------|--------|-------------|-----------------|------------------|---------|
+| NO REFIERE PERSONALES NI FAMILIARES |
+
+| LO QUE EL PCT DICE AL LLEGAR "" |
+|----------------------------------|
+| NO REFIERE PERSONALES NI FAMILIARES |
+| NO REFIERE PERSONALES. 8. PADRE     |
+
+| 4. SIGNOS VITALES |
+|-------------------|
+| PRESION ARTERIAL | FRECUENCIA CARDIACA | TEMPERATURA | F. RESPIRATORIA |
+|------------------|---------------------|-------------|-----------------|
+|                  |                     |             |                 |
+
+| 5. EXAMEN DEL SISTEMA ESTOMATOGNATICO |
+|----------------------------------------|
+SIN PATOLOGIA APARENTE
+
+| 6. ODONTOGRAMA |
+|----------------|
+
+|                | PIEZA DENTAL |    |    |    |    |    |    |    |    |
+|----------------|--------------|----|----|----|----|----|----|----|----|
+| MOVILIDAD      |              |    |    |    |    |    |    |    |    |
+| RECESION       |              |    |    |    |    |    |    |    |    |
+| CARIES SIMPLE  |              |    |    |    |    |    |    |    |    |
+| CARIES COMPUESTA |            |    |    |    |    |    |    |    |    |
+| CARIES COMPLEJA |             |    |    |    |    |    |    |    |    |
+| PIEZAS CALZADAS |             |    |    |    |    |    |    |    |    |
+| PIEZAS PERDIDAS |             |    |    |    |    |    |    |    |    |
+| PIEZAS POR EXTRAER |          |    |    |    |    |    |    |    |    |
+| HECHO ENDODONCIA |            |    |    |    |    |    |    |    |    |
+| HACER ENDODONCIA |            |    |    |    |    |    |    |    |    |
+| HECHO SELLANTE |              |    |    |    |    |    |    |    |    |
+| HACER SELLANTE |              |    |    |    |    |    |    |    |    |
+
+| REFERENCIAS DEL ODONTOGRAMA |
+|-----------------------------|
+| 1p R                         |
+| 2p R                         |
+| 3+p R                        |
+| azul 1 2 3 4                 |
+| X azul                       |
+| X roja                       |
+| rectangulo azul              |
+| rectangulo rojo              |
+| * azul                       |
+| * rojo                       |
+
+| 7. INDICADORES DE SALUD BUCAL | 8. INDICES CPO-ce |
+|-------------------------------|-------------------|
+| ENFERMEDAD PERIODONTAL | MAL OCLUSION | FLUOROSIS | D | C | P | O | TOTAL |
+| LEVE     |             | ANGLE I | X | LEVE     |    |    |    |    | 0 |
+| MODERADA |             | ANGLE II |  | MODERADA | d | c | e | o | TOTAL |
+| SEVERA   |             | ANGLE III | | SEVERA   |    |    |    |    | 0 |
+
+| 8. INDICES CPO-ce |
+|-------------------|
+| D | C | P | O | TOTAL |
+|---|---|---|---|-------|
+|   |   |   |   | 0     |
+| d | c | e | o | TOTAL |
+|---|---|---|---|-------|
+|   |   |   |   | 0     |
+
+| adultos |
+|---------|
+
+| niños |
+|-------|
+
+| 10. PLANES DE DIAGNOSTICO, TERAPEUTICO Y EDUCACIONAL |
+|--------------------------------------------------------|
+| BIOMETRIA | QUIMICA SANGUINEA | RAYOS - X | OTROS |
+|-----------|--------------------|-----------|-------|
+|           |                    |           |       |
+
+| PDX: |
+|------|
+| PT: PROFILAXIS - OPERATORIAS |
+| PE: MEJORAR TECNICA Y FRECUENCIA DE CEPILLADO |
+
+| 11. DIAGNOSTICO |
+|-----------------|
+
+| N° | DIAGNOSTICO             | CIE   | PRE | DEF |
+|----|-------------------------|-------|-----|-----|
+| 1  | EXAMEN ODONTOLOGICO     | Z012  |     | X   |
+| 2  | CARIES DE DENTINA       | K021  |     | X   |
+| 3  |                         |       |     |     |
+| 4  |                         |       |     |     |
+
+| FECHA DE APERTURA |                 | PROFESIONAL | Od. Alexandra Alban Velasco | CODIGO | 1019-2020-215781 |
+|-------------------|-----------------|-------------|-----------------------------|--------|------------------|
+
+| 12. TRATAMIENTO |
+|-----------------|
+
+| SESION Y FECHA | DIAGNOSTICOS Y COMPLICACIONES | PROCEDIMIENTOS | PRESCRIPCIONES |
+|----------------|-------------------------------|----------------|----------------|
+| SESION: 1      | Z012 EXAMEN ODONTOLOGICO      | D0150 D1330    | NO COMER UNA HORA CITA |
+| FECHA:         | K021 CARIES DE DENTINA SIN    |                | SUBSECUENTE |
+|                | COMPLICACIONES                 |                |                |
+|----------------|-------------------------------|----------------|----------------|
+| SESION: 2      |                               |                |                |
+| FECHA:         |                               |                |                |
+|----------------|-------------------------------|----------------|----------------|
+| SESION: 3      |                               |                |                |
+| FECHA:         |                               |                |                |

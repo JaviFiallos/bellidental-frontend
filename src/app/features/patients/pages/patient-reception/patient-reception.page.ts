@@ -21,6 +21,7 @@ import { IconComponent } from '../../../../shared/components/icon/icon.component
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { Appointment, AppointmentsApi } from '../../../appointments';
+import { PatientAccountSectionComponent, PatientAccountStore } from '../../../billing';
 import { AdminNotesComponent } from '../../components/admin-notes/admin-notes.component';
 import { PatientAppointmentsComponent } from '../../components/patient-appointments/patient-appointments.component';
 import { PatientIdentityComponent } from '../../components/patient-identity/patient-identity.component';
@@ -38,7 +39,9 @@ import { PatientsApi } from '../../services/patients.api';
     PatientIdentityComponent,
     AdminNotesComponent,
     PatientAppointmentsComponent,
+    PatientAccountSectionComponent,
   ],
+  providers: [PatientAccountStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="patient-reception">
@@ -77,6 +80,23 @@ import { PatientsApi } from '../../services/patients.api';
             [error]="notesError()"
             (save)="onSaveNotes($event)"
           />
+
+          @if (canViewAccount()) {
+            <bd-patient-account-section
+              [account]="accountStore.account()"
+              [loading]="accountStore.loading()"
+              [error]="accountStore.error()"
+              [canRegister]="canRegisterPayment()"
+              [formOpen]="accountStore.formOpen()"
+              [saving]="accountStore.saving()"
+              [saveError]="accountStore.saveError()"
+              [defaultEncounterId]="accountStore.defaultEncounterId()"
+              (retry)="accountStore.reload()"
+              (openForm)="accountStore.openForm()"
+              (closeForm)="accountStore.closeForm()"
+              (submitPayment)="accountStore.registerPayment($event)"
+            />
+          }
 
           <section class="patient-reception__appointments" aria-labelledby="patient-reception-appointments-title">
             <h2 id="patient-reception-appointments-title" class="patient-reception__section-title">Citas</h2>
@@ -170,6 +190,7 @@ export class PatientReceptionPage implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly clinicTimePipe = new ClinicTimePipe();
+  readonly accountStore = inject(PatientAccountStore);
 
   private readonly reloadPatient$ = new Subject<void>();
 
@@ -194,6 +215,10 @@ export class PatientReceptionPage implements OnInit {
   readonly canEdit = computed(
     () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')
   );
+  readonly canViewAccount = computed(
+    () => this.isSecretaria() && this.sessionStore.hasPermission('BILLING_READ')
+  );
+  readonly canRegisterPayment = computed(() => this.sessionStore.hasPermission('BILLING_CREATE'));
   readonly canUpdateAppointments = computed(() =>
     this.sessionStore.hasPermission('APPOINTMENT_UPDATE')
   );
@@ -304,6 +329,10 @@ export class PatientReceptionPage implements OnInit {
     this.appointments.set([]);
     this.appointmentsError.set(null);
     this.appointmentsLoading.set(this.isSecretaria());
+
+    if (this.canViewAccount()) {
+      this.accountStore.load(id);
+    }
 
     const patient$ = this.patientsApi.getById(id).pipe(
       tap({
