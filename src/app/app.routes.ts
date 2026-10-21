@@ -96,6 +96,12 @@ export const routes: Routes = [
           import('./features/management/pages/users/users.page').then((m) => m.UsersPage),
       },
       {
+        path: 'direccion/catalogo',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./features/management/pages/catalog/catalog.page').then((m) => m.CatalogPage),
+      },
+      {
         path: 'cuenta/contrasena',
         loadComponent: () =>
           import('./features/auth/pages/change-password/change-password.page').then(
