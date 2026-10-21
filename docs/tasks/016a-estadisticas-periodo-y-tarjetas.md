@@ -189,6 +189,49 @@ Durante el desarrollo:
 6. Anchos 375, 768, 1024 y 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+- **Archivos.** Modificados: `src/app/app.routes.ts` (ruta `direccion/estadisticas` → `ClinicStatsPage`, sin `data`),
+  `features/clinical/pages/my-encounters/my-encounters.page.ts` y `features/clinical/services/my-encounters.store.ts`
+  (imports y nombres nuevos). Movido con `git mv`: `features/clinical/domain/encounter-period.ts` →
+  `shared/utils/calendar-period.ts` (renombrados `CalendarPeriod*`, `buildCalendarPeriod`, `parseCalendarPeriod`,
+  `shiftCalendarAnchor`; `weekLabel` → `rangeLabel`, exportada). Nuevos en `features/management/`: `models/dashboard.models.ts`,
+  `services/dashboard.api.ts` (`DashboardApi`), `services/clinic-stats.store.ts`, `domain/stats-period.ts`,
+  `components/stats-period-bar/`, `components/stats-kpis/`, `pages/clinic-stats/clinic-stats.page.ts` y su spec.
+  No hay `index.ts` en `management`.
+- **Build.** `npx ng build`: OK (bundle generado). Aviso preexistente, no tocado: `sidebar.component.scss` excede el presupuesto en 22 bytes.
+- **Tests.** Específicos (`--include='src/app/features/{management,clinical}/**/*.spec.ts'`): `Test Files 4 passed (4)`, `Tests 23 passed (23)`.
+  Completos (`npx ng test --watch=false`): `Test Files  11 passed (11)`, `Tests  54 passed (54)`.
+  Tests escritos: 2 casos en `clinic-stats.page.spec.ts` (flujo mes → Semana; error 500 → Reintentar).
+- **Anchos.** NO revisado en navegador: esta sesión no tiene DevTools ni navegador. Lo maquetado: tarjetas
+  `repeat(auto-fit, minmax(min(100%, 10rem), 1fr))`; barra apilada en `< md` y en fila en `≥ md`; inputs y botones 44 px.
+  Pendiente de revisar en 375, 768, 1024 y 1366.
+- **Problemas.** Ninguno de API: el contrato 020 cubre todo lo necesario.
+- **Supuestos.** (1) `byStatus`/`byMethod` tipados como `Record<string, number>`; en la tarjeta se usa `?? 0`.
+  (2) Al cargar, el store vacía `summary`, así que las tarjetas muestran `bd-skeleton`. (3) Rango inválido en la URL
+  cae en el mes actual. (4) La navegación de `rango` precarga desde/hasta con el período visto. (5) El spec no
+  simula sesión de director: la ruta de prueba no lleva guard y el store no lee la sesión.
 
 ## Revisión
+Estado: APROBADO
+
+- Contrato verificado contra el backend (`DashboardController`, DTO de `dashboard/api/dto`, `DashboardService`):
+  ruta, `hasRole('ADMIN')`, `from`/`to` ISO, nombres de campo y validación de 366 días inclusivos
+  (`DAYS.between + 1 > 366`) coinciden con `validateStatsRange`.
+- Ruta con `profileGuard('DIRECTOR')`, sin `data`; menú (`nav-items.ts`) e inicio del director ya apuntaban aquí.
+- `management` sin `index.ts` y sin imports de otros features; OnPush, sin `any`, solo tokens, plantillas < 150
+  líneas; errores vía `ApiClient` (403/0 ya mapeados en `getApiErrorMessage`).
+- Movimiento a `shared/utils/calendar-period.ts` limpio: no queda ningún `encounter-period`/`EncounterPeriod`;
+  spec de "Mis atenciones" en verde.
+- Siempre se envían `from` y `to`; rango inválido → mensaje en línea sin petición; URL inválida → mes actual.
+- `npx ng build`: OK (aviso preexistente de presupuesto de `sidebar.component.scss`, +22 B).
+  `npx ng test --watch=false`: `Test Files 11 passed (11)`, `Tests 54 passed (54)`.
+- Corrección mínima del revisor: `rangeLabel` con `from === to` mostraba "10 – 10 oct 2026"; ahora "10 oct 2026".
+
+## Decisiones a revisar (tras la revisión)
+1. **Responsive no revisado en navegador** (la sesión no tenía DevTools): el usuario debe revisar 375, 768, 1024 y
+   1366, sobre todo el formulario de rango y `bd-date-nav` en 375.
+2. **El spec no usa sesión ni guard** (la ruta de prueba no lleva `profileGuard`); la redirección de otros perfiles
+   se prueba solo a mano (paso 4).
+3. **Mientras carga se vacían las tarjetas** (skeleton en cada cambio de período), en vez de mantener las cifras
+   anteriores atenuadas. Más simple; si parpadea demasiado al usar ‹ ›, se cambia en la 016b.
+4. **En "Rango" no hay ‹ ›**: para moverse se cambian las fechas y "Aplicar". Al volver a Día/Semana/Mes se ancla
+   en la fecha "Desde".

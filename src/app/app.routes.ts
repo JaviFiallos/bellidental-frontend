@@ -85,8 +85,9 @@ export const routes: Routes = [
         path: 'direccion/estadisticas',
         canActivate: [profileGuard('DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Estadísticas', task: 'tarea 016' },
+          import('./features/management/pages/clinic-stats/clinic-stats.page').then(
+            (m) => m.ClinicStatsPage
+          ),
       },
       {
         path: 'direccion/auditoria',

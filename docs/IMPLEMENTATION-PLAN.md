@@ -140,7 +140,7 @@ Se crean en la primera tarea que los necesita y se reutilizan después. Ningún 
 | `ApiClient.getBlob` (core) | descargar PDFs con el token; lee el `message` del error aunque llegue como `Blob` | 013b |
 | Utils `cedula.ts`, `e164.ts` (`shared/utils`) | validar cédula EC, convertir teléfono | 005 |
 | Util `pdf-window.ts` (`shared/utils`, movido desde prescriptions) | pestaña del PDF abierta en el clic | 013b → 015b (F-21) |
-| Util `calendar-period.ts` (`shared/utils`, movido desde `clinical/domain/encounter-period.ts`) | período día/semana/mes con etiqueta | 019 → 016a (F-20) |
+| Util `calendar-period.ts` (`shared/utils`, movido desde `clinical/domain/encounter-period.ts`) | período día/semana/mes con etiqueta; `rangeLabel(from, to)` para cualquier rango | 019 → 016a (F-20) |
 
 Por feature (exportados en su `index.ts`): `PatientSearchComponent` (patients, 002b), `AppointmentCard`
 (appointments, 003a), `OdontogramComponent` (odontogram, 009), `PatientClinicalHeader` (clinical, 008),
@@ -1001,7 +1001,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 015a | Cobros: estado de cuenta y registrar abono (ficha de recepción) | 005b · backend 012 `328c6fe` | Aprobada (ejecutó Haiku) |
 | 015b | Cobros: comprobante PDF y anular el abono recién registrado | 015a · 013b (`getBlob`) | Aprobada (ejecutó Haiku) |
 | 015c | Cobros: lista de pagos del paciente (reimprimir, anular) | 015b · G-11 | — (bloqueada por G-11) |
-| 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Redactada |
+| 016a | Estadísticas: ruta, período, API y tarjetas | 002 · 019 · backend 020 `81ee53d` | Aprobada (ejecutó Haiku) |
 | 016b | Estadísticas: gráficos de barras y tablas | 016a | Redactada |
 | 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Redactada |
 | 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Redactada |
