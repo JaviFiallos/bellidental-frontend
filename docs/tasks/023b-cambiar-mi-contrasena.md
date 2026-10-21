@@ -129,6 +129,57 @@ centrada a la izquierda en más. Sidebar: revisar el pie en modo completo (≥ 1
 5. Anchos 375, 768, 1024 y 1366.
 
 ## Resultado
-(lo llena el ejecutor)
+**Archivos modificados:**
+- `src/app/app.routes.ts`: ruta `cuenta/contrasena` (lazy, dentro de `MainLayout`, sin `profileGuard`).
+- `src/app/core/interceptors/error.interceptor.ts`: constante `SESSION_SAFE_401_URLS = ['/auth/login', '/auth/password']`.
+- `src/app/core/auth/auth.models.ts`: `ChangePasswordRequest`.
+- `src/app/core/auth/auth.service.ts`: `changePassword()` → `PUT /api/v1/auth/password`.
+- `src/app/layout/sidebar/sidebar.component.ts|html|scss`: enlace "Cambiar contraseña" (`KeyRound`) en el pie, antes de "Cerrar sesión", con la clase del botón de cerrar sesión, `routerLinkActive` y `aria-label` en modo íconos.
+
+**Archivos nuevos:**
+- `src/app/features/auth/pages/change-password/change-password.page.ts` (plantilla y estilos en línea).
+- `src/app/features/auth/pages/change-password/change-password.page.spec.ts` (2 casos de integración con el interceptor real).
+
+**Build:** OK (código de salida 0). Aviso: `sidebar.component.scss exceeded maximum budget` (4.00 kB; el archivo queda en 4.35 kB). Lo causa este cambio; no lo corregí.
+
+**Tests:**
+- Spec de la página: `Test Files  1 passed (1)` / `Tests  2 passed (2)`.
+- Suite completa: `Test Files  13 passed (13)` / `Tests  60 passed (60)`.
+
+**Responsive y visual:** no revisé en navegador (no tengo DevTools ni navegador disponible en esta sesión). Pendiente en 375, 768, 1024 y 1366, y el pie del sidebar en modo completo, íconos y drawer.
+
+**Problemas y supuestos:**
+- El aviso de presupuesto del SCSS del sidebar hay que resolverlo (recortar estilos o subir el presupuesto).
+- Se usa el 401 de `/auth/password` sin cerrar sesión, según la decisión 2 de la tarea.
+- El mensaje de error del 401 es el texto propio de la tarea, no el del backend.
+- Los campos "Contraseña actual" y "Nueva" tienen mostrar/ocultar con íconos `Eye`/`EyeOff` de lucide, en lugar del SVG del login.
+- Sin commit, como se pidió.
 
 ## Revisión
+Estado: APROBADO
+
+- Contrato verificado con `AuthController.changePassword` (`PUT /auth/password`, `ApiResponse<Void>`) y
+  `AuthService.changePassword` (401 `BadCredentialsException`, 400 reglas y "distinta de la actual").
+- Interceptor: solo `/auth/login` y `/auth/password` quedan fuera del cierre de sesión; cualquier otro 401 sigue
+  limpiando la sesión y yendo a `/auth/login?expirada=1`. El spec lo prueba con el interceptor real.
+- Página: OnPush, `nonNullable`, sin `any`, solo tokens, `type="password"` con `autocomplete`
+  `current-password`/`new-password`/`new-password`, mostrar/ocultar con `aria-label`, botón ≥ 44 px, sin doble
+  envío, contraseñas no se registran en consola. 401 → texto propio y foco en "Contraseña actual".
+- Sidebar: el enlace reutiliza `.sidebar__logout-btn` (modo íconos, tooltip y 44 px incluidos).
+- **Corrección del revisor (presupuesto de estilos):** `sidebar.component.scss` pasaba de 4.35 kB (antes ya +22 B).
+  Se recortó CSS redundante sin cambio visual: selector `&__account-link` (el enlace ya lleva
+  `.sidebar__logout-btn`; se quitó la clase del HTML), `box-sizing`/`margin: 0` ya cubiertos por el reset global de
+  `styles.scss`, `.sidebar__menu-item { width: 100% }` y `text-align: left` sin efecto en flex, `width: 100%`
+  repetido en modo íconos, selectores de tooltip fusionados con `:is()` y el `img` del logo en modo íconos aplanado.
+  Queda por debajo de 4.00 kB; `angular.json` sin cambios.
+- `npx ng build`: OK, sin avisos. `npx ng test --watch=false`: `Test Files 13 passed (13)` / `Tests 60 passed (60)`.
+- Pendiente del usuario: revisión visual en 375, 768, 1024 y 1366 y el pie del sidebar en los tres modos (Haiku no
+  tuvo navegador).
+
+## Decisiones a revisar (tras la revisión)
+1. El SCSS del sidebar quedó justo bajo el presupuesto de 4 kB (`anyComponentStyle`). El próximo cambio en el
+   sidebar probablemente vuelva a dar el aviso: entonces conviene subir `maximumWarning` a 5 kB en `angular.json`
+   (el encapsulado emulado infla cada selector) en vez de seguir recortando.
+2. Si el token vence justo al cambiar la contraseña, se verá "La contraseña actual no es correcta." en vez de ir al
+   login (decisión 2); se resuelve del todo si el backend corrige G-13 (400/409 para la actual incorrecta).
+

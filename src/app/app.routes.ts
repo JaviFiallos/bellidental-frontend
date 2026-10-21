@@ -95,6 +95,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/management/pages/users/users.page').then((m) => m.UsersPage),
       },
+      {
+        path: 'cuenta/contrasena',
+        loadComponent: () =>
+          import('./features/auth/pages/change-password/change-password.page').then(
+            (m) => m.ChangePasswordPage
+          ),
+      },
     ],
   },
   {

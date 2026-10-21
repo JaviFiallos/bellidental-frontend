@@ -43,7 +43,8 @@ Marcas: **[G-n]** = falta en el backend (§7.2) · **[F-n]** = decisión (§8).
   `expiresAt = Date.now() + expiresIn * 1000` (`expiresIn` en **segundos**, 86400 = 24 h; corregido en la 020). La sesión sobrevive a cerrar el navegador y
   expira sola a las 24 h.
 - Al iniciar la app: si hay sesión vigente → `GET /auth/me`; si vencida o `/me` falla → limpiar y login.
-- `401` en cualquier petición → limpiar sesión → `/auth/login?expirada=1`. Sin refresh token.
+- `401` en cualquier petición → limpiar sesión → `/auth/login?expirada=1`, salvo las de `SESSION_SAFE_401_URLS`
+  (`/auth/login`, `/auth/password`; 023b, F-18). Sin refresh token.
 - "Cerrar sesión" limpia `localStorage`. Evento `storage`: si otra pestaña cierra sesión, esta vuelve al login.
 - Riesgo asumido: en un PC compartido la sesión queda abierta hasta que alguien pulse "Cerrar sesión" o pasen 24 h.
   Por eso "Cerrar sesión" está siempre visible al pie del sidebar.
@@ -1011,7 +1012,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 016b | Estadísticas: gráficos de barras y tablas | 016a | Aprobada (ejecutó Haiku) |
 | 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Aprobada (ejecutó Haiku) |
 | 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Aprobada (ejecutó Haiku) |
-| 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Redactada |
+| 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Aprobada (ejecutó Haiku) |
 | 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Redactada |
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
