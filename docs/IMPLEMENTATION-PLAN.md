@@ -1015,7 +1015,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 017 | Historial de cambios (auditoría en contexto) y retiro de `/direccion/auditoria` | 016a (`management`) · backend 013 `64b68fd` | Commit `2c3845f` (ejecutó Haiku) |
 | 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Commit `235a3dc` (ejecutó Haiku) |
 | 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Commit `c3fd494` (ejecutó Haiku) |
-| 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Aprobada (ejecutó Haiku) |
+| 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Commit `08b4969` (ejecutó Haiku) |
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
 | 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
