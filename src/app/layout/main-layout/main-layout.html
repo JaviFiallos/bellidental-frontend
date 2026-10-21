@@ -1,0 +1,70 @@
+<div class="shell-layout">
+  <!-- Sidebar fijo en desktop / tablet (md+) -->
+  @if (sidebarMode() !== 'drawer') {
+    <aside class="shell-sidebar-container">
+      <app-sidebar
+        [items]="navItems()"
+        [userName]="userName()"
+        [areaLabel]="areaLabel()"
+        [mode]="sidebarMode()"
+        (logout)="onLogout()"
+        (searchRequested)="onSearchRequested()"
+      />
+    </aside>
+  }
+
+  <!-- Drawer para pantallas pequeñas (< md) con CDK TrapFocus -->
+  @if (sidebarMode() === 'drawer' && isDrawerOpen()) {
+    <div
+      class="drawer-backdrop"
+      (click)="closeDrawer()"
+      aria-hidden="true"
+    ></div>
+    <div
+      id="sidebar-drawer"
+      class="drawer-panel"
+      cdkTrapFocus
+      cdkTrapFocusAutoCapture
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menú de navegación"
+    >
+      <app-sidebar
+        [items]="navItems()"
+        [userName]="userName()"
+        [areaLabel]="areaLabel()"
+        mode="drawer"
+        (logout)="onLogout()"
+        (searchRequested)="onSearchRequested()"
+      />
+    </div>
+  }
+
+  <!-- Contenedor Principal (Header + Contenido) -->
+  <div class="shell-main">
+    <app-header
+      [today]="today()"
+      [nextAppointment]="nextAppointmentStore.nextAppointment()"
+      [showProfessional]="showProfessionalInHeader()"
+      [hasError]="nextAppointmentStore.hasError()"
+      [isLoading]="nextAppointmentStore.isLoading()"
+      [isDrawerOpen]="isDrawerOpen()"
+      [isCompact]="isCompact()"
+      [searchResults]="patientSearchStore.results()"
+      [isSearchLoading]="patientSearchStore.isLoading()"
+      [searchError]="patientSearchStore.errorMessage()"
+      [searchQuery]="patientSearchStore.query()"
+      [canRegisterPatient]="canRegisterPatient()"
+      (menuToggle)="toggleDrawer()"
+      (searchQueryChange)="onSearchQueryChange($event)"
+      (patientSelected)="onPatientSelected($event)"
+      (registerPatient)="onRegisterPatient($event)"
+    />
+
+    <main class="shell-content">
+      <div class="shell-content-inner">
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+</div>

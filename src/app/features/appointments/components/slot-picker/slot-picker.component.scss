@@ -1,0 +1,222 @@
+@use '../../../../shared/styles/breakpoints' as bp;
+
+.slot-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  box-sizing: border-box;
+  container-type: inline-size;
+}
+
+.slot-picker__prompt {
+  font-size: var(--fs-sm);
+  color: var(--slate-500);
+  margin: 0;
+  padding: var(--space-xs) 0;
+}
+
+.slot-picker__skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.slot-picker__error,
+.slot-picker__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  padding: var(--space-xs) 0;
+}
+
+.slot-picker__error-text {
+  font-size: var(--fs-sm);
+  color: var(--coral-700);
+  margin: 0;
+}
+
+.slot-picker__empty-text {
+  font-size: var(--fs-sm);
+  color: var(--slate-600);
+  margin: 0;
+}
+
+.slot-picker__retry-btn,
+.slot-picker__next-day-btn {
+  min-height: 44px;
+}
+
+.slot-picker__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.slot-picker__duration-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.slot-picker__duration-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--blue-950);
+}
+
+.slot-picker__tabs {
+  display: flex;
+  width: 100%;
+  background-color: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem;
+  gap: 0.25rem;
+  box-sizing: border-box;
+}
+
+.slot-picker__tab {
+  flex: 1;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--slate-600);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+
+  &:hover:not(:disabled) {
+    color: var(--blue-950);
+    background-color: var(--white);
+  }
+
+  &--active {
+    background-color: var(--white);
+    color: var(--blue-950);
+    box-shadow: var(--shadow-sm);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.slot-picker__chips-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.slot-picker__chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.slot-chip-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.slot-chip__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.slot-chip__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.5rem;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-sm);
+  background-color: var(--white);
+  color: var(--slate-800);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+  text-align: center;
+
+  &:hover {
+    background-color: var(--slate-100);
+    border-color: var(--slate-500);
+  }
+
+  &--start {
+    background-color: var(--blue-900) !important;
+    color: var(--white) !important;
+    border-color: var(--blue-950) !important;
+    border-width: 2px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  &--in-range {
+    background-color: color-mix(in srgb, var(--blue-900) 12%, var(--white));
+    color: var(--blue-950);
+    border: 1.5px dashed var(--blue-700);
+    font-weight: 700;
+  }
+
+  &--range-only {
+    cursor: default;
+  }
+}
+
+.slot-chip__input:focus-visible + .slot-chip__label {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.slot-chip__input:checked + .slot-chip__label {
+  background-color: var(--blue-900);
+  color: var(--white);
+  border-color: var(--blue-950);
+  border-width: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+.slot-chip__check {
+  font-weight: 800;
+  margin-right: 0.2rem;
+}
+
+.slot-picker__summary {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  background-color: color-mix(in srgb, var(--blue-900) 8%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--blue-900) 20%, var(--white));
+  border-radius: var(--radius-sm);
+}
+
+.slot-picker__summary-text {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--blue-950);
+}

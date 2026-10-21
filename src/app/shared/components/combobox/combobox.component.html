@@ -1,0 +1,88 @@
+<div class="combobox-host" cdkOverlayOrigin #origin="cdkOverlayOrigin" #originElement>
+  <div class="combobox-input-wrapper">
+    <ng-content select="[prefix]" />
+    <input
+      #inputElement
+      type="text"
+      class="combobox-input"
+      [value]="value()"
+      (input)="onInputChange($event)"
+      (focus)="onInputFocus()"
+      (keydown)="onKeyDown($event)"
+      [placeholder]="placeholder()"
+      role="combobox"
+      aria-autocomplete="list"
+      [attr.aria-expanded]="isOpen()"
+      [attr.aria-controls]="isOpen() ? listboxId : null"
+      [attr.aria-activedescendant]="activeDescendantId()"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <ng-content select="[suffix]" />
+  </div>
+</div>
+
+<ng-template
+  cdkConnectedOverlay
+  [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="shouldShowOverlay()"
+  [cdkConnectedOverlayHasBackdrop]="false"
+  [cdkConnectedOverlayFlexibleDimensions]="true"
+  [cdkConnectedOverlayPush]="true"
+  [cdkConnectedOverlayPositions]="overlayPositions"
+  [cdkConnectedOverlayWidth]="originElement.offsetWidth"
+  (overlayOutsideClick)="closeOverlay()"
+  (detach)="closeOverlay()"
+>
+  <div class="combobox-panel">
+    @if (isLoading()) {
+      <div class="combobox-status" role="status">Buscando…</div>
+    } @else if (errorMessage()) {
+      <div class="combobox-status combobox-status--error" role="status">
+        {{ errorMessage() }}
+      </div>
+    } @else {
+      @if (items().length === 0) {
+        <div class="combobox-status" role="status">Sin resultados</div>
+      }
+
+      @if (items().length > 0 || actionLabel()) {
+        <div class="combobox-listbox" role="listbox" [id]="listboxId">
+          @for (item of items(); track $index; let i = $index) {
+            <div
+              class="combobox-option"
+              role="option"
+              [id]="listboxId + '-opt-' + i"
+              [class.is-active]="activeIndex() === i"
+              [attr.aria-selected]="activeIndex() === i"
+              (click)="selectItem(item)"
+              (mouseenter)="activeIndex.set(i)"
+            >
+              @if (customTemplate(); as tmpl) {
+                <ng-container
+                  *ngTemplateOutlet="tmpl; context: { $implicit: item, index: i }"
+                />
+              } @else {
+                <span>{{ item }}</span>
+              }
+            </div>
+          }
+
+          @if (actionLabel()) {
+            <div
+              class="combobox-action"
+              role="option"
+              [id]="listboxId + '-opt-' + items().length"
+              [class.is-active]="activeIndex() === items().length"
+              [attr.aria-selected]="activeIndex() === items().length"
+              (click)="triggerAction()"
+              (mouseenter)="activeIndex.set(items().length)"
+            >
+              <span class="combobox-action__text">{{ actionLabel() }}</span>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</ng-template>

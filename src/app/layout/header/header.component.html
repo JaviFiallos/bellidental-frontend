@@ -1,0 +1,80 @@
+<header class="app-header" [class.app-header--search-expanded]="isMobileSearchExpanded()">
+  <div class="app-header__left">
+    <!-- Botón hamburguesa en < md -->
+    <button
+      type="button"
+      class="app-header__menu-btn"
+      (click)="onMenuToggle()"
+      aria-label="Abrir menú de navegación"
+      [attr.aria-expanded]="isDrawerOpen()"
+      aria-controls="sidebar-drawer"
+    >
+      <bd-icon [name]="menuIcon" [size]="24" />
+    </button>
+
+    <!-- Botón de búsqueda en < md cuando no está expandido -->
+    <button
+      type="button"
+      class="app-header__mobile-search-btn"
+      (click)="openMobileSearch()"
+      aria-label="Buscar pacientes"
+    >
+      <bd-icon [name]="searchIcon" [size]="20" />
+    </button>
+
+    <!-- Buscador global -->
+    <div class="app-header__search-slot" [class.is-expanded]="isMobileSearchExpanded()">
+      <app-patient-search
+        [results]="searchResults()"
+        [isLoading]="isSearchLoading()"
+        [errorMessage]="searchError()"
+        [query]="searchQuery()"
+        [canRegister]="canRegisterPatient()"
+        (queryChange)="onSearchQueryChange($event)"
+        (selected)="onPatientSelected($event)"
+        (register)="onRegisterPatient($event)"
+      />
+      @if (isMobileSearchExpanded()) {
+        <button
+          type="button"
+          class="app-header__search-close-btn"
+          (click)="closeMobileSearch()"
+          aria-label="Cerrar búsqueda"
+        >
+          <bd-icon [name]="closeIcon" [size]="20" />
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="app-header__right">
+    <!-- Próxima cita -->
+    <div class="app-header__next-appointment">
+      @if (hasError()) {
+        <span class="next-app next-app--error" role="status">
+          <bd-icon [name]="errorIcon" [size]="16" />
+          <span class="next-app__text">No se pudo cargar la próxima cita</span>
+        </span>
+      } @else if (nextAppointment()) {
+        <div class="next-app next-app--active">
+          <span class="next-app__label">Próxima:</span>
+          <span class="next-app__time">{{ nextAppointment()!.startAt | clinicTime }}</span>
+          <span class="next-app__sep">·</span>
+          <span class="next-app__patient">{{ nextAppointment()!.patientName }}</span>
+          @if (showProfessional()) {
+            <span class="next-app__sep">·</span>
+            <span class="next-app__prof">{{ nextAppointment()!.professionalName }}</span>
+          }
+        </div>
+      } @else if (!isLoading()) {
+        <span class="next-app next-app--empty">Sin más citas hoy</span>
+      }
+    </div>
+
+    <!-- Fecha actual -->
+    <div class="app-header__date">
+      <bd-icon [name]="calendarIcon" [size]="16" class="app-header__date-icon" />
+      <span class="app-header__date-text">Hoy {{ today() | clinicDate }}</span>
+    </div>
+  </div>
+</header>

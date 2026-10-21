@@ -1,0 +1,40 @@
+<bd-combobox
+  #combobox
+  [items]="results()"
+  [value]="query()"
+  (valueChange)="onQueryChange($event)"
+  (selected)="onPatientSelect($event)"
+  (action)="onRegisterAction()"
+  placeholder="Buscar paciente: cédula, nombre o teléfono"
+  [isLoading]="isLoading()"
+  [errorMessage]="errorMessage()"
+  [actionLabel]="actionLabel()"
+  [minQueryLength]="2"
+>
+  <div prefix class="search-prefix">
+    <bd-icon [name]="searchIcon" [size]="18" class="search-icon" />
+  </div>
+
+  <div suffix class="search-suffix">
+    <kbd class="search-shortcut" aria-hidden="true">Ctrl K</kbd>
+  </div>
+
+  <ng-template let-patient>
+    <div class="patient-result-item">
+      <div class="patient-result-item__main">
+        <span class="patient-result-item__name">{{ patient.fullName }}</span>
+      </div>
+      <div class="patient-result-item__meta">
+        <span class="patient-result-item__doc">{{ patient.documentNumber }}</span>
+        @if (patient.age !== null && patient.age !== undefined) {
+          <span class="patient-result-item__sep">·</span>
+          <span class="patient-result-item__age">{{ patient.age }} años</span>
+        }
+        @if (patient.phoneE164) {
+          <span class="patient-result-item__sep">·</span>
+          <span class="patient-result-item__phone">{{ patient.phoneE164 | phone }}</span>
+        }
+      </div>
+    </div>
+  </ng-template>
+</bd-combobox>

@@ -1,0 +1,71 @@
+<nav class="sidebar sidebar--{{ mode() }}" aria-label="Navegación principal">
+  <!-- Cabecera / Marca -->
+  <div class="sidebar__brand">
+    <div class="sidebar__brand-logo">
+      <img src="brand/bellidental-logo.webp" alt="Bellidental" width="320" height="320" />
+    </div>
+  </div>
+
+  <!-- Lista de Navegación -->
+  <ul class="sidebar__menu">
+    @for (item of items(); track item.label) {
+      <li class="sidebar__menu-item">
+        @if (item.isSearchAction) {
+          <button
+            type="button"
+            class="sidebar__link sidebar__link--btn"
+            (click)="onSearchClick()"
+            [attr.aria-label]="mode() === 'icons' ? item.label : null"
+          >
+            <bd-icon [name]="item.icon" [size]="20" class="sidebar__link-icon" />
+            @if (mode() !== 'icons') {
+              <span class="sidebar__link-label">{{ item.label }}</span>
+            } @else {
+              <span class="sidebar__tooltip" role="tooltip">{{ item.label }}</span>
+            }
+          </button>
+        } @else {
+          <a
+            [routerLink]="item.route"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: !!item.exact }"
+            [attr.aria-current]="rla.isActive ? 'page' : null"
+            [attr.aria-label]="mode() === 'icons' ? item.label : null"
+            #rla="routerLinkActive"
+            class="sidebar__link"
+          >
+            <bd-icon [name]="item.icon" [size]="20" class="sidebar__link-icon" />
+            @if (mode() !== 'icons') {
+              <span class="sidebar__link-label">{{ item.label }}</span>
+            } @else {
+              <span class="sidebar__tooltip" role="tooltip">{{ item.label }}</span>
+            }
+          </a>
+        }
+      </li>
+    }
+  </ul>
+
+  <!-- Pie Fijo de Usuario -->
+  <div class="sidebar__footer">
+    <div class="sidebar__user-info" [class.is-collapsed]="mode() === 'icons'">
+      <div class="sidebar__user-details">
+        <span class="sidebar__user-name" [title]="userName()">{{ userName() }}</span>
+        <span class="sidebar__user-area">{{ areaLabel() }}</span>
+      </div>
+      <button
+        type="button"
+        class="sidebar__logout-btn"
+        (click)="onLogout()"
+        aria-label="Cerrar sesión"
+      >
+        <bd-icon [name]="logoutIcon" [size]="18" />
+        @if (mode() !== 'icons') {
+          <span class="sidebar__logout-text">Cerrar sesión</span>
+        } @else {
+          <span class="sidebar__tooltip" role="tooltip">Cerrar sesión</span>
+        }
+      </button>
+    </div>
+  </div>
+</nav>

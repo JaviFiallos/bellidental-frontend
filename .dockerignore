@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.angular/
+.git/
+docs/
+.claude/
+.gemini/
+.agents/
+.impeccable/
+.vscode/
+*.md
+*.txt

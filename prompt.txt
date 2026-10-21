@@ -1,0 +1,41 @@
+Diseña una pantalla de login minimalista y elegante para "Bellidental",
+un SaaS de gestión para clínica odontológica.
+
+LAYOUT (proporción áurea):
+- Split screen dividido en razón 61.8% / 38.2%.
+- Panel izquierdo (61.8%): imagen o ilustración de línea fina de un diente
+  (estilo del logo), sobre un degradado diagonal de #1C3C5C a #6E93B8,
+  con el texto "Creamos bellas sonrisas" en tipografía script elegante,
+  color blanco, centrado verticalmente según la razón áurea (a 38.2%
+  desde arriba, no al centro exacto).
+- Panel derecho (38.2%): fondo #F7F9FB o blanco puro, formulario de
+  login centrado con márgenes generosos.
+
+FORMULARIO:
+- Logo pequeño del diente (línea blanca sobre azul o azul sobre blanco)
+  en la parte superior.
+- Título "Bienvenido de nuevo" en gris oscuro #2E3A46, peso medio,
+  sin mayúsculas agresivas.
+- Inputs de email y contraseña: bordes finos de 1px en gris claro,
+  esquinas redondeadas suaves (8-10px), altura generosa (48px),
+  sin sombras duras, focus ring en #2C5F8A.
+- Checkbox "recordarme" + link "¿olvidaste tu contraseña?" en la misma
+  línea, texto pequeño en #2C5F8A.
+- Botón principal de ancho completo, fondo #1C3C5C con hover a #2C5F8A,
+  texto blanco, esquinas redondeadas, sin sombra o con sombra muy sutil.
+- Detalle dorado #E3A857 como línea fina de acento bajo el título o
+  como color del ícono de "check" — un solo toque cálido, no más.
+- Espaciado generoso entre elementos (siguiendo proporciones 1:1.618
+  entre el bloque de inputs y el bloque de acciones).
+
+TIPOGRAFÍA:
+- Sans-serif moderna y limpia (Inter, Poppins o similar) para textos
+  funcionales.
+- Un acento serif o script solo para el nombre de marca o el eslogan,
+  igual que en el logo actual.
+
+ESTILO GENERAL:
+- Flat design, sin gradientes agresivos ni glassmorphism.
+- Mucho espacio en blanco, jerarquía visual clara, sensación clínica
+  pero cálida y humana (no fría ni corporativa genérica).
+- Micro-interacciones sutiles: transición suave de 200ms en hover/focus.

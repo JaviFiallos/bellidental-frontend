@@ -1,0 +1,151 @@
+:root {
+  /* ==========================================================================
+     PALETA DE COLORES (Plan §2.3)
+     ========================================================================== */
+  /* Azules de marca */
+  --blue-950: #0A1C2E;
+  --blue-900: #0F2A44;
+  --blue-800: #1C3C5C;
+  --blue-700: #24507A;
+  --blue-600: #2C5F8A;
+  --blue-500: #4A7BA6;
+  --blue-400: #6E93B8;
+  --blue-300: #A8C4DE;
+  --blue-200: #D3E4F0;
+  --blue-100: #E6F0F8;
+  --blue-50:  #EFF6FB;
+
+  /* Acentos cálidos / dorados */
+  --gold-700: #9A5B1C;
+  --gold-600: #C97B2E;
+  --gold-400: #E3A857;
+  --gold-100: #FBF0DC;
+
+  /* Acentos de alerta / coral */
+  --coral-700: #B04A31;
+  --coral-500: #D9724F;
+  --coral-100: #FBE7DF;
+
+  /* Acentos fríos / éxito */
+  --teal-700: #1F6F66;
+  --teal-500: #2F8F83;
+  --teal-100: #DDF1EE;
+
+  /* Acentos atención / índigo */
+  --indigo-600: #4B56B0;
+  --indigo-400: #6670C9;
+  --indigo-100: #E7E9F8;
+
+  /* Neutros y superficies / slate */
+  --slate-800: #2E3A46;
+  --slate-600: #4F5D6B;
+  --slate-500: #6B7684;
+  --slate-300: #C5CFD9;
+  --slate-200: #E1E7ED;
+  --slate-100: #EDF1F5;
+  --slate-50:  #F7F9FB;
+  --white:     #FFFFFF;
+
+  /* ==========================================================================
+     ALIAS SEMÁNTICOS (Plan §2.3)
+     ========================================================================== */
+  --color-bg:            var(--slate-50);
+  --color-surface:       var(--white);
+  --color-text:          var(--slate-800);
+  --color-text-muted:    var(--slate-500);
+  --color-border:        var(--slate-200);
+  --color-primary:       var(--blue-800);
+  --color-primary-hover: var(--blue-700);
+  --color-accent:        var(--gold-400);
+  --color-accent-hover:  var(--gold-600);
+  --color-focus:         var(--blue-600);
+  --color-success:       var(--teal-500);
+  --color-warning:       var(--gold-400);
+  --color-danger:        var(--coral-700);
+  --color-info:          var(--blue-600);
+
+  /* ==========================================================================
+     ESTADOS DE CITA (Plan §2.3)
+     ========================================================================== */
+  --appointment-scheduled-bar:   var(--blue-600);
+  --appointment-scheduled-bg:    var(--blue-100);
+  --appointment-scheduled-text:  var(--blue-800);
+
+  --appointment-waiting-bar:     var(--gold-400);
+  --appointment-waiting-bg:      var(--gold-100);
+  --appointment-waiting-text:    var(--gold-700);
+
+  --appointment-in-progress-bar: var(--indigo-400);
+  --appointment-in-progress-bg:  var(--indigo-100);
+  --appointment-in-progress-text:var(--indigo-600);
+
+  --appointment-completed-bar:   var(--teal-500);
+  --appointment-completed-bg:    var(--teal-100);
+  --appointment-completed-text:  var(--teal-700);
+
+  --appointment-no-show-bar:     var(--coral-500);
+  --appointment-no-show-bg:      var(--coral-100);
+  --appointment-no-show-text:    var(--coral-700);
+
+  --appointment-cancelled-bar:   var(--slate-300);
+  --appointment-cancelled-bg:    var(--slate-100);
+  --appointment-cancelled-text:  var(--slate-500);
+
+  /* ==========================================================================
+     TIPOGRAFÍA
+     ========================================================================== */
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-md: 1.125rem;
+  --fs-lg: 1.5rem;
+  --fs-xl: 2rem;
+  --fs-2xl: 2.75rem;
+
+  --lh-tight: 1.2;
+  --lh-normal: 1.6;
+
+  /* ==========================================================================
+     ESPACIADO
+     ========================================================================== */
+  --space-xs: 0.4rem;
+  --space-sm: 0.65rem;
+  --space-md: 1rem;
+  --space-lg: 1.6rem;
+  --space-xl: 2.6rem;
+  --space-2xl: 4.2rem;
+
+  /* ==========================================================================
+     RADIOS Y SOMBRAS
+     ========================================================================== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --shadow-sm: 0 1px 3px rgba(15, 42, 68, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 42, 68, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 42, 68, 0.12);
+
+  /* ==========================================================================
+     TRANSICIONES
+     ========================================================================== */
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+
+  /* ==========================================================================
+     FORMULARIO 033 (MSP) — Excepción F-14 exclusiva para la hoja 033
+     ========================================================================== */
+  --form033-band:       #CCCCFF;
+  --form033-label:      #CCFFCC;
+  --form033-mark:       #FFFF99;
+  --form033-odontogram: #CCFFFF;
+  --form033-total:      #FFCC99;
+  --form033-border:     #808080;
+  --form033-ink:        #000000;
+  --form033-paper:      #FFFFFF;
+  --form033-sublabel:   #CCFFFF;
+  --form033-font:       Arial, Helvetica, sans-serif;
+}

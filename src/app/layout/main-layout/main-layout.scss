@@ -1,0 +1,121 @@
+@use '../../shared/styles/breakpoints' as bp;
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.shell-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Sidebar estático */
+.shell-sidebar-container {
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Drawer móvil */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--blue-950) 60%, transparent);
+  backdrop-filter: blur(2px);
+  z-index: 998;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 232px;
+  max-width: 80vw;
+  background-color: var(--blue-900);
+  z-index: 999;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn var(--transition-base) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* Área principal */
+.shell-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.shell-content {
+  flex: 1;
+  padding: var(--space-md);
+  box-sizing: border-box;
+
+  @include bp.bp-up('lg') {
+    padding: var(--space-lg);
+  }
+}
+
+.shell-content-inner {
+  width: 100%;
+  margin: 0 auto;
+
+  /* En xl crecemos sin límite para la agenda */
+  @include bp.bp-down('xl') {
+    max-width: 1400px;
+  }
+}
+
+@media print {
+  :host {
+    background-color: transparent !important;
+    min-height: auto !important;
+  }
+
+  .shell-sidebar-container,
+  .drawer-backdrop,
+  .drawer-panel,
+  app-header {
+    display: none !important;
+  }
+
+  .shell-layout {
+    display: block !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .shell-main {
+    min-height: auto !important;
+  }
+
+  .shell-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .shell-content-inner {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+}

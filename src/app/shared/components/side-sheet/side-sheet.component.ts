@@ -1,0 +1,277 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+  effect,
+} from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { X } from 'lucide-angular';
+import { IconComponent, LucideIconData } from '../icon/icon.component';
+
+@Component({
+  selector: 'bd-side-sheet',
+  standalone: true,
+  imports: [A11yModule, IconComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.escape)': 'onDocumentEscape($event)',
+  },
+  template: `
+    @if (isOpen()) {
+      @if (!isLg()) {
+        <div
+          class="bd-side-sheet__backdrop"
+          (click)="close()"
+          aria-hidden="true"
+        ></div>
+      }
+
+      <div
+        #panelElement
+        class="bd-side-sheet"
+        [class.bd-side-sheet--fullscreen-below-md]="fullscreenBelowMd()"
+        role="dialog"
+        [attr.aria-modal]="!isLg() ? 'true' : null"
+        [attr.aria-labelledby]="titleId()"
+        [attr.aria-label]="ariaLabel()"
+        [cdkTrapFocus]="!isLg()"
+        [cdkTrapFocusAutoCapture]="!isLg()"
+        (focusin)="onPanelFocusIn($event)"
+      >
+        <div class="bd-side-sheet__handle" aria-hidden="true"></div>
+
+        <button
+          type="button"
+          class="bd-side-sheet__close-btn"
+          aria-label="Cerrar panel"
+          (click)="close()"
+        >
+          <bd-icon [name]="closeIcon" [size]="20" />
+        </button>
+
+        <div class="bd-side-sheet__content">
+          <ng-content />
+        </div>
+      </div>
+    }
+  `,
+  styles: `
+    @use '../../styles/breakpoints' as bp;
+
+    .bd-side-sheet__backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: color-mix(in srgb, var(--blue-950) 25%, transparent);
+      z-index: 998;
+      transition: opacity var(--transition-fast);
+      animation: bdFadeIn 150ms ease-out;
+    }
+
+    .bd-side-sheet {
+      position: fixed;
+      z-index: 999;
+      background-color: var(--white);
+      box-shadow: var(--shadow-xl);
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      outline: none;
+
+      // Por defecto (< lg): Bottom sheet
+      bottom: 0;
+      left: 0;
+      right: 0;
+      top: auto;
+      width: 100%;
+      max-height: 85vh;
+      border-top-left-radius: var(--radius-lg);
+      border-top-right-radius: var(--radius-lg);
+      animation: bdSlideUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+
+      &.bd-side-sheet--fullscreen-below-md {
+        @include bp.bp-down('md') {
+          top: 0;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          max-height: 100dvh;
+          height: 100dvh;
+          border-radius: 0;
+
+          .bd-side-sheet__handle {
+            display: none;
+          }
+        }
+      }
+
+      // En >= lg: Panel lateral derecho de 26rem sobre la grilla
+      @include bp.bp-up('lg') {
+        top: 0;
+        bottom: 0;
+        right: 0;
+        left: auto;
+        width: 26rem;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+        border-left: 1px solid var(--slate-200);
+        animation: bdSlideLeft 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: bdFadeIn 150ms ease-out;
+      }
+    }
+
+    .bd-side-sheet__handle {
+      width: 36px;
+      height: 4px;
+      background-color: var(--slate-300);
+      border-radius: 9999px;
+      margin: 8px auto 4px auto;
+      flex-shrink: 0;
+
+      @include bp.bp-up('lg') {
+        display: none;
+      }
+    }
+
+    .bd-side-sheet__close-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--slate-500);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      z-index: 2;
+
+      &:hover {
+        background-color: var(--slate-100);
+        color: var(--slate-800);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+      }
+    }
+
+    .bd-side-sheet__content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    @keyframes bdFadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes bdSlideUp {
+      from {
+        transform: translateY(100%);
+      }
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bdSlideLeft {
+      from {
+        transform: translateX(100%);
+      }
+      to {
+        transform: translateX(0);
+      }
+    }
+  `,
+})
+export class SideSheetComponent {
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly isOpen = input<boolean>(false);
+  readonly fullscreenBelowMd = input<boolean>(false);
+  readonly titleId = input<string | undefined>(undefined);
+  readonly ariaLabel = input<string | undefined>(undefined);
+
+  readonly closed = output<void>();
+
+  readonly panelRef = viewChild<ElementRef<HTMLDivElement>>('panelElement');
+  readonly closeIcon: LucideIconData = X;
+
+  readonly isLg = signal<boolean>(false);
+
+  private previouslyFocusedElement: HTMLElement | null = null;
+
+  constructor() {
+    this.isLg.set(this.breakpointObserver.isMatched('(min-width: 1200px)'));
+    const sub = this.breakpointObserver.observe('(min-width: 1200px)').subscribe((state) => {
+      this.isLg.set(state.matches);
+    });
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
+
+    effect(() => {
+      const open = this.isOpen();
+      if (open) {
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          if (!this.panelRef()?.nativeElement.contains(document.activeElement)) {
+            this.previouslyFocusedElement = document.activeElement;
+          }
+        }
+      } else {
+        if (this.previouslyFocusedElement && typeof this.previouslyFocusedElement.focus === 'function') {
+          this.previouslyFocusedElement.focus();
+          this.previouslyFocusedElement = null;
+        }
+      }
+    });
+  }
+
+  onDocumentEscape(event: Event): void {
+    // Un diálogo o combobox abierto encima ya consumió el Esc (CDK escucha en body, antes que document).
+    if (!this.isOpen() || event.defaultPrevented) {
+      return;
+    }
+    event.preventDefault();
+    this.close();
+  }
+
+  onPanelFocusIn(event: FocusEvent): void {
+    if (
+      event.relatedTarget instanceof HTMLElement &&
+      !this.panelRef()?.nativeElement.contains(event.relatedTarget)
+    ) {
+      this.previouslyFocusedElement = event.relatedTarget;
+    }
+  }
+
+  close(): void {
+    if (this.isOpen()) {
+      if (this.previouslyFocusedElement && typeof this.previouslyFocusedElement.focus === 'function') {
+        this.previouslyFocusedElement.focus();
+        this.previouslyFocusedElement = null;
+      }
+      this.closed.emit();
+    }
+  }
+}
