@@ -635,10 +635,10 @@ features/clinical/
 ### 5.11 "Más del 033" — tarea 011 (P15)
 - **Depende de:** 008. **API:** `PUT /encounters/{id}` (mismo store de la 008; rangos en la tarea).
 - **Comportamiento:** sección plegable (cerrada por defecto) con: signos vitales (PA sistólica/diastólica, FC,
-  temperatura, FR con los rangos del backend), examen estomatognático (texto, por defecto vacío; botón
-  "Sin patología aparente"), indicadores (enfermedad periodontal, maloclusión Angle I/II/III, fluorosis:
-  `bd-segmented`), planes (diagnóstico con atajos Biometría · Química sanguínea · Rayos X, terapéutico,
-  educacional). Guardado automático. Editable con la atención cerrada (D-6). Indicador "033 incompleto" en la
+  temperatura, FR con los rangos del backend), examen estomatognático (12 regiones del 033 como casillas +
+  descripción; botón "Sin patología aparente"), indicadores (enfermedad periodontal, maloclusión Angle I/II/III,
+  fluorosis: `bd-segmented`), planes (casillas Biometría · Química sanguínea · Rayos X · Otros + una sola
+  descripción, como en el papel; tarea 021 · backend 008b). Guardado automático. Editable con la atención cerrada (D-6). Indicador "033 incompleto" en la
   atención (falta algún signo vital o el examen). El indicador en el tablero queda fuera: `Appointment` no trae
   estos campos.
 - **Test:** sin test nuevo (usa el mismo PUT ya probado); prueba manual.
@@ -846,7 +846,7 @@ incisal (`SurfaceLabelResolver`).
 | `POST /clinical-records/{id}/history-entries` | body `{ conditionId, scope PERSONAL/FAMILY, relative?, description? }` |
 | `PUT /clinical-records/{id}` | body `{ noKnownHistory?, currentMedication? }` |
 | `POST /appointments/{id}/encounter` | body `{ chiefComplaint }` → `Encounter` |
-| `GET/PUT /encounters/{id}` | `Encounter { id, appointmentId, patientId, professionalId, status OPEN/COMPLETED, startAt, endAt, closedAt, chiefComplaint, currentIllness, bpSystolic, bpDiastolic, heartRate, temperature, respiratoryRate, stomatognathicExam, periodontalDisease, fluorosis, malocclusion, diagnosticPlan, therapeuticPlan, educationalPlan, voidedAt, voidReason, diagnoses[] }` |
+| `GET/PUT /encounters/{id}` | `Encounter { id, appointmentId, patientId, professionalId, status OPEN/COMPLETED, startAt, endAt, closedAt, chiefComplaint, currentIllness, bpSystolic, bpDiastolic, heartRate, temperature, respiratoryRate, stomatognathicExam, stomatognathicRegions[] (1–12), periodontalDisease, fluorosis, malocclusion, diagnosticExams[] (BIOMETRIA·QUIMICA_SANGUINEA·RAYOS_X·OTROS), planDescription (backend 008b), voidedAt, voidReason, diagnoses[] }` |
 | `GET /icd10?query` | `[{ id, code, description, category }]` (máx. 20) |
 | `POST /encounters/{id}/diagnoses` | body `{ icd10Id, certainty PRESUMPTIVE/DEFINITIVE, notes? }` → `Diagnosis { id, icd10Id, code, description, certainty, notes, voidedAt }` |
 | `POST /encounters/{id}/complete`, `POST /encounter-diagnoses/{id}/void` | `Encounter` / `message` |
@@ -934,7 +934,10 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
 | 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
 | 020 | Ajustes: pieza completa, textos largos, sesión 24 h, logo y margen de la receta | 019 | Aprobada (ejecutó Haiku) |
-| 021 | Casillas del 033: regiones del examen (sección 5), exámenes del plan y descripción única (sección 10) | 011 · 018a · backend 008b | Redactada |
+| 021 | Casillas del 033: regiones del examen (sección 5), exámenes del plan y descripción única (sección 10) | 011 · 018a · backend 008b `eac5068` | Aprobada (ejecutó Gemini) |
+| 021a | Examen estomatognático: un campo por región marcada, confirmación al desmarcar | 021 | Aprobada (ejecutó Haiku) |
+| 022 | Imagen Docker (nginx) y CI a GHCR (push a `main`+`develop`; imagen solo en `main`) | backend 018a | Aprobada (ejecutó Haiku) |
+| 022b | Job `deploy` por SSH al VPS de Contabo (cuando el VPS y los secretos estén listos) | 022 · backend 018a | Pendiente |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015.
