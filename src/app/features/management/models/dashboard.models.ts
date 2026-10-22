@@ -23,6 +23,21 @@ export interface TopTreatment {
   amount: number;
 }
 
+export interface TopDiagnosis {
+  code: string;
+  description: string;
+  occurrences: number;
+  patients: number;
+}
+
+export interface DailyStat {
+  date: string;
+  appointments: number;
+  completedEncounters: number;
+  newPatients: number;
+  collected: number;
+}
+
 export interface ProfessionalStats {
   professionalId: string;
   name: string;
@@ -42,6 +57,8 @@ export interface DashboardSummary {
   appointments: AppointmentStats;
   billing: BillingStats;
   topTreatments: TopTreatment[];
+  topDiagnoses: TopDiagnosis[];
+  byDay: DailyStat[];
   byProfessional: ProfessionalStats[];
   byChannel: ChannelStat[];
 }

@@ -22,6 +22,37 @@ const OCTOBER_SUMMARY: DashboardSummary = {
     outstandingBalance: 420,
   },
   topTreatments: [{ code: 'PRO', name: 'Profilaxis', quantity: 21, amount: 525 }],
+  topDiagnoses: [
+    {
+      code: 'K02.1',
+      description: 'Caries de la dentina',
+      occurrences: 14,
+      patients: 12,
+    },
+  ],
+  byDay: [
+    {
+      date: '2026-10-01',
+      appointments: 4,
+      completedEncounters: 3,
+      newPatients: 1,
+      collected: 120,
+    },
+    {
+      date: '2026-10-02',
+      appointments: 6,
+      completedEncounters: 5,
+      newPatients: 2,
+      collected: 350,
+    },
+    {
+      date: '2026-10-03',
+      appointments: 3,
+      completedEncounters: 2,
+      newPatients: 0,
+      collected: 75.5,
+    },
+  ],
   byProfessional: [
     {
       professionalId: '66666666-6666-6666-6666-666666666666',
@@ -88,6 +119,20 @@ describe('ClinicStatsPage', () => {
     expect(text).toContain('5,9 %');
     expect(text).toContain('$ 845,50');
     expect(text).toContain('$ 420,00');
+    expect(text).toContain('Actividad por día');
+    expect(text).toContain('K02.1');
+    expect(text).toContain('Top 3 tratamientos');
+
+    const chart = harness.fixture.nativeElement.querySelector('.daily-chart__canvas-wrapper') as HTMLElement;
+    const initialAria = chart.getAttribute('aria-label');
+    expect(initialAria).toContain('Pacientes atendidos');
+
+    findButton('Ingresos')?.click();
+    await settle(harness);
+
+    const updatedAria = chart.getAttribute('aria-label');
+    expect(updatedAria).toContain('Ingresos');
+    expect(updatedAria).not.toBe(initialAria);
 
     findButton('Semana')?.click();
     await settle(harness);

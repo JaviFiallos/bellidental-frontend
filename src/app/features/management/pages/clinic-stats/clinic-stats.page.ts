@@ -22,9 +22,12 @@ import { ClinicStatsStore } from '../../services/clinic-stats.store';
 import { StatsKpisComponent } from '../../components/stats-kpis/stats-kpis.component';
 import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats-period-bar.component';
 import { BarListComponent } from '../../components/bar-list/bar-list.component';
+import { DailyActivityChartComponent } from '../../components/daily-activity-chart/daily-activity-chart.component';
 import { ProfessionalStatsTableComponent } from '../../components/professional-stats-table/professional-stats-table.component';
+import { TopDiagnosesTableComponent } from '../../components/top-diagnoses-table/top-diagnoses-table.component';
 import { TopTreatmentsTableComponent } from '../../components/top-treatments-table/top-treatments-table.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
+import { groupDailyStats } from '../../domain/daily-series';
 import {
   appointmentStatusRows,
   channelRows,
@@ -37,11 +40,13 @@ import {
   imports: [
     AlertComponent,
     BarListComponent,
+    DailyActivityChartComponent,
     PageHeaderComponent,
     ProfessionalStatsTableComponent,
     SkeletonComponent,
     StatsKpisComponent,
     StatsPeriodBarComponent,
+    TopDiagnosesTableComponent,
     TopTreatmentsTableComponent,
   ],
   providers: [ClinicStatsStore],
@@ -67,6 +72,14 @@ import {
 
         <div class="clinic-stats__panels">
           @if (store.summary(); as stats) {
+            <section class="card clinic-stats__panel clinic-stats__panel--full" aria-labelledby="stats-daily-title">
+              <h2 id="stats-daily-title" class="clinic-stats__panel-title">Actividad por día</h2>
+              <bd-daily-activity-chart
+                [buckets]="dailySeries().buckets"
+                [granularity]="dailySeries().granularity"
+              />
+            </section>
+
             <section class="card clinic-stats__panel" aria-labelledby="stats-status-title">
               <h2 id="stats-status-title" class="clinic-stats__panel-title">Citas por estado</h2>
               <bd-bar-list [rows]="statusRows()" ariaLabel="Citas por estado" />
@@ -88,10 +101,19 @@ import {
             </section>
 
             <section class="card clinic-stats__panel" aria-labelledby="stats-treatment-title">
-              <h2 id="stats-treatment-title" class="clinic-stats__panel-title">Top 5 tratamientos</h2>
+              <h2 id="stats-treatment-title" class="clinic-stats__panel-title">Top 3 tratamientos</h2>
               <bd-top-treatments-table [rows]="stats.topTreatments" />
             </section>
+
+            <section class="card clinic-stats__panel" aria-labelledby="stats-diagnoses-title">
+              <h2 id="stats-diagnoses-title" class="clinic-stats__panel-title">Top 3 diagnósticos</h2>
+              <bd-top-diagnoses-table [rows]="stats.topDiagnoses ?? []" />
+            </section>
           } @else {
+            <section class="card clinic-stats__panel clinic-stats__panel--full" aria-busy="true">
+              <bd-skeleton height="1.25rem" width="30%" />
+              <bd-skeleton height="12rem" width="100%" />
+            </section>
             @for (index of placeholders; track index) {
               <section class="card clinic-stats__panel" aria-busy="true">
                 <bd-skeleton height="1.25rem" width="50%" />
@@ -138,6 +160,10 @@ import {
       margin: 0;
     }
 
+    .clinic-stats__panel--full {
+      grid-column: 1 / -1;
+    }
+
     .clinic-stats__panel-title {
       margin: 0;
       font-size: var(--fs-md);
@@ -151,9 +177,15 @@ export class ClinicStatsPage {
   private readonly router = inject(Router);
   private readonly clinicClock = inject(ClinicClock);
   readonly store = inject(ClinicStatsStore);
-  readonly placeholders = [1, 2, 3, 4, 5];
+  readonly placeholders = [1, 2, 3, 4, 5, 6];
 
   private readonly moneyPipe = new MoneyPipe();
+  readonly dailySeries = computed(() => {
+    const s = this.store.summary();
+    return s
+      ? groupDailyStats(s.byDay ?? [], s.from, s.to)
+      : { granularity: 'day' as const, buckets: [] };
+  });
   readonly statusRows = computed(() =>
     appointmentStatusRows(this.store.summary()?.appointments.byStatus ?? {})
   );
