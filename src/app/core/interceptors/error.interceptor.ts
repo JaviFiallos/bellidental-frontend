@@ -5,7 +5,7 @@ import { catchError, throwError } from 'rxjs';
 import { SessionStore } from '../auth/session.store';
 
 /** Peticiones cuyo 401 no significa sesión vencida (credenciales mal escritas). */
-const SESSION_SAFE_401_URLS = ['/auth/login', '/auth/password'];
+const SESSION_SAFE_401_URLS = ['/auth/login'];
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const sessionStore = inject(SessionStore);

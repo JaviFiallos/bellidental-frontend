@@ -83,14 +83,14 @@ describe('ChangePasswordPage', () => {
     expect(root.querySelector<HTMLInputElement>('#confirm-password')!.value).toBe('');
   });
 
-  it('contraseña actual incorrecta → 401 → mensaje y la sesión sigue', async () => {
+  it('contraseña actual incorrecta → 400 → mensaje y la sesión sigue', async () => {
     fillAndSubmit('Incorrecta.2026!', 'NuevaClave.2026');
 
     httpMock
       .expectOne('/api/v1/auth/password')
       .flush(
-        { success: false, message: 'Credenciales inválidas', data: null },
-        { status: 401, statusText: 'Unauthorized' }
+        { success: false, message: 'La contraseña actual no es correcta.', data: null },
+        { status: 400, statusText: 'Bad Request' }
       );
     await harness.fixture.whenStable();
     harness.detectChanges();

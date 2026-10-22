@@ -13,7 +13,6 @@ type PasswordField = 'current' | 'new' | 'confirm';
 
 const MIN_PASSWORD_LENGTH = 10;
 const SUCCESS_MESSAGE = 'Contraseña actualizada.';
-const WRONG_CURRENT_MESSAGE = 'La contraseña actual no es correcta.';
 
 @Component({
   selector: 'bd-change-password-page',
@@ -279,12 +278,8 @@ export class ChangePasswordPage {
       },
       error: (err: ApiError) => {
         this.isSaving.set(false);
-        if (err.status === 401) {
-          this.errorMessage.set(WRONG_CURRENT_MESSAGE);
-          this.currentPasswordInput()?.nativeElement.focus();
-        } else {
-          this.errorMessage.set(err.message);
-        }
+        this.errorMessage.set(err.message);
+        this.currentPasswordInput()?.nativeElement.focus();
       },
     });
   }
