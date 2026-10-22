@@ -3,6 +3,7 @@ import {
   Clock,
   CalendarCheck,
   ChartColumn,
+  ClipboardList,
   History,
   UserCog,
   Users,
@@ -40,6 +41,7 @@ export function getNavItemsForProfile(profile: Profile | null): NavItem[] {
         { label: 'Pacientes', icon: Users, isSearchAction: true },
         { label: 'Estadísticas', icon: ChartColumn, route: '/direccion/estadisticas' },
         { label: 'Usuarios', icon: UserCog, route: '/direccion/usuarios' },
+        { label: 'Catálogo', icon: ClipboardList, route: '/direccion/catalogo' },
       ];
     default:
       return [];

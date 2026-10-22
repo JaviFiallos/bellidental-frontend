@@ -190,6 +190,7 @@ Así el director no ve la recepción aunque su rol ADMIN tenga esos permisos en 
 /consultorio/atencion/:encounterId  ODONTOLOGO, DIRECTOR Atención                       P9–P12, P15  008–013 (017: historial)
 /direccion/estadisticas             DIRECTOR             Estadísticas de la clínica     P16       016a, 016b
 /direccion/usuarios                 DIRECTOR             Usuarios                       P20       023a, 023c
+/direccion/catalogo                 DIRECTOR             Catálogo de tratamientos y especialidades  P22  024
 /cuenta/contrasena                  todos (sin profileGuard) Cambiar mi contraseña       P21       023b
 ```
 Todas bajo `MainLayout` con `authGuard`; cada grupo con `profileGuard([...])`. Perfil equivocado → su inicio.
@@ -205,6 +206,7 @@ historial se abre desde el registro (paciente, atención).
 | Horarios | — | — |
 | — | — | Estadísticas |
 | — | — | Usuarios (023a) |
+| — | — | Catálogo (024) |
 | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión |
 
 "Auditoría" salió del menú en la 017 (F-15).
@@ -782,6 +784,16 @@ features/clinical/
   `< sm` tarjetas. `bd-date-nav` gana `label` y `unit`.
 - Tarea: `docs/tasks/019-mis-atenciones.md`.
 
+### 5.21 Catálogo de tratamientos y especialidades — tarea 024 (P22) · backend 021 `2cf12d1`
+- **Requerimiento nuevo del usuario** (backend D-27): el director crea, edita y desactiva tratamientos y
+  especialidades sin migraciones. Pantalla `/direccion/catalogo` en `management`, dos pestañas y un panel lateral
+  único (`treatment | specialty`).
+- **API:** `GET /treatments/manage` · `POST/PUT /treatments` · `POST /treatments/{id}/deactivate|activate` ·
+  `GET /specialties/manage` · `POST/PUT /specialties` · `POST /specialties/{id}/deactivate|activate`. El código del
+  tratamiento es inmutable; la especialidad es opcional (solo filtra); desactivar una especialidad puede dar 409
+  (urgencias del bot, profesionales activos, citas futuras) y se muestra su `message`.
+- Pendiente fuera de esta tarea: filtrar el catálogo de la atención con `GET /treatments?specialtyId=`.
+
 ### 5.20 Usuarios del director y cambio de contraseña — tareas 023a, 023b y 023c (P20, P21) · backend 019 `7fc03c2`
 - **Requerimiento nuevo del usuario** (backend D-24, reemplaza D-13): el director (ADMIN) gestiona las cuentas.
   Contradecía el MVP-SCOPE ("sin UI de usuarios"); ya se actualizó.
@@ -1016,6 +1028,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 023a | Usuarios del director: lista, alta, activar/desactivar | 016a (`management`) · backend 019 `7fc03c2` | Commit `235a3dc` (ejecutó Haiku) |
 | 023b | Cambiar mi contraseña (todos los perfiles) | 002a · backend 019 | Commit `c3fd494` (ejecutó Haiku) |
 | 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Commit `08b4969` (ejecutó Haiku) |
+| 024 | Catálogo de tratamientos y especialidades del director | 023a (`management`) · backend 021 `2cf12d1` | Aprobada (ejecutó Haiku) |
 | 018a | Formulario 033: vista (hoja 1, secciones 10–11), datos y atención de referencia | 011 · backend 011c `dc4ca61` | Aprobada (ejecutó Haiku) |
 | 018b | Formulario 033: sección 12, hojas de continuación e impresión | 018a | Aprobada (ejecutó Haiku) |
 | 019 | Consultorio: mis atenciones (día/semana/mes) | 007 · 008 | Aprobada (ejecutó Haiku) |
