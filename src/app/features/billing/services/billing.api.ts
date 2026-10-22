@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
-import { CreatePaymentRequest, PatientAccount, Payment } from '../models/billing.models';
+import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../models/billing.models';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +11,10 @@ export class BillingApi {
 
   getAccount(patientId: string): Observable<PatientAccount> {
     return this.api.get<PatientAccount>(`/api/v1/patients/${patientId}/account`);
+  }
+
+  listPayments(patientId: string): Observable<PaymentListItem[]> {
+    return this.api.get<PaymentListItem[]>(`/api/v1/patients/${patientId}/payments`);
   }
 
   registerPayment(patientId: string, request: CreatePaymentRequest): Observable<Payment> {

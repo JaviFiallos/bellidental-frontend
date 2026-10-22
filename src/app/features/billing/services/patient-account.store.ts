@@ -1,11 +1,11 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, switchMap, tap, catchError, EMPTY, finalize } from 'rxjs';
+import { Subject, switchMap, tap, catchError, EMPTY, finalize, forkJoin } from 'rxjs';
 import { ApiError } from '../../../core/api/api.models';
 import { ClinicClock } from '../../../core/services/clinic-clock.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { closePdfWindow, openBlankPdfWindow, showPdfInWindow } from '../../../shared/utils/pdf-window';
-import { CreatePaymentRequest, PatientAccount, Payment } from '../models/billing.models';
+import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../models/billing.models';
 import { BillingApi } from './billing.api';
 
 /** Provisto por la página de la ficha: el estado vive mientras la ficha está abierta. */
@@ -20,6 +20,7 @@ export class PatientAccountStore {
   private patientId: string | null = null;
 
   readonly account = signal<PatientAccount | null>(null);
+  readonly payments = signal<PaymentListItem[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
@@ -59,10 +60,14 @@ export class PatientAccountStore {
           this.error.set(null);
         }),
         switchMap((patientId) =>
-          this.api.getAccount(patientId).pipe(
+          forkJoin({
+            account: this.api.getAccount(patientId),
+            payments: this.api.listPayments(patientId),
+          }).pipe(
             tap({
-              next: (account) => {
+              next: ({ account, payments }) => {
                 this.account.set(account);
+                this.payments.set(payments);
                 this.loading.set(false);
               },
               error: (err: ApiError) => {
@@ -82,6 +87,7 @@ export class PatientAccountStore {
     if (patientId !== this.patientId) {
       this.patientId = patientId;
       this.account.set(null);
+      this.payments.set([]);
       this.formOpen.set(false);
       this.saveError.set(null);
       this.clearLastPayment();
@@ -136,16 +142,16 @@ export class PatientAccountStore {
    * Pide el comprobante. La pestaña se abre antes de la petición, en el clic del usuario (mismo patrón que las
    * recetas): si el navegador la bloquea, el PDF queda pendiente hasta "Abrir PDF".
    */
-  printReceipt(): void {
-    const payment = this.lastPayment();
-    if (!payment || this.printing()) return;
+  printReceipt(paymentId?: string): void {
+    const id = paymentId ?? this.lastPayment()?.id;
+    if (!id || this.printing()) return;
 
     const target = openBlankPdfWindow();
     this.printing.set(true);
     this.actionError.set(null);
 
     this.api
-      .receipt(payment.id)
+      .receipt(id)
       .pipe(
         finalize(() => this.printing.set(false)),
         takeUntilDestroyed(this.destroyRef)
@@ -156,7 +162,7 @@ export class PatientAccountStore {
             showPdfInWindow(target, pdf);
             this.pendingReceipt.set(null);
           } else {
-            this.pendingReceipt.set({ paymentId: payment.id, pdf });
+            this.pendingReceipt.set({ paymentId: id, pdf });
           }
         },
         error: (err: ApiError) => {
@@ -180,21 +186,22 @@ export class PatientAccountStore {
     this.pendingReceipt.set(null);
   }
 
-  /** Anula el último abono con motivo. Luego vuelve a pedir la cuenta: el saldo sube de nuevo. */
-  voidLastPayment(voidReason: string): void {
-    const payment = this.lastPayment();
-    if (!payment || payment.voided || this.voiding()) return;
+  /** Anula un abono con motivo. Luego vuelve a pedir la cuenta y abonos: el saldo sube de nuevo. */
+  voidPayment(paymentId: string, voidReason: string): void {
+    if (this.voiding()) return;
 
     this.voiding.set(true);
     this.actionError.set(null);
 
     this.api
-      .voidPayment(payment.id, voidReason)
+      .voidPayment(paymentId, voidReason)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (voided) => {
           this.voiding.set(false);
-          this.lastPayment.set(voided);
+          if (this.lastPayment()?.id === paymentId) {
+            this.lastPayment.set(voided);
+          }
           this.pendingReceipt.set(null);
           this.notificationService.success('Abono anulado');
           this.reload();
@@ -202,8 +209,16 @@ export class PatientAccountStore {
         error: (err: ApiError) => {
           this.voiding.set(false);
           this.actionError.set(err.message);
+          this.reload();
         },
       });
+  }
+
+  /** Anula el último abono con motivo. */
+  voidLastPayment(voidReason: string): void {
+    const payment = this.lastPayment();
+    if (!payment || payment.voided) return;
+    this.voidPayment(payment.id, voidReason);
   }
 
   private clearLastPayment(): void {

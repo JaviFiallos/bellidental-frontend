@@ -4,10 +4,11 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { balanceStatus } from '../../domain/account-display';
-import { CreatePaymentRequest, PatientAccount, Payment } from '../../models/billing.models';
+import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../../models/billing.models';
 import { AccountTableComponent } from '../account-table/account-table.component';
 import { LastPaymentComponent } from '../last-payment/last-payment.component';
 import { PaymentFormComponent } from '../payment-form/payment-form.component';
+import { PaymentListComponent } from '../payment-list/payment-list.component';
 
 /** Tarjeta "Estado de cuenta" de la ficha. Presentacional: los datos llegan por input() y las acciones salen por output(). */
 @Component({
@@ -21,6 +22,7 @@ import { PaymentFormComponent } from '../payment-form/payment-form.component';
     AccountTableComponent,
     PaymentFormComponent,
     LastPaymentComponent,
+    PaymentListComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -85,6 +87,8 @@ import { PaymentFormComponent } from '../payment-form/payment-form.component';
             (openPending)="openPendingReceipt.emit()"
             (voidPayment)="voidPayment.emit($event)"
           />
+        } @else if (paymentActionError()) {
+          <bd-alert variant="error" [message]="paymentActionError()" />
         }
 
         @if (current.sessions.length === 0) {
@@ -92,6 +96,20 @@ import { PaymentFormComponent } from '../payment-form/payment-form.component';
         } @else {
           <bd-account-table [sessions]="current.sessions" />
         }
+
+        <section class="account-section__payments-group" aria-labelledby="patient-payments-title">
+          <h3 id="patient-payments-title" class="account-section__subtitle">Abonos</h3>
+          <bd-payment-list
+            [payments]="payments()"
+            [canVoid]="canVoid()"
+            [printing]="printing()"
+            [voiding]="voiding()"
+            [pendingReceiptPaymentId]="pendingReceiptPaymentId()"
+            (printReceipt)="printReceipt.emit($event)"
+            (openPendingReceipt)="openPendingReceipt.emit()"
+            (voidPayment)="voidPayment.emit($event)"
+          />
+        </section>
       }
     </section>
   `,
@@ -161,10 +179,26 @@ import { PaymentFormComponent } from '../payment-form/payment-form.component';
       flex-direction: column;
       gap: var(--space-sm);
     }
+
+    .account-section__payments-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      padding-top: var(--space-sm);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .account-section__subtitle {
+      margin: 0;
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--blue-950);
+    }
   `,
 })
 export class PatientAccountSectionComponent {
   readonly account = input<PatientAccount | null>(null);
+  readonly payments = input<PaymentListItem[]>([]);
   readonly loading = input<boolean>(false);
   readonly error = input<string | null>(null);
   readonly canRegister = input<boolean>(false);
@@ -177,15 +211,17 @@ export class PatientAccountSectionComponent {
   readonly printing = input<boolean>(false);
   readonly voiding = input<boolean>(false);
   readonly hasPendingReceipt = input<boolean>(false);
+  readonly pendingReceiptPaymentId = input<string | null>(null);
   readonly paymentActionError = input<string | null>(null);
 
   readonly retry = output<void>();
   readonly openForm = output<void>();
   readonly closeForm = output<void>();
   readonly submitPayment = output<CreatePaymentRequest>();
-  readonly printReceipt = output<void>();
+  readonly printReceipt = output<string | void>();
   readonly openPendingReceipt = output<void>();
-  readonly voidPayment = output<Payment>();
+  readonly voidPayment = output<Payment | PaymentListItem>();
 
   readonly balanceOf = balanceStatus;
 }
+

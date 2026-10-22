@@ -22,7 +22,7 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { Appointment, AppointmentsApi } from '../../../appointments';
-import { PatientAccountSectionComponent, PatientAccountStore, Payment } from '../../../billing';
+import { PatientAccountSectionComponent, PatientAccountStore, Payment, PaymentListItem } from '../../../billing';
 import { AuditHistoryDialogService } from '../../../management';
 import { AdminNotesComponent } from '../../components/admin-notes/admin-notes.component';
 import { PatientAppointmentsComponent } from '../../components/patient-appointments/patient-appointments.component';
@@ -92,33 +92,37 @@ import { PatientsApi } from '../../services/patients.api';
             [error]="notesError()"
             (save)="onSaveNotes($event)"
           />
+        }
 
-          @if (canViewAccount()) {
-            <bd-patient-account-section
-              [account]="accountStore.account()"
-              [loading]="accountStore.loading()"
-              [error]="accountStore.error()"
-              [canRegister]="canRegisterPayment()"
-              [formOpen]="accountStore.formOpen()"
-              [saving]="accountStore.saving()"
-              [saveError]="accountStore.saveError()"
-              [defaultEncounterId]="accountStore.defaultEncounterId()"
-              [lastPayment]="accountStore.lastPayment()"
-              [canVoid]="canRegisterPayment()"
-              [printing]="accountStore.printing()"
-              [voiding]="accountStore.voiding()"
-              [hasPendingReceipt]="accountStore.pendingReceipt() !== null"
-              [paymentActionError]="accountStore.actionError()"
-              (retry)="accountStore.reload()"
-              (openForm)="accountStore.openForm()"
-              (closeForm)="accountStore.closeForm()"
-              (submitPayment)="accountStore.registerPayment($event)"
-              (printReceipt)="accountStore.printReceipt()"
-              (openPendingReceipt)="accountStore.openPendingReceipt()"
-              (voidPayment)="onVoidPayment($event)"
-            />
-          }
+        @if (canViewAccount()) {
+          <bd-patient-account-section
+            [account]="accountStore.account()"
+            [payments]="accountStore.payments()"
+            [loading]="accountStore.loading()"
+            [error]="accountStore.error()"
+            [canRegister]="canRegisterPayment()"
+            [formOpen]="accountStore.formOpen()"
+            [saving]="accountStore.saving()"
+            [saveError]="accountStore.saveError()"
+            [defaultEncounterId]="accountStore.defaultEncounterId()"
+            [lastPayment]="accountStore.lastPayment()"
+            [canVoid]="canRegisterPayment()"
+            [printing]="accountStore.printing()"
+            [voiding]="accountStore.voiding()"
+            [hasPendingReceipt]="accountStore.pendingReceipt() !== null"
+            [pendingReceiptPaymentId]="accountStore.pendingReceipt()?.paymentId ?? null"
+            [paymentActionError]="accountStore.actionError()"
+            (retry)="accountStore.reload()"
+            (openForm)="accountStore.openForm()"
+            (closeForm)="accountStore.closeForm()"
+            (submitPayment)="accountStore.registerPayment($event)"
+            (printReceipt)="accountStore.printReceipt($event ?? undefined)"
+            (openPendingReceipt)="accountStore.openPendingReceipt()"
+            (voidPayment)="onVoidPayment($event)"
+          />
+        }
 
+        @if (isSecretaria()) {
           <section class="patient-reception__appointments" aria-labelledby="patient-reception-appointments-title">
             <h2 id="patient-reception-appointments-title" class="patient-reception__section-title">Citas</h2>
 
@@ -243,7 +247,7 @@ export class PatientReceptionPage implements OnInit {
     () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')
   );
   readonly canViewAccount = computed(
-    () => this.isSecretaria() && this.sessionStore.hasPermission('BILLING_READ')
+    () => this.sessionStore.hasPermission('BILLING_READ')
   );
   readonly canRegisterPayment = computed(() => this.sessionStore.hasPermission('BILLING_CREATE'));
   readonly canUpdateAppointments = computed(() =>
@@ -357,7 +361,7 @@ export class PatientReceptionPage implements OnInit {
   }
 
   /** Confirma la anulación de un abono con motivo obligatorio; la franja reporta el resultado. */
-  onVoidPayment(payment: Payment): void {
+  onVoidPayment(payment: Payment | PaymentListItem): void {
     this.confirmDialog
       .open({
         title: 'Anular abono',
@@ -372,7 +376,7 @@ export class PatientReceptionPage implements OnInit {
         filter((result) => result.confirmed),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((result) => this.accountStore.voidLastPayment((result.reason ?? '').trim()));
+      .subscribe((result) => this.accountStore.voidPayment(payment.id, (result.reason ?? '').trim()));
   }
 
   private loadPatient(id: string): Observable<unknown> {

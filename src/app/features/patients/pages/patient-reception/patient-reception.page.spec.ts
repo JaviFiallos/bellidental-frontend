@@ -11,7 +11,7 @@ import { CurrentUser } from '../../../../core/auth/auth.models';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiResponse } from '../../../../core/api/api.models';
 import { Appointment } from '../../../appointments';
-import { CreatePaymentRequest, PatientAccount, Payment } from '../../../billing';
+import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../../../billing';
 import { AuditEntry } from '../../../management';
 import { Patient } from '../../models/patient.models';
 import { PatientReceptionPage } from './patient-reception.page';
@@ -233,6 +233,15 @@ describe('PatientReceptionPage', () => {
     const accountBody: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
     accountRequest.flush(accountBody);
 
+    const paymentsRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(paymentsRequest.request.method).toBe('GET');
+    const paymentsBody: ApiResponse<PaymentListItem[]> = {
+      success: true,
+      message: 'Abonos obtenidos',
+      data: [],
+    };
+    paymentsRequest.flush(paymentsBody);
+
     harness.detectChanges();
   }
 
@@ -249,7 +258,7 @@ describe('PatientReceptionPage', () => {
     return { pdfWindow };
   }
 
-  /** Registra un abono de $ 25,00 en efectivo desde el formulario (POST) y responde la recarga de la cuenta. */
+  /** Registra un abono de $ 25,00 en efectivo desde el formulario (POST) y responde la recarga de la cuenta y abonos. */
   function registerPaymentFromForm(): void {
     findButton('Registrar abono')!.click();
     harness.detectChanges();
@@ -277,6 +286,9 @@ describe('PatientReceptionPage', () => {
     const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
     const reloaded: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
     reloadRequest.flush(reloaded);
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    reloadPayments.flush({ success: true, message: 'Abonos obtenidos', data: [] });
     harness.detectChanges();
   }
 
@@ -386,6 +398,9 @@ describe('PatientReceptionPage', () => {
       },
     };
     reloadRequest.flush(reloaded);
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    reloadPayments.flush({ success: true, message: 'Abonos obtenidos', data: [] });
     harness.detectChanges();
 
     expect(element.textContent).toContain('Sin saldo pendiente');
@@ -481,6 +496,9 @@ describe('PatientReceptionPage', () => {
     const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
     const reloaded: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
     reloadRequest.flush(reloaded);
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    reloadPayments.flush({ success: true, message: 'Abonos obtenidos', data: [] });
     harness.detectChanges();
 
     expect(element.textContent).toContain('Anulado');
@@ -493,6 +511,9 @@ describe('PatientReceptionPage', () => {
     const patientRequest = httpMock.expectOne('/api/v1/patients/pat-1');
     const patientBody: ApiResponse<Patient> = { success: true, message: 'Paciente obtenido', data: patientResponse };
     patientRequest.flush(patientBody);
+
+    httpMock.expectOne('/api/v1/patients/pat-1/account').flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+    httpMock.expectOne('/api/v1/patients/pat-1/payments').flush({ success: true, message: 'Abonos obtenidos', data: [] });
     harness.detectChanges();
 
     findButton('Historial de cambios')!.click();
@@ -519,6 +540,9 @@ describe('PatientReceptionPage', () => {
     const patientRequest = httpMock.expectOne('/api/v1/patients/pat-1');
     const patientBody: ApiResponse<Patient> = { success: true, message: 'Paciente obtenido', data: patientResponse };
     patientRequest.flush(patientBody);
+
+    httpMock.expectOne('/api/v1/patients/pat-1/account').flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+    httpMock.expectOne('/api/v1/patients/pat-1/payments').flush({ success: true, message: 'Abonos obtenidos', data: [] });
     harness.detectChanges();
 
     findButton('Historial de cambios')!.click();
@@ -532,5 +556,104 @@ describe('PatientReceptionPage', () => {
 
     const dialog = document.querySelector('.audit-history') as HTMLElement;
     expect(dialog.textContent).toContain('No tienes permiso para esta acción.');
+  });
+
+  it('abrir la ficha → GET /payments → se ve el abono anulado con su motivo y el vigente con "Anular"; anular el vigente → POST /payments/{id}/void con { voidReason } → recarga account y payments', async () => {
+    const paymentVoided: PaymentListItem = {
+      id: 'pay-void',
+      encounterId: null,
+      amount: 15,
+      method: 'EFECTIVO',
+      receiptNumber: 'C-000010',
+      paidAt: '2026-10-01T10:00:00-05:00',
+      receivedBy: 'user-sec',
+      receivedByName: 'Secretaria',
+      voided: true,
+      voidedAt: '2026-10-01T11:00:00-05:00',
+      voidReason: 'Error de digitación',
+    };
+    const paymentActive: PaymentListItem = {
+      id: 'pay-active',
+      encounterId: null,
+      amount: 25,
+      method: 'TRANSFERENCIA',
+      receiptNumber: 'C-000011',
+      paidAt: '2026-10-02T10:00:00-05:00',
+      receivedBy: 'user-sec',
+      receivedByName: 'Secretaria',
+      voided: false,
+      voidedAt: null,
+      voidReason: null,
+    };
+
+    await openAs(secretaria);
+
+    httpMock.expectOne('/api/v1/patients/pat-1').flush({ success: true, message: 'Paciente obtenido', data: patientResponse });
+    httpMock.expectOne('/api/v1/appointments?patientId=pat-1').flush({ success: true, message: 'Citas obtenidas', data: appointmentsResponse });
+    httpMock.expectOne('/api/v1/patients/pat-1/account').flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+    const paymentsRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(paymentsRequest.request.method).toBe('GET');
+    paymentsRequest.flush({
+      success: true,
+      message: 'Abonos obtenidos',
+      data: [paymentVoided, paymentActive],
+    });
+    harness.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('C-000010');
+    expect(element.textContent).toContain('Anulado');
+    expect(element.textContent).toContain('Error de digitación');
+    expect(element.textContent).toContain('C-000011');
+
+    const voidButton = findButton('Anular')!;
+    expect(voidButton).toBeDefined();
+    expect(voidButton.getAttribute('aria-label')).toContain('C-000011');
+    voidButton.click();
+    harness.detectChanges();
+
+    const reasonInput = document.querySelector('.confirm-dialog__textarea') as HTMLTextAreaElement;
+    reasonInput.value = 'Cobro duplicado';
+    reasonInput.dispatchEvent(new Event('input'));
+    TestBed.inject(ApplicationRef).tick();
+
+    const confirmButton = document.querySelector('.confirm-dialog .btn-danger') as HTMLButtonElement;
+    confirmButton.click();
+
+    const voidRequest = httpMock.expectOne('/api/v1/payments/pay-active/void');
+    expect(voidRequest.request.method).toBe('POST');
+    expect(voidRequest.request.body).toEqual({ voidReason: 'Cobro duplicado' });
+    voidRequest.flush({
+      success: true,
+      message: 'Abono anulado',
+      data: {
+        id: 'pay-active',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'TRANSFERENCIA',
+        receiptNumber: 'C-000011',
+        paidAt: '2026-10-02T10:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: true,
+        voidReason: 'Cobro duplicado',
+      },
+    });
+
+    const reloadAccount = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    expect(reloadAccount.request.method).toBe('GET');
+    reloadAccount.flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(reloadPayments.request.method).toBe('GET');
+    reloadPayments.flush({
+      success: true,
+      message: 'Abonos obtenidos',
+      data: [paymentVoided, { ...paymentActive, voided: true, voidReason: 'Cobro duplicado' }],
+    });
+    harness.detectChanges();
+
+    expect(findButton('Anular')).toBeUndefined();
+    expect(element.textContent).toContain('Cobro duplicado');
   });
 });

@@ -37,3 +37,17 @@ export interface Payment {
   voided: boolean;
   voidReason: string | null;
 }
+
+export interface PaymentListItem {
+  id: string;
+  encounterId: string | null;
+  amount: number;
+  method: PaymentMethod;
+  receiptNumber: string;
+  paidAt: string;
+  receivedBy: string;
+  receivedByName: string | null;
+  voided: boolean;
+  voidedAt: string | null;
+  voidReason: string | null;
+}
