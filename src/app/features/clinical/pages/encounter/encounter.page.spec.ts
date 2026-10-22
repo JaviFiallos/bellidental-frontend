@@ -1346,4 +1346,218 @@ describe('EncounterPage', () => {
     expect(regionTextarea('8 · Carrillos').value).toBe('línea alba');
     expect(fixture.nativeElement.querySelector('#stomatognathic-region-5')).toBeNull();
   });
+
+  it('completar con total > 0 → "Cobrar ahora" → GET account → guardar → POST /patients/{id}/payments con { amount, method: "EFECTIVO", encounterId } → se ve "Abono registrado C-000001"', async () => {
+    sessionStore.setCurrentUser({
+      userId: 'user-prof-1',
+      email: 'odontologa@bellidental.local',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_READ', 'RECORD_UPDATE', 'RECORD_CREATE', 'BILLING_CREATE'],
+      professionalId: 'prof-1',
+    });
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock, 'enc-1', [mockPerformedResina]);
+    flushPrescriptions(httpMock);
+
+    const encounterWithDiag = {
+      ...mockEncounterApiResponse.data,
+      diagnoses: [mockDiagnosisApiResponse.data],
+    };
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      success: true,
+      message: 'OK',
+      data: encounterWithDiag,
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1/clinical-record').flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    await fixture.whenStable();
+
+    const completeBtn = fixture.nativeElement.querySelector('.complete-bar__btn') as HTMLButtonElement;
+    completeBtn.click();
+    fixture.detectChanges();
+
+    const compReq = httpMock.expectOne('/api/v1/encounters/enc-1/complete');
+    compReq.flush(mockEncounterCompletedApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const chargeNotice = fixture.nativeElement.querySelector('.encounter-page__charge-notice');
+    expect(chargeNotice).not.toBeNull();
+    expect(chargeNotice.textContent).toContain('Total de la sesión');
+
+    const cobrarBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    ).find((b: any) => b.textContent?.includes('Cobrar ahora')) as HTMLButtonElement;
+    expect(cobrarBtn).not.toBeNull();
+    cobrarBtn.click();
+    fixture.detectChanges();
+
+    const accountReq = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    accountReq.flush({
+      success: true,
+      message: 'Cuenta obtenida',
+      data: {
+        patientId: 'pat-1',
+        patientName: 'David Bellido',
+        totalCharges: 40,
+        totalPayments: 0,
+        balance: 40,
+        sessions: [
+          {
+            encounterId: 'enc-1',
+            date: '2026-10-22',
+            professionalName: 'Odontóloga Principal',
+            treatments: ['Resina simple'],
+            charge: 40,
+            payment: 0,
+            runningBalance: 40,
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const dialog = document.querySelector('.payment-dialog') as HTMLElement;
+    expect(dialog).not.toBeNull();
+
+    const submitBtn = dialog.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(submitBtn).not.toBeNull();
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const payReq = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(payReq.request.method).toBe('POST');
+    expect(payReq.request.body).toEqual({
+      amount: 40,
+      method: 'EFECTIVO',
+      encounterId: 'enc-1',
+    });
+    payReq.flush({
+      success: true,
+      message: 'Abono registrado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: 'enc-1',
+        amount: 40,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000001',
+        paidAt: '2026-10-22T10:00:00Z',
+        receivedBy: 'user-prof-1',
+        voided: false,
+        voidReason: null,
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(dialog.textContent).toContain('Abono registrado');
+    expect(dialog.textContent).toContain('C-000001');
+
+    const closeBtn = dialog.querySelector('.payment-dialog__btn-done') as HTMLButtonElement;
+    closeBtn?.click();
+    fixture.detectChanges();
+  });
+
+  it('guardar el cobro con 403 → se ve "No tienes permiso"', async () => {
+    sessionStore.setCurrentUser({
+      userId: 'user-prof-1',
+      email: 'odontologa@bellidental.local',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_READ', 'RECORD_UPDATE', 'RECORD_CREATE', 'BILLING_CREATE'],
+      professionalId: 'prof-1',
+    });
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock, 'enc-1', [mockPerformedResina]);
+    flushPrescriptions(httpMock);
+
+    const encounterWithDiag = {
+      ...mockEncounterApiResponse.data,
+      diagnoses: [mockDiagnosisApiResponse.data],
+    };
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      success: true,
+      message: 'OK',
+      data: encounterWithDiag,
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1/clinical-record').flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    await fixture.whenStable();
+
+    const completeBtn = fixture.nativeElement.querySelector('.complete-bar__btn') as HTMLButtonElement;
+    completeBtn.click();
+    fixture.detectChanges();
+
+    const compReq = httpMock.expectOne('/api/v1/encounters/enc-1/complete');
+    compReq.flush(mockEncounterCompletedApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const cobrarBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    ).find((b: any) => b.textContent?.includes('Cobrar ahora')) as HTMLButtonElement;
+    cobrarBtn.click();
+    fixture.detectChanges();
+
+    const accountReq = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    accountReq.flush({
+      success: true,
+      message: 'Cuenta obtenida',
+      data: {
+        patientId: 'pat-1',
+        patientName: 'David Bellido',
+        totalCharges: 40,
+        totalPayments: 0,
+        balance: 40,
+        sessions: [
+          {
+            encounterId: 'enc-1',
+            date: '2026-10-22',
+            professionalName: 'Odontóloga Principal',
+            treatments: ['Resina simple'],
+            charge: 40,
+            payment: 0,
+            runningBalance: 40,
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const dialog = document.querySelector('.payment-dialog') as HTMLElement;
+    expect(dialog).not.toBeNull();
+
+    const submitBtn = dialog.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const payReq = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(payReq.request.method).toBe('POST');
+    payReq.flush(
+      { success: false, message: 'Forbidden', data: null },
+      { status: 403, statusText: 'Forbidden' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(dialog.textContent).toContain('No tienes permiso');
+
+    const closeBtn = dialog.querySelector('.payment-dialog__close-btn') as HTMLButtonElement;
+    closeBtn?.click();
+    fixture.detectChanges();
+  });
 });

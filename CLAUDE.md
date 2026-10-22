@@ -16,8 +16,10 @@
    (petición → respuesta → UI) con 2–3 casos. El usuario prueba a mano el resto.
    Toda tarea con UI indica los anchos donde se revisa (`responsive/SKILL.md`).
 2. Ejecutar: `gemini -p "Ejecuta docs/tasks/NNN-nombre.md siguiendo GEMINI.md."`
-3. Claude revisa la sección Resultado y `git diff --stat` (y los archivos críticos si hace falta); corre una vez
-   `npx ng build` y `npx ng test --watch=false` y lee solo los totales.
+3. Claude revisa la sección Resultado (con los totales copiados de la consola) y `git diff --stat` (y los archivos
+   críticos si hace falta). No corre `npx ng build` ni `npx ng test --watch=false` salvo que (a) haya corregido
+   código él mismo o (b) la tarea toque algo de toda la app: interceptores, rutas, guards, sesión o `core/`.
+   Si los corre, una vez y solo los totales. El paso de commit de Gemini vuelve a correrlos.
 4. Claude escribe `## Revisión`:
    - No cumple → `Estado: CORRECCIONES` + lista numerada → volver al paso 2.
    - Cumple → `Estado: APROBADO`, y actualiza el plan: estado de la tarea en §9 y, si cambió algo (decisión,

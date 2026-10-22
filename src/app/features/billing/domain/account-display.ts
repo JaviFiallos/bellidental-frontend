@@ -1,4 +1,4 @@
-import { PaymentMethod } from '../models/billing.models';
+import { PatientAccount, PaymentMethod } from '../models/billing.models';
 
 export type BalanceTone = 'due' | 'credit' | 'settled';
 
@@ -32,4 +32,10 @@ export function parseAmount(text: string): number | null {
 
 export function formatAmountInput(value: number): string {
   return value.toFixed(2).replace('.', ',');
+}
+
+export function sessionDue(account: PatientAccount, encounterId: string): number | null {
+  const session = account.sessions.find((s) => s.encounterId === encounterId);
+  if (!session) return null;
+  return Number((session.charge - session.payment).toFixed(2));
 }

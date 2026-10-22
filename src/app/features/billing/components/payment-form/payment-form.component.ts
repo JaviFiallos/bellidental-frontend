@@ -186,6 +186,7 @@ export class PaymentFormComponent implements OnInit, AfterViewInit {
   readonly balance = input.required<number>();
   readonly sessions = input.required<AccountSession[]>();
   readonly defaultEncounterId = input<string | null>(null);
+  readonly initialAmount = input<number | null>(null);
   readonly saving = input<boolean>(false);
   readonly errorMessage = input<string | null>(null);
 
@@ -223,8 +224,14 @@ export class PaymentFormComponent implements OnInit, AfterViewInit {
   });
 
   ngOnInit(): void {
+    const proposed = this.initialAmount();
+    const amountVal =
+      proposed !== null && proposed !== undefined
+        ? (proposed > 0 ? formatAmountInput(proposed) : '')
+        : (this.balance() > 0 ? formatAmountInput(this.balance()) : '');
+
     this.form.patchValue({
-      amount: this.balance() > 0 ? formatAmountInput(this.balance()) : '',
+      amount: amountVal,
       encounterId: this.defaultEncounterId() ?? '',
     });
   }

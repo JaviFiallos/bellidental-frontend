@@ -6,11 +6,13 @@ import {
   ElementRef,
   inject,
   OnInit,
+  signal,
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { AuditHistoryDialogService } from '../../../management';
+import { PaymentDialogService } from '../../../billing';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
@@ -18,6 +20,7 @@ import { SideSheetComponent } from '../../../../shared/components/side-sheet/sid
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
+import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import {
   CreateFindingRequest,
   Finding,
@@ -76,6 +79,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     HistoryPanelComponent,
     ClinicDatePipe,
     ClinicTimePipe,
+    MoneyPipe,
   ],
   providers: [EncounterStore, HistoryPanelStore, OdontogramStore, TreatmentsStore, PrescriptionsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,6 +90,15 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
         <a routerLink="/consultorio" class="encounter-page__back-link">
           ← Mis citas
         </a>
+        @if (canChargeCompleted()) {
+          <button
+            type="button"
+            class="btn btn-outline btn-sm encounter-page__header-charge-btn"
+            (click)="onOpenChargeDialog()"
+          >
+            Cobrar
+          </button>
+        }
       </nav>
 
       <!-- Estado: Carga con Skeleton -->
@@ -288,6 +301,31 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           />
         </main>
 
+        <!-- Aviso de cobro de sesión -->
+        @if (chargeNotice(); as notice) {
+          <div class="encounter-page__charge-notice" role="status">
+            <span class="encounter-page__charge-notice-text">
+              Total de la sesión: <strong>{{ notice.total | money }}</strong>
+            </span>
+            <div class="encounter-page__charge-notice-actions">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                (click)="onChargeNow()"
+              >
+                Cobrar ahora
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                (click)="onChargeLater()"
+              >
+                Después
+              </button>
+            </div>
+          </div>
+        }
+
         <!-- 6. Barra de completar fija abajo -->
         <bd-complete-bar
           [missingRequirements]="store.missingRequirements()"
@@ -385,6 +423,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     .encounter-page__nav {
       display: flex;
       align-items: center;
+      justify-content: space-between;
     }
 
     .encounter-page__back-link {
@@ -446,6 +485,41 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     .encounter-page__return-btn {
       margin-left: var(--space-sm);
     }
+
+    .encounter-page__charge-notice {
+      position: sticky;
+      bottom: 4.5rem;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background-color: var(--blue-900);
+      color: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      margin: 0 var(--space-md) var(--space-sm) var(--space-md);
+    }
+
+    .encounter-page__charge-notice-text {
+      font-size: var(--fs-sm);
+    }
+
+    .encounter-page__charge-notice-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .encounter-page__charge-notice-actions .btn-ghost {
+      color: var(--white);
+    }
+
+    .encounter-page__header-charge-btn {
+      margin-inline-start: auto;
+    }
   `,
 })
 export class EncounterPage implements OnInit {
@@ -460,8 +534,14 @@ export class EncounterPage implements OnInit {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly notificationService = inject(NotificationService);
   private readonly auditHistory = inject(AuditHistoryDialogService);
+  private readonly paymentDialog = inject(PaymentDialogService);
 
   readonly isDirector = computed<boolean>(() => this.sessionStore.profile() === 'DIRECTOR');
+  readonly chargeNotice = signal<{ total: number } | null>(null);
+
+  readonly canChargeCompleted = computed<boolean>(() => {
+    return this.store.isCompleted() && this.sessionStore.hasPermission('BILLING_CREATE');
+  });
 
   readonly odontogramEditable = computed<boolean>(() => {
     return !this.store.isReadOnly() && this.sessionStore.hasPermission('RECORD_CREATE');
@@ -577,12 +657,53 @@ export class EncounterPage implements OnInit {
   }
 
   onComplete(): void {
+    const sessionTotal = this.treatmentsStore.sessionTotal();
+    const canCreateBilling = this.sessionStore.hasPermission('BILLING_CREATE');
+
     this.store.complete().subscribe({
       next: () => {
         this.notificationService.success('Atención completada');
-        this.router.navigate(['/consultorio']);
+        if (canCreateBilling && sessionTotal > 0) {
+          this.chargeNotice.set({ total: sessionTotal });
+        } else {
+          this.router.navigate(['/consultorio']);
+        }
       },
       error: () => {},
+    });
+  }
+
+  onChargeNow(): void {
+    const encounter = this.store.encounter();
+    const patient = this.store.patient();
+    if (!encounter || !patient) return;
+
+    this.paymentDialog
+      .open({
+        patientId: patient.id,
+        patientName: patient.fullName,
+        encounterId: encounter.id,
+      })
+      .subscribe(() => {
+        this.chargeNotice.set(null);
+        this.router.navigate(['/consultorio']);
+      });
+  }
+
+  onChargeLater(): void {
+    this.chargeNotice.set(null);
+    this.router.navigate(['/consultorio']);
+  }
+
+  onOpenChargeDialog(): void {
+    const encounter = this.store.encounter();
+    const patient = this.store.patient();
+    if (!encounter || !patient) return;
+
+    this.paymentDialog.open({
+      patientId: patient.id,
+      patientName: patient.fullName,
+      encounterId: encounter.id,
     });
   }
 
