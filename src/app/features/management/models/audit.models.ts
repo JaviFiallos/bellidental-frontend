@@ -10,7 +10,9 @@ export type AuditEntityName =
   | 'prescription-items'
   | 'payments'
   | 'appointments'
-  | 'patients';
+  | 'patients'
+  | 'treatments'
+  | 'specialties';
 
 export type AuditRevisionType = 'ADD' | 'MOD' | 'DEL';
 
@@ -30,10 +32,35 @@ export interface AuditEntry {
   username: string | null;
   type: AuditRevisionType;
   changes: AuditFieldChange[];
+  entity?: AuditEntityName;
+  entityId?: string;
+}
+
+export interface AuditLogEntry {
+  revision: number;
+  at: string;
+  userId: string | null;
+  username: string | null;
+  entity: AuditEntityName;
+  entityId: string;
+  type: AuditRevisionType;
+  patientId: string | null;
+  patientName: string | null;
+}
+
+export interface AuditLogQuery {
+  from: string;
+  to: string;
+  entity?: AuditEntityName | '';
+  userId?: string | '';
+  patientId?: string | '';
+  page?: number;
+  size?: number;
 }
 
 export interface AuditHistoryRequest {
   entity: AuditEntityName;
   id: string;
   title: string;
+  isEncounterFull?: boolean;
 }

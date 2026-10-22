@@ -24,8 +24,9 @@ import {
   auditChangeRows,
   AuditChangeRow,
   auditUserLabel,
+  AUDIT_ENTITY_LABELS,
 } from '../../domain/audit-display';
-import { AuditEntry } from '../../models/audit.models';
+import { AuditEntityName, AuditEntry } from '../../models/audit.models';
 
 export interface AuditHistoryDialogData {
   title: string;
@@ -33,6 +34,8 @@ export interface AuditHistoryDialogData {
 }
 
 interface AuditRevisionView {
+  /** Una revisión puede tocar varias entidades (atención completa). */
+  key: string;
   revision: number;
   at: string;
   actionLabel: AuditActionLabel;
@@ -40,6 +43,7 @@ interface AuditRevisionView {
   userLabel: string;
   isCreation: boolean;
   rows: AuditChangeRow[];
+  entityLabel: string | null;
 }
 
 @Component({
@@ -79,10 +83,13 @@ interface AuditRevisionView {
           />
         } @else {
           <ol class="audit-history__list">
-            @for (view of revisions(); track view.revision) {
+            @for (view of revisions(); track view.key) {
               <li class="audit-history__entry">
                 <div class="audit-history__entry-header">
                   <bd-status-badge [tone]="view.actionTone" [label]="view.actionLabel" />
+                  @if (view.entityLabel) {
+                    <span class="audit-history__entity-badge">{{ view.entityLabel }}</span>
+                  }
                   <span class="audit-history__meta">
                     {{ view.userLabel }} · {{ view.at | clinicDate: 'long' }} · {{ view.at | clinicTime }}
                   </span>
@@ -194,6 +201,18 @@ interface AuditRevisionView {
       gap: var(--space-xs) var(--space-sm);
     }
 
+    .audit-history__entity-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem 0.5rem;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--blue-900);
+      background-color: var(--blue-50);
+      border: 1px solid var(--blue-200);
+      border-radius: var(--radius-sm);
+    }
+
     .audit-history__meta {
       font-size: var(--fs-xs);
       color: var(--slate-600);
@@ -274,14 +293,22 @@ export class AuditHistoryDialogComponent {
   readonly errorMessage = signal<string | null>(null);
   private readonly entries = signal<AuditEntry[]>([]);
 
-  /** La API responde de la más antigua a la más reciente; el diálogo muestra la más reciente primero. */
-  readonly revisions = computed<AuditRevisionView[]>(() =>
-    this.entries()
+  /** Muestra la más reciente primero, ordenada cronológicamente. */
+  readonly revisions = computed<AuditRevisionView[]>(() => {
+    const raw = this.entries();
+    const distinctEntities = new Set(
+      raw.map((e) => e.entity).filter((e): e is AuditEntityName => !!e)
+    );
+    const showEntity = distinctEntities.size > 1;
+
+    return raw
       .slice()
-      .reverse()
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime() || b.revision - a.revision)
       .map((entry) => {
         const actionLabel = auditActionLabel(entry);
+        const entityLabel = showEntity && entry.entity ? (AUDIT_ENTITY_LABELS[entry.entity] ?? entry.entity) : null;
         return {
+          key: `${entry.revision}-${entry.entity ?? ''}-${entry.entityId ?? ''}`,
           revision: entry.revision,
           at: entry.at,
           actionLabel,
@@ -289,9 +316,10 @@ export class AuditHistoryDialogComponent {
           userLabel: auditUserLabel(entry.username),
           isCreation: entry.type === 'ADD',
           rows: auditChangeRows(entry),
+          entityLabel,
         };
-      })
-  );
+      });
+  });
 
   constructor() {
     this.data.entries$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

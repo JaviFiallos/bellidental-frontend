@@ -10,7 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, filter, finalize, forkJoin, map, merge, Observable, of, Subject, switchMap, tap } from 'rxjs';
-import { FileText, History } from 'lucide-angular';
+import { FileText, History, ShieldCheck } from 'lucide-angular';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiError } from '../../../../core/api/api.models';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
@@ -79,6 +79,14 @@ import { PatientsApi } from '../../services/patients.api';
                   <bd-icon [name]="historyIcon" [size]="18" />
                   <span>Historial de cambios</span>
                 </button>
+                <a
+                  class="btn btn-outline patient-reception__btn"
+                  [routerLink]="['/direccion/auditoria']"
+                  [queryParams]="{ paciente: current.id }"
+                >
+                  <bd-icon [name]="shieldIcon" [size]="18" />
+                  <span>Ver toda la actividad del paciente</span>
+                </a>
               }
             </div>
           }
@@ -242,6 +250,7 @@ export class PatientReceptionPage implements OnInit {
   });
   readonly fileTextIcon = FileText;
   readonly historyIcon = History;
+  readonly shieldIcon = ShieldCheck;
   readonly isDirector = computed(() => this.sessionStore.profile() === 'DIRECTOR');
   readonly canEdit = computed(
     () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')

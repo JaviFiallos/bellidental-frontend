@@ -533,6 +533,7 @@ export class EncounterPage implements OnInit {
       entity: 'encounters',
       id: encounterId,
       title: 'Historial de cambios de la atención',
+      isEncounterFull: true,
     });
   }
 

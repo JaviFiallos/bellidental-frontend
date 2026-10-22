@@ -12,10 +12,14 @@ export class AuditHistoryDialogService {
   private readonly auditApi = inject(AuditApi);
 
   open(request: AuditHistoryRequest): void {
+    const entries$ = request.isEncounterFull
+      ? this.auditApi.encounterFull(request.id)
+      : this.auditApi.history(request.entity, request.id);
+
     this.dialog.open<void, AuditHistoryDialogData>(AuditHistoryDialogComponent, {
       data: {
         title: request.title,
-        entries$: this.auditApi.history(request.entity, request.id),
+        entries$,
       },
       role: 'dialog',
       ariaLabelledBy: 'audit-history-title',

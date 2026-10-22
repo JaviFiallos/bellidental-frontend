@@ -90,6 +90,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'direccion/auditoria',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./features/management/pages/audit-log/audit-log.page').then(
+            (m) => m.AuditLogPage
+          ),
+      },
+      {
         path: 'direccion/usuarios',
         canActivate: [profileGuard('DIRECTOR')],
         loadComponent: () =>

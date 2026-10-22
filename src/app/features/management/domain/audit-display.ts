@@ -1,4 +1,4 @@
-import { AuditEntry } from '../models/audit.models';
+import { AuditEntityName, AuditEntry, AuditRevisionType } from '../models/audit.models';
 import { toEcuadorLocal } from '../../../shared/utils/e164';
 
 /** Campos internos (ids, UUID, fechas técnicas) que el director no debe ver. */
@@ -205,4 +205,64 @@ export function auditUserLabel(username: string | null): string {
   if (username === null) return 'Sistema';
   if (username === 'bot_whatsapp') return 'Bot de WhatsApp';
   return username;
+}
+
+export const AUDIT_ENTITY_LABELS: Readonly<Record<AuditEntityName, string>> = {
+  'encounters': 'Atención',
+  'encounter-diagnoses': 'Diagnóstico',
+  'dental-findings': 'Hallazgo',
+  'performed-treatments': 'Tratamiento',
+  'prescriptions': 'Receta',
+  'prescription-items': 'Ítem de receta',
+  'payments': 'Abono',
+  'appointments': 'Cita',
+  'patients': 'Paciente',
+  'clinical-records': 'Historia clínica',
+  'medical-history-entries': 'Antecedente médico',
+  'treatments': 'Tratamiento (catálogo)',
+  'specialties': 'Especialidad',
+};
+
+const AUDIT_ENTITY_PHRASES: Readonly<Record<AuditEntityName, string>> = {
+  'encounters': 'la atención',
+  'encounter-diagnoses': 'un diagnóstico',
+  'dental-findings': 'un hallazgo',
+  'performed-treatments': 'un tratamiento',
+  'prescriptions': 'una receta',
+  'prescription-items': 'un ítem de receta',
+  'payments': 'un abono',
+  'appointments': 'una cita',
+  'patients': 'un paciente',
+  'clinical-records': 'la historia clínica',
+  'medical-history-entries': 'un antecedente médico',
+  'treatments': 'un tratamiento de catálogo',
+  'specialties': 'una especialidad',
+};
+
+export function auditSummaryPhrase(type: AuditRevisionType, entity: AuditEntityName): string {
+  const verb = type === 'ADD' ? 'creó' : type === 'DEL' ? 'eliminó' : 'modificó';
+  const noun = AUDIT_ENTITY_PHRASES[entity] ?? entity;
+  return `${verb} ${noun}`;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+export const MAX_AUDIT_RANGE_DAYS = 92;
+
+export function inclusiveAuditDays(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((end - start) / MS_PER_DAY) + 1;
+}
+
+export function validateAuditRange(from: string, to: string): string | null {
+  if (!from || !to) {
+    return 'Elige las dos fechas.';
+  }
+  if (from > to) {
+    return 'La fecha inicial no puede ser posterior a la final.';
+  }
+  if (inclusiveAuditDays(from, to) > MAX_AUDIT_RANGE_DAYS) {
+    return 'El rango no puede superar 92 días.';
+  }
+  return null;
 }
