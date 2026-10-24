@@ -55,6 +55,8 @@ export interface WalkInAppointmentRequest {
   patientId: string;
   professionalId: string;
   specialtyId: number;
+  startAt: string;
+  endAt: string;
 }
 
 export interface RescheduleAppointmentRequest {

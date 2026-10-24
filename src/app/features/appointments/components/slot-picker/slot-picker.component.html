@@ -31,19 +31,27 @@
         />
       </div>
       @if (blocks().length === 0) {
-        <p class="slot-picker__empty-text" role="status">Sin horas libres este día.</p>
+        <p class="slot-picker__empty-text" role="status">
+          {{ singleDay() ? 'Sin horas libres hoy para este profesional.' : 'Sin horas libres este día.' }}
+        </p>
+      } @else if (singleDay()) {
+        <p class="slot-picker__empty-text" role="status">
+          La cita de {{ emptyDurationText() }} no cabe en ningún hueco de hoy. Reduce la duración.
+        </p>
       } @else {
         <p class="slot-picker__empty-text" role="status">
           La cita de {{ emptyDurationText() }} no cabe en ningún hueco de este día. Reduce la duración o mira el día siguiente.
         </p>
       }
-      <button
-        type="button"
-        class="btn btn-outline slot-picker__next-day-btn"
-        (click)="nextDay.emit()"
-      >
-        Ver día siguiente
-      </button>
+      @if (!singleDay()) {
+        <button
+          type="button"
+          class="btn btn-outline slot-picker__next-day-btn"
+          (click)="nextDay.emit()"
+        >
+          Ver día siguiente
+        </button>
+      }
     </div>
   } @else {
     <div class="slot-picker__controls">
