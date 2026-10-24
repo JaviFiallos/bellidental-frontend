@@ -9,14 +9,21 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import {
   AuditFiltersComponent,
   AuditFiltersValues,
 } from '../../components/audit-filters/audit-filters.component';
+import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats-period-bar.component';
 import { AuditTimelineComponent } from '../../components/audit-timeline/audit-timeline.component';
 import { AUDIT_ENTITY_LABELS } from '../../domain/audit-display';
+import {
+  parseStatsPeriod,
+  shiftStatsAnchor,
+  StatsPeriodKind,
+} from '../../domain/stats-period';
 import { AuditEntityName, AuditLogEntry } from '../../models/audit.models';
 import { AuditHistoryDialogService } from '../../services/audit-history-dialog.service';
 import { AuditLogStore } from '../../services/audit-log.store';
@@ -28,6 +35,7 @@ import { AuditLogStore } from '../../services/audit-log.store';
     AuditFiltersComponent,
     AuditTimelineComponent,
     PageHeaderComponent,
+    StatsPeriodBarComponent,
   ],
   providers: [AuditLogStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,9 +46,15 @@ import { AuditLogStore } from '../../services/audit-log.store';
         subtitle="Registro de actividad y cambios del sistema"
       />
 
+      <bd-stats-period-bar
+        [period]="period()"
+        (kindChange)="onKindChange($event)"
+        (shift)="onShift($event)"
+        (today)="onToday()"
+        (rangeApply)="onRangeApply($event)"
+      />
+
       <bd-audit-filters
-        [from]="from()"
-        [to]="to()"
         [entity]="entity()"
         [userId]="userId()"
         [patientId]="patientId() || null"
@@ -64,15 +78,19 @@ import { AuditLogStore } from '../../services/audit-log.store';
     </section>
   `,
   styles: `
+    @use '../../../../shared/styles/breakpoints' as bp;
+
     .audit-log-page {
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
-      width: 100%;
-      max-width: var(--container-max, 1200px);
-      margin: 0 auto;
+      min-width: 0;
       padding: var(--space-md);
       box-sizing: border-box;
+
+      @include bp.bp-up(md) {
+        padding: var(--space-lg);
+      }
     }
   `,
 })
@@ -85,11 +103,25 @@ export class AuditLogPage implements OnInit {
 
   private readonly queryParams = toSignal(this.route.queryParamMap);
 
-  readonly defaultFrom = computed(() => this.clock.addDays(this.clock.todayDateString(), -6));
-  readonly defaultTo = computed(() => this.clock.todayDateString());
+  readonly period = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => {
+        const hasPatient = !!params.get('paciente');
+        const hasPeriod = !!params.get('periodo');
+        const defaultKind = hasPatient && !hasPeriod ? 'mes' : 'semana';
+        return parseStatsPeriod(
+          params.get('periodo'),
+          params.get('fecha'),
+          params.get('desde'),
+          params.get('hasta'),
+          this.clock.todayDateString(),
+          defaultKind
+        );
+      })
+    ),
+    { requireSync: true }
+  );
 
-  readonly from = computed(() => this.queryParams()?.get('desde') || this.defaultFrom());
-  readonly to = computed(() => this.queryParams()?.get('hasta') || this.defaultTo());
   readonly entity = computed(
     () => (this.queryParams()?.get('tipo') || '') as AuditEntityName | ''
   );
@@ -103,8 +135,7 @@ export class AuditLogPage implements OnInit {
 
   constructor() {
     effect(() => {
-      const from = this.from();
-      const to = this.to();
+      const period = this.period();
       const entity = this.entity();
       const userId = this.userId();
       const patientId = this.patientId();
@@ -112,8 +143,8 @@ export class AuditLogPage implements OnInit {
 
       untracked(() => {
         this.store.load({
-          from,
-          to,
+          from: period.from,
+          to: period.to,
           entity: entity || undefined,
           userId: userId || undefined,
           patientId: patientId || undefined,
@@ -128,10 +159,28 @@ export class AuditLogPage implements OnInit {
     this.store.loadUsers();
   }
 
+  onKindChange(kind: StatsPeriodKind): void {
+    if (kind === 'rango') {
+      this.navigateToRange(this.period().from, this.period().to);
+      return;
+    }
+    this.navigateTo(kind, this.period().anchorDate);
+  }
+
+  onShift(direction: -1 | 1): void {
+    this.navigateTo(this.period().kind, shiftStatsAnchor(this.period(), direction));
+  }
+
+  onToday(): void {
+    this.navigateTo(this.period().kind, this.clock.todayDateString());
+  }
+
+  onRangeApply(range: { from: string; to: string }): void {
+    this.navigateToRange(range.from, range.to);
+  }
+
   onFiltersChange(values: AuditFiltersValues): void {
     this.updateQuery({
-      desde: values.from !== this.defaultFrom() ? values.from : null,
-      hasta: values.to !== this.defaultTo() ? values.to : null,
       tipo: values.entity || null,
       usuario: values.userId || null,
       pagina: 0,
@@ -152,6 +201,22 @@ export class AuditLogPage implements OnInit {
       entity: entry.entity,
       id: entry.entityId,
       title: `Historial de cambios: ${entityLabel}`,
+    });
+  }
+
+  private navigateTo(kind: StatsPeriodKind, anchorDate: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { periodo: kind, fecha: anchorDate, desde: null, hasta: null, pagina: 0 },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  private navigateToRange(from: string, to: string): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { periodo: 'rango', fecha: null, desde: from, hasta: to, pagina: 0 },
+      queryParamsHandling: 'merge',
     });
   }
 

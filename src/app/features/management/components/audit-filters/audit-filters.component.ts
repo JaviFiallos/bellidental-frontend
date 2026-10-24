@@ -1,18 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   input,
   output,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { FieldComponent } from '../../../../shared/components/field/field.component';
 import { AUDIT_ENTITY_LABELS } from '../../domain/audit-display';
 import { AuditEntityName } from '../../models/audit.models';
 import { User } from '../../models/user.models';
 
 export interface AuditFiltersValues {
-  from: string;
-  to: string;
   entity: AuditEntityName | '';
   userId: string;
 }
@@ -20,61 +18,41 @@ export interface AuditFiltersValues {
 @Component({
   selector: 'bd-audit-filters',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, FieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="audit-filters">
       <div class="audit-filters__row">
         <div class="audit-filters__field">
-          <label for="audit-filter-from" class="audit-filters__label">Desde</label>
-          <input
-            id="audit-filter-from"
-            type="date"
-            class="form-input audit-filters__input"
-            [ngModel]="from()"
-            (ngModelChange)="onFromChange($event)"
-          />
+          <bd-field label="Tipo de registro" fieldId="audit-filter-entity">
+            <select
+              id="audit-filter-entity"
+              class="input"
+              [ngModel]="entity()"
+              (ngModelChange)="onEntityChange($event)"
+            >
+              <option value="">Todos los tipos</option>
+              @for (opt of entityOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </bd-field>
         </div>
 
         <div class="audit-filters__field">
-          <label for="audit-filter-to" class="audit-filters__label">Hasta</label>
-          <input
-            id="audit-filter-to"
-            type="date"
-            class="form-input audit-filters__input"
-            [ngModel]="to()"
-            (ngModelChange)="onToChange($event)"
-          />
-        </div>
-
-        <div class="audit-filters__field">
-          <label for="audit-filter-entity" class="audit-filters__label">Tipo de registro</label>
-          <select
-            id="audit-filter-entity"
-            class="form-select audit-filters__select"
-            [ngModel]="entity()"
-            (ngModelChange)="onEntityChange($event)"
-          >
-            <option value="">Todos los tipos</option>
-            @for (opt of entityOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="audit-filters__field">
-          <label for="audit-filter-user" class="audit-filters__label">Usuario</label>
-          <select
-            id="audit-filter-user"
-            class="form-select audit-filters__select"
-            [ngModel]="userId()"
-            (ngModelChange)="onUserChange($event)"
-          >
-            <option value="">Todos los usuarios</option>
-            @for (u of users(); track u.id) {
-              <option [value]="u.id">{{ u.username }}</option>
-            }
-          </select>
+          <bd-field label="Usuario" fieldId="audit-filter-user">
+            <select
+              id="audit-filter-user"
+              class="input"
+              [ngModel]="userId()"
+              (ngModelChange)="onUserChange($event)"
+            >
+              <option value="">Todos los usuarios</option>
+              @for (u of users(); track u.id) {
+                <option [value]="u.id">{{ u.username }}</option>
+              }
+            </select>
+          </bd-field>
         </div>
       </div>
 
@@ -96,58 +74,39 @@ export interface AuditFiltersValues {
     </div>
   `,
   styles: `
+    @use '../../../../shared/styles/breakpoints' as bp;
+
     .audit-filters {
       display: flex;
       flex-direction: column;
       gap: var(--space-sm);
-      padding: var(--space-md);
-      background-color: var(--white);
-      border: 1px solid var(--slate-200);
-      border-radius: var(--radius-md);
     }
 
     .audit-filters__row {
-      display: grid;
-      grid-template-columns: 1fr;
+      display: flex;
+      flex-direction: column;
       gap: var(--space-sm);
-    }
 
-    @media (min-width: 640px) {
-      .audit-filters__row {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (min-width: 1024px) {
-      .audit-filters__row {
-        grid-template-columns: repeat(4, 1fr);
+      @include bp.bp-up(md) {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
       }
     }
 
     .audit-filters__field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .audit-filters__label {
-      font-size: var(--fs-xs);
-      font-weight: 600;
-      color: var(--slate-700);
-    }
-
-    .audit-filters__input,
-    .audit-filters__select {
       width: 100%;
-      min-height: 40px;
+
+      @include bp.bp-up(md) {
+        width: auto;
+        min-width: 14rem;
+      }
     }
 
     .audit-filters__patient-bar {
       display: flex;
       align-items: center;
       gap: var(--space-xs);
-      padding-top: var(--space-xs);
-      border-top: 1px solid var(--slate-100);
     }
 
     .audit-filters__chip {
@@ -159,15 +118,16 @@ export interface AuditFiltersValues {
       color: var(--blue-900);
       background-color: var(--blue-50);
       border: 1px solid var(--blue-200);
-      border-radius: var(--radius-full, 9999px);
+      border-radius: var(--radius-lg);
     }
 
     .audit-filters__chip-remove {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 1.25rem;
-      height: 1.25rem;
+      width: 44px;
+      height: 44px;
+      margin: -0.625rem -0.5rem -0.625rem -0.25rem;
       padding: 0;
       font-size: 0.75rem;
       color: var(--blue-800);
@@ -183,8 +143,6 @@ export interface AuditFiltersValues {
   `,
 })
 export class AuditFiltersComponent {
-  readonly from = input.required<string>();
-  readonly to = input.required<string>();
   readonly entity = input<AuditEntityName | ''>('');
   readonly userId = input<string>('');
   readonly patientId = input<string | null>(null);
@@ -199,23 +157,11 @@ export class AuditFiltersComponent {
     label,
   }));
 
-  onFromChange(from: string): void {
-    this.emitChange({ from, to: this.to(), entity: this.entity(), userId: this.userId() });
-  }
-
-  onToChange(to: string): void {
-    this.emitChange({ from: this.from(), to, entity: this.entity(), userId: this.userId() });
-  }
-
   onEntityChange(entity: AuditEntityName | ''): void {
-    this.emitChange({ from: this.from(), to: this.to(), entity, userId: this.userId() });
+    this.filtersChange.emit({ entity, userId: this.userId() });
   }
 
   onUserChange(userId: string): void {
-    this.emitChange({ from: this.from(), to: this.to(), entity: this.entity(), userId });
-  }
-
-  private emitChange(values: AuditFiltersValues): void {
-    this.filtersChange.emit(values);
+    this.filtersChange.emit({ entity: this.entity(), userId });
   }
 }

@@ -62,26 +62,27 @@ function buildRangePeriod(from: string, to: string, todayDate: string): StatsPer
   };
 }
 
-/** Período de la URL (`periodo`, `fecha`, `desde`, `hasta`). Por defecto el mes actual; valores inválidos también. */
+/** Período de la URL (`periodo`, `fecha`, `desde`, `hasta`). Por defecto el mes actual (o defaultKind); valores inválidos también. */
 export function parseStatsPeriod(
   kindParam: string | null,
   dateParam: string | null,
   fromParam: string | null,
   toParam: string | null,
-  todayDate: string
+  todayDate: string,
+  defaultKind: CalendarPeriodKind = 'mes'
 ): StatsPeriod {
-  const currentMonth = buildCalendarPeriod('mes', todayDate, todayDate);
+  const defaultPeriod = buildCalendarPeriod(defaultKind, todayDate, todayDate);
 
   if (kindParam === 'rango') {
     const isValidRange =
       isValidDateString(fromParam) &&
       isValidDateString(toParam) &&
       validateStatsRange(fromParam, toParam) === null;
-    return isValidRange ? buildRangePeriod(fromParam, toParam, todayDate) : currentMonth;
+    return isValidRange ? buildRangePeriod(fromParam, toParam, todayDate) : defaultPeriod;
   }
 
   if (kindParam !== 'dia' && kindParam !== 'semana' && kindParam !== 'mes') {
-    return currentMonth;
+    return defaultPeriod;
   }
   const anchorDate = isValidDateString(dateParam) ? dateParam : todayDate;
   return buildCalendarPeriod(kindParam, anchorDate, todayDate);
