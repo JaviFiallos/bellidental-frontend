@@ -6,6 +6,7 @@ import {
   ClipboardList,
   History,
   ShieldCheck,
+  Stethoscope,
   UserCog,
   Users,
 } from 'lucide-angular';
@@ -43,6 +44,7 @@ export function getNavItemsForProfile(profile: Profile | null): NavItem[] {
         { label: 'Estadísticas', icon: ChartColumn, route: '/direccion/estadisticas' },
         { label: 'Auditoría', icon: ShieldCheck, route: '/direccion/auditoria' },
         { label: 'Usuarios', icon: UserCog, route: '/direccion/usuarios' },
+        { label: 'Profesionales', icon: Stethoscope, route: '/direccion/profesionales' },
         { label: 'Catálogo', icon: ClipboardList, route: '/direccion/catalogo' },
       ];
     default:
