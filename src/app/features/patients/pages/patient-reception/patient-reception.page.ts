@@ -117,15 +117,15 @@ import { PatientsApi } from '../../services/patients.api';
             [canVoid]="canRegisterPayment()"
             [printing]="accountStore.printing()"
             [voiding]="accountStore.voiding()"
-            [hasPendingReceipt]="accountStore.pendingReceipt() !== null"
             [pendingReceiptPaymentId]="accountStore.pendingReceipt()?.paymentId ?? null"
+            [pendingReceiptUrl]="accountStore.pendingReceipt()?.link.url ?? null"
             [paymentActionError]="accountStore.actionError()"
             (retry)="accountStore.reload()"
             (openForm)="accountStore.openForm()"
             (closeForm)="accountStore.closeForm()"
             (submitPayment)="accountStore.registerPayment($event)"
             (printReceipt)="accountStore.printReceipt($event ?? undefined)"
-            (openPendingReceipt)="accountStore.openPendingReceipt()"
+            (openPendingReceipt)="accountStore.openPendingReceipt($event)"
             (voidPayment)="onVoidPayment($event)"
           />
         }

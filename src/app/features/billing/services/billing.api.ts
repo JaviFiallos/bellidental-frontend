@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiClient } from '../../../core/api/api-client';
 import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../models/billing.models';
+import { DocumentLink } from '../../../shared/utils/pdf-window';
 
 @Injectable({
   providedIn: 'root',
@@ -21,9 +22,9 @@ export class BillingApi {
     return this.api.post<Payment>(`/api/v1/patients/${patientId}/payments`, request);
   }
 
-  /** Comprobante A5 en PDF (binario, sin ApiResponse). */
-  receipt(paymentId: string): Observable<Blob> {
-    return this.api.getBlob(`/api/v1/payments/${paymentId}/receipt`);
+  /** Enlace temporal al comprobante A5 en PDF. */
+  receiptLink(paymentId: string): Observable<DocumentLink> {
+    return this.api.post<DocumentLink>(`/api/v1/payments/${paymentId}/receipt-link`);
   }
 
   voidPayment(paymentId: string, voidReason: string): Observable<Payment> {

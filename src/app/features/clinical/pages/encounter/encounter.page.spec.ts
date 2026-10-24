@@ -724,15 +724,14 @@ describe('EncounterPage', () => {
     expect(treatButton).toBeTruthy();
     treatButton!.click();
     fixture.detectChanges();
-    // La página hace scroll y foco al buscador en un setTimeout (tras cerrar el panel de la pieza)
-    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    // 2. Foco en el buscador → GET /api/v1/treatments, y se elige D2330
+    // 2. El panel "Registrar tratamiento" abre con el buscador enfocado → GET /api/v1/treatments, y se elige D2330
     const catalogReq = httpMock.expectOne('/api/v1/treatments');
     catalogReq.flush(mockTreatmentCatalogApiResponse);
     fixture.detectChanges();
-    const searchInput = compiled.querySelector('.treatments-section .combobox-input') as HTMLInputElement;
+    const searchInput = compiled.querySelector('.treatment-editor .combobox-input') as HTMLInputElement;
     searchInput.value = 'resina';
     searchInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -921,9 +920,14 @@ describe('EncounterPage', () => {
     fixture.detectChanges();
     flushOdontogram(httpMock);
 
-    // Foco en el buscador → GET /api/v1/treatments (catálogo completo, sin query)
+    // Clic en «Registrar tratamiento» → se abre el panel; foco en el buscador → GET /api/v1/treatments (catálogo completo, sin query)
+    const openButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.treatments-section button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.trim() === 'Registrar tratamiento') as HTMLButtonElement;
+    openButton.click();
+    fixture.detectChanges();
     const searchInput = fixture.nativeElement.querySelector(
-      '.treatments-section .combobox-input'
+      '.treatment-editor .combobox-input'
     ) as HTMLInputElement;
     searchInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
     const catalogReq = httpMock.expectOne('/api/v1/treatments');
@@ -964,6 +968,7 @@ describe('EncounterPage', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.treatment-editor')).toBeNull();
     expect(compiled.textContent).toContain('D2330');
     expect(compiled.textContent).toContain('Total de la sesión');
     expect(compiled.textContent).toContain('$ 60,00');
@@ -1125,16 +1130,10 @@ describe('EncounterPage', () => {
     expect(editor.querySelector('.prescription-item-list')?.textContent).toContain('Amoxicilina');
   });
 
-  /** jsdom no tiene la pestaña del PDF ni URL de blobs: se sustituyen solo esas APIs del navegador. */
+  /** jsdom no tiene la pestaña del PDF: se sustituye solo `window.open`. */
   function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
     const pdfWindow = { location: { href: '' }, close: vi.fn() };
     vi.spyOn(window, 'open').mockReturnValue(pdfWindow as unknown as Window);
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      writable: true,
-      value: vi.fn(() => 'blob:rx-1'),
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
     return { pdfWindow };
   }
 
@@ -1174,16 +1173,20 @@ describe('EncounterPage', () => {
     });
     fixture.detectChanges();
 
-    // GET /api/v1/prescriptions/rx-1/pdf, binario (sin ApiResponse)
-    const pdfReq = httpMock.expectOne('/api/v1/prescriptions/rx-1/pdf');
-    expect(pdfReq.request.method).toBe('GET');
-    pdfReq.flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    // POST /api/v1/prescriptions/rx-1/pdf-link → enlace temporal al PDF
+    const pdfReq = httpMock.expectOne('/api/v1/prescriptions/rx-1/pdf-link');
+    expect(pdfReq.request.method).toBe('POST');
+    pdfReq.flush({
+      success: true,
+      message: 'Enlace generado',
+      data: { url: '/api/v1/prescriptions/rx-1/receta.pdf?t=abc', expiresAt: '2026-10-19T10:47:00-05:00' },
+    });
     fixture.detectChanges();
     await fixture.whenStable();
 
     const section = fixture.nativeElement.querySelector('.prescriptions-section') as HTMLElement;
     expect(section.textContent).toContain('Emitida');
-    expect(pdfWindow.location.href).toBe('blob:rx-1');
+    expect(pdfWindow.location.href).toBe('/api/v1/prescriptions/rx-1/receta.pdf?t=abc');
   });
 
   it('Emitir con la atención bloqueada → mensaje y sigue en borrador', async () => {
@@ -1206,7 +1209,7 @@ describe('EncounterPage', () => {
     expect(section.textContent).toContain('Borrador');
     // La pestaña vacía se cerró y no se pidió el PDF
     expect(pdfWindow.close).toHaveBeenCalled();
-    expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf')).toHaveLength(0);
+    expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf-link')).toHaveLength(0);
   });
 
   async function openExamPanelWithEncounter(encounterData: Encounter): Promise<void> {

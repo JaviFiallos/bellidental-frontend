@@ -17,8 +17,10 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import {
   closePdfWindow,
+  DocumentLink,
+  isLinkExpired,
   openBlankPdfWindow,
-  showPdfInWindow,
+  showPdfUrlInWindow,
 } from '../../../../shared/utils/pdf-window';
 import { balanceStatus, sessionDue } from '../../domain/account-display';
 import {
@@ -128,10 +130,10 @@ export interface PaymentDialogData {
                 [payment]="payment"
                 [canVoid]="false"
                 [printing]="printing()"
-                [hasPendingReceipt]="pendingReceipt() !== null"
+                [pendingReceiptUrl]="pendingReceipt()?.link.url ?? null"
                 [errorMessage]="printError()"
                 (print)="onPrintReceipt()"
-                (openPending)="onOpenPendingReceipt()"
+                (openPending)="onOpenPendingReceipt($event)"
               />
 
               <div class="payment-dialog__success-actions">
@@ -311,7 +313,7 @@ export class PaymentDialogComponent implements OnInit {
 
   readonly printing = signal<boolean>(false);
   readonly printError = signal<string | null>(null);
-  readonly pendingReceipt = signal<{ paymentId: string; pdf: Blob } | null>(null);
+  readonly pendingReceipt = signal<{ paymentId: string; link: DocumentLink } | null>(null);
 
   readonly currentSession = computed<AccountSession | null>(() => {
     const acc = this.account();
@@ -386,18 +388,18 @@ export class PaymentDialogComponent implements OnInit {
     this.printError.set(null);
 
     this.billingApi
-      .receipt(payment.id)
+      .receiptLink(payment.id)
       .pipe(
         finalize(() => this.printing.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (pdf) => {
+        next: (link) => {
           if (target) {
-            showPdfInWindow(target, pdf);
+            showPdfUrlInWindow(target, link.url);
             this.pendingReceipt.set(null);
           } else {
-            this.pendingReceipt.set({ paymentId: payment.id, pdf });
+            this.pendingReceipt.set({ paymentId: payment.id, link });
           }
         },
         error: (err: ApiError) => {
@@ -407,13 +409,24 @@ export class PaymentDialogComponent implements OnInit {
       });
   }
 
-  onOpenPendingReceipt(): void {
+  /** "Abrir PDF" es un enlace: si venció, se cancela el clic y se pide uno nuevo. */
+  onOpenPendingReceipt(event: Event): void {
     const pending = this.pendingReceipt();
-    if (!pending) return;
-    const target = openBlankPdfWindow();
-    if (target) {
-      showPdfInWindow(target, pending.pdf);
-      this.pendingReceipt.set(null);
-    }
+    if (!pending || !isLinkExpired(pending.link)) return;
+
+    event.preventDefault();
+    this.printError.set(null);
+    this.billingApi
+      .receiptLink(pending.paymentId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (link) => {
+          this.pendingReceipt.set({ paymentId: pending.paymentId, link });
+          this.printError.set('El enlace venció; vuelve a pulsar Abrir PDF.');
+        },
+        error: (err: ApiError) => {
+          this.printError.set(err.message);
+        },
+      });
   }
 }

@@ -104,6 +104,7 @@ p {
 
   &:hover:not(:disabled) {
     background-color: var(--color-primary-hover);
+    color: var(--white); /* un <a class="btn btn-primary"> no toma el color de a:hover */
   }
 }
 
@@ -202,6 +203,50 @@ p {
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
   padding: var(--space-lg);
+}
+
+/* --- Formulario en panel lateral (hoja): receta, antecedentes, tratamientos --- */
+.sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-xl) var(--space-xl) var(--space-lg);
+  box-sizing: border-box;
+
+  @include bp.bp-down(sm) {
+    padding: var(--space-lg) var(--space-md);
+  }
+}
+
+.sheet-form__title {
+  font-family: var(--font-heading);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--blue-950);
+  margin: 0;
+  padding-right: 2.5rem; /* Espacio para el botón cerrar de la hoja */
+}
+
+.sheet-form__subtitle {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-xs);
+}
+
+.sheet-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.sheet-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
 }
 
 /* --- Degradados de marca --- */

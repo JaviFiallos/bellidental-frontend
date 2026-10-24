@@ -81,10 +81,10 @@ import { PaymentListComponent } from '../payment-list/payment-list.component';
             [canVoid]="canVoid()"
             [printing]="printing()"
             [voiding]="voiding()"
-            [hasPendingReceipt]="hasPendingReceipt()"
+            [pendingReceiptUrl]="pendingReceiptUrl()"
             [errorMessage]="paymentActionError()"
             (print)="printReceipt.emit()"
-            (openPending)="openPendingReceipt.emit()"
+            (openPending)="openPendingReceipt.emit($event)"
             (voidPayment)="voidPayment.emit($event)"
           />
         } @else if (paymentActionError()) {
@@ -105,8 +105,9 @@ import { PaymentListComponent } from '../payment-list/payment-list.component';
             [printing]="printing()"
             [voiding]="voiding()"
             [pendingReceiptPaymentId]="pendingReceiptPaymentId()"
+            [pendingReceiptUrl]="pendingReceiptUrl()"
             (printReceipt)="printReceipt.emit($event)"
-            (openPendingReceipt)="openPendingReceipt.emit()"
+            (openPendingReceipt)="openPendingReceipt.emit($event)"
             (voidPayment)="voidPayment.emit($event)"
           />
         </section>
@@ -210,7 +211,7 @@ export class PatientAccountSectionComponent {
   readonly canVoid = input<boolean>(false);
   readonly printing = input<boolean>(false);
   readonly voiding = input<boolean>(false);
-  readonly hasPendingReceipt = input<boolean>(false);
+  readonly pendingReceiptUrl = input<string | null>(null);
   readonly pendingReceiptPaymentId = input<string | null>(null);
   readonly paymentActionError = input<string | null>(null);
 
@@ -219,7 +220,7 @@ export class PatientAccountSectionComponent {
   readonly closeForm = output<void>();
   readonly submitPayment = output<CreatePaymentRequest>();
   readonly printReceipt = output<string | void>();
-  readonly openPendingReceipt = output<void>();
+  readonly openPendingReceipt = output<MouseEvent>();
   readonly voidPayment = output<Payment | PaymentListItem>();
 
   readonly balanceOf = balanceStatus;

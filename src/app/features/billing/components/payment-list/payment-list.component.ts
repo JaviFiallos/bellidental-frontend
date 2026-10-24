@@ -55,15 +55,16 @@ import { PaymentListItem, PaymentMethod } from '../../models/billing.models';
               <td data-label="Acciones" class="payment-list__actions-cell">
                 <div class="payment-list__actions">
                   @if (pendingReceiptPaymentId() === item.id) {
-                    <button
-                      type="button"
+                    <a
                       class="btn btn-primary payment-list__btn"
-                      [disabled]="voiding()"
+                      [href]="pendingReceiptUrl()"
+                      target="_blank"
+                      rel="noopener"
                       [attr.aria-label]="'Abrir PDF comprobante ' + item.receiptNumber"
-                      (click)="openPendingReceipt.emit()"
+                      (click)="openPendingReceipt.emit($event)"
                     >
                       Abrir PDF
-                    </button>
+                    </a>
                   } @else {
                     <button
                       type="button"
@@ -268,9 +269,11 @@ export class PaymentListComponent {
   readonly printing = input<boolean>(false);
   readonly voiding = input<boolean>(false);
   readonly pendingReceiptPaymentId = input<string | null>(null);
+  /** Enlace del comprobante pendiente de `pendingReceiptPaymentId`. */
+  readonly pendingReceiptUrl = input<string | null>(null);
 
   readonly printReceipt = output<string>();
-  readonly openPendingReceipt = output<void>();
+  readonly openPendingReceipt = output<MouseEvent>();
   readonly voidPayment = output<PaymentListItem>();
 
   readonly printerIcon = Printer;

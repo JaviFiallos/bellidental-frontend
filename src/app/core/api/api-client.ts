@@ -1,9 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { from, Observable, OperatorFunction, throwError } from 'rxjs';
-import { catchError, map, mergeMap } from 'rxjs/operators';
+import { Observable, OperatorFunction, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ApiError, ApiResponse } from './api.models';
-import { getApiErrorMessage, readBlobErrorMessage } from './api-error-messages';
+import { getApiErrorMessage } from './api-error-messages';
 
 @Injectable({
   providedIn: 'root',
@@ -38,20 +38,6 @@ export class ApiClient {
     }
   ): Observable<T> {
     return this.http.put<ApiResponse<T>>(url, body, options).pipe(this.unwrap<T>());
-  }
-
-  /** Descarga binaria (PDF) con el token del interceptor. Sin `ApiResponse`: el error del Blob se lee como JSON. */
-  getBlob(url: string): Observable<Blob> {
-    return this.http.get(url, { responseType: 'blob' }).pipe(
-      catchError((err: HttpErrorResponse) =>
-        from(this.toBlobApiError(err)).pipe(mergeMap((apiError) => throwError(() => apiError)))
-      )
-    );
-  }
-
-  private async toBlobApiError(err: HttpErrorResponse): Promise<ApiError> {
-    const blobMessage = err.error instanceof Blob ? await readBlobErrorMessage(err.error) : null;
-    return { status: err.status, message: blobMessage ?? getApiErrorMessage(err) };
   }
 
   private unwrap<T>(): OperatorFunction<ApiResponse<T>, T> {

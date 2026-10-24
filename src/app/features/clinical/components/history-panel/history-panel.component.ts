@@ -29,16 +29,18 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="history-panel">
+    <div class="history-panel sheet-form">
       <!-- Encabezado del panel -->
-      <header class="history-panel__header">
-        <h2 id="history-panel-title" class="history-panel__title">
-          Antecedentes de {{ patientName() || 'paciente' }}
-        </h2>
-      </header>
+      <h2 id="history-panel-title" class="sheet-form__title">
+        Antecedentes de {{ patientName() || 'paciente' }}
+      </h2>
+
+      @if (generalError(); as error) {
+        <bd-alert variant="error" [message]="error" />
+      }
 
       <!-- Sección 1: Medicación actual -->
-      <section class="history-panel__section" aria-labelledby="medication-label">
+      <section class="sheet-form__section" aria-labelledby="medication-label">
         <label id="medication-label" for="current-medication-input" class="history-panel__label">
           Medicación actual
         </label>
@@ -69,7 +71,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
       </section>
 
       <!-- Sección 2: Estado 'El paciente no refiere antecedentes' -->
-      <section class="history-panel__section history-panel__section--no-history" aria-label="Sin antecedentes">
+      <section class="sheet-form__section history-panel__section--no-history" aria-label="Sin antecedentes">
         @if (noKnownHistory()) {
           <div class="no-history-active">
             <span class="no-history-badge">
@@ -105,7 +107,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
       <hr class="history-panel__divider" />
 
       <!-- Sección 3: Lista de 10 condiciones -->
-      <section class="history-panel__section history-panel__conditions" aria-label="Condiciones clínicas">
+      <section class="sheet-form__section history-panel__conditions" aria-label="Condiciones clínicas">
         @if (conditionsLoading()) {
           <div class="conditions-skeleton" aria-busy="true">
             <bd-skeleton height="2.5rem" width="100%" />
@@ -145,30 +147,7 @@ import { HistoryConditionRowComponent } from '../history-condition-row/history-c
   `,
   styles: `
     .history-panel {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-md);
-      padding: var(--space-md);
-      box-sizing: border-box;
       color: var(--slate-800);
-    }
-
-    .history-panel__header {
-      padding-bottom: var(--space-xs);
-      border-bottom: 1px solid var(--slate-200);
-    }
-
-    .history-panel__title {
-      font-size: var(--fs-md);
-      font-weight: 700;
-      color: var(--blue-950);
-      margin: 0;
-    }
-
-    .history-panel__section {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
     }
 
     .history-panel__label {
@@ -351,6 +330,7 @@ export class HistoryPanelComponent {
   readonly medicationError = input<string | null>(null);
   readonly noKnownHistory = input<boolean>(false);
   readonly noKnownHistoryError = input<string | null>(null);
+  readonly generalError = input<string | null>(null);
   readonly isReadOnly = input<boolean>(false);
   readonly rowErrors = input<Record<number, string | null>>({});
   readonly lastSuccessEntry = input<HistoryEntry | null>(null);

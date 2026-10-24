@@ -138,9 +138,10 @@ Se crean en la primera tarea que los necesita y se reutilizan después. Ningún 
 | `.table-cards` (estilo) | tabla que pasa a tarjetas en `< sm` | 005 |
 | Pipes `clinicDate`, `clinicTime` · `phone` · `money` | formatos de §2.5 | 002a · 002b · 012a |
 | `ConfirmDialog.reasonRequired` | motivo obligatorio al anular (tratamientos, pagos) | 012a |
-| `ApiClient.getBlob` (core) | descargar PDFs con el token; lee el `message` del error aunque llegue como `Blob` | 013b |
+| ~~`ApiClient.getBlob` (core)~~ | borrado en la 013c: los PDF se abren por enlace temporal (F-22) | 013b → 013c |
 | Utils `cedula.ts`, `e164.ts` (`shared/utils`) | validar cédula EC, convertir teléfono | 005 |
 | Util `pdf-window.ts` (`shared/utils`, movido desde prescriptions) | pestaña del PDF abierta en el clic | 013b → 015b (F-21) |
+| Clases `.sheet-form*` (estilo global) | formulario dentro de `bd-side-sheet`: título, secciones, pie | 008d |
 | Util `calendar-period.ts` (`shared/utils`, movido desde `clinical/domain/encounter-period.ts`) | período día/semana/mes con etiqueta; `rangeLabel(from, to)` para cualquier rango | 019 → 016a (F-20) |
 
 Por feature (exportados en su `index.ts`): `PatientSearchComponent` (patients, 002b), `AppointmentCard`
@@ -191,6 +192,7 @@ Así el director no ve la recepción aunque su rol ADMIN tenga esos permisos en 
 /direccion/estadisticas             DIRECTOR             Estadísticas de la clínica     P16       016a, 016b
 /direccion/usuarios                 DIRECTOR             Usuarios                       P20       023a, 023c
 /direccion/catalogo                 DIRECTOR             Catálogo de tratamientos y especialidades  P22  024
+/direccion/profesionales            DIRECTOR             Profesionales (datos, especialidades, color)       023e
 /cuenta/contrasena                  todos (sin profileGuard) Cambiar mi contraseña       P21       023b
 ```
 Todas bajo `MainLayout` con `authGuard`; cada grupo con `profileGuard([...])`. Perfil equivocado → su inicio.
@@ -207,6 +209,7 @@ historial se abre desde el registro (paciente, atención).
 | — | — | Estadísticas |
 | — | — | Usuarios (023a) |
 | — | — | Catálogo (024) |
+| — | — | Profesionales (023e) |
 | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión | Pie: Cambiar contraseña · Cerrar sesión |
 
 "Auditoría" salió del menú en la 017 (F-15).
@@ -794,6 +797,73 @@ features/clinical/
   (urgencias del bot, profesionales activos, citas futuras) y se muestra su `message`.
 - Pendiente fuera de esta tarea: filtrar el catálogo de la atención con `GET /treatments?specialtyId=`.
 
+### 5.22 Ajustes de cierre (pedido del usuario, 2026-10-24) — tareas 016d, 017c, 008d, 012c, 023e, 013c, 004d
+Ocho correcciones agrupadas por pantalla. Solo 013c y 004d necesitan backend (026 y 027 del backend).
+
+| Tarea | Puntos | Pantalla | Backend |
+|---|---|---|---|
+| 016d | 1 | Estadísticas: top 3 tratamientos y diagnósticos como gráfico de barras | — |
+| 017c | 8 | Auditoría: filtros con el mismo estilo que estadísticas y "Mis atenciones" | — |
+| 008d | 3, 5 | Atención: cabecera en dos grupos; antecedentes con los márgenes de la receta | — |
+| 012c | 4 | Atención: tratamientos con formulario en panel lateral, como la receta | — (depende de 008d) |
+| 023e | 6 | Profesionales del director: alta y edición (datos, especialidades, **color**) | — (ya existe) |
+| 013c | 2 | Receta y comprobante: PDF por enlace temporal, sin `blob:` | 026 (G-14) |
+| 004d | 7 | Sin cita: elegir hora en bloques de 15 min desde la hora actual | 027 (G-15) |
+
+- **016d (1):** barras horizontales ordenadas, no pastel: con 3 ítems lo que importa es el orden y la cifra exacta;
+  un pastel no deja comparar porciones parecidas y se vuelve ilegible a 375 px. Se reutiliza `bd-bar-list`
+  (CSS, cifra visible, responsive por naturaleza) con un texto secundario opcional en `BarRow` (`detail`: monto del
+  tratamiento · código CIE-10) y el puesto (1–3). Se borran `top-treatments-table` y `top-diagnoses-table` si quedan
+  sin uso. Sin tests.
+  **Hecho (016d):** `BarRow` gana `rank?` y `detail?`; `topTreatmentRows`/`topDiagnosisRows` en `domain/stats-labels.ts`; tablas de los tops borradas.
+- **017c (8):** causa: `audit-filters` usa `.form-input` y `.form-select`, clases que no existen (la global es
+  `.input`). Fechas con `bd-stats-period-bar` (Día · Semana · Mes · Rango, como estadísticas) y período en la URL
+  como en estadísticas (`?periodo&fecha|desde&hasta`, F-20); tipo de registro y usuario con `.input` en una barra
+  igual a `.my-encounters__toolbar` (fila en `≥ md`, apilada en `xs`). Sin tests nuevos (mismo `GET /audit`);
+  `audit-log.page.spec.ts` solo se ajusta si cambia la forma de elegir fechas.
+  **Hecho (017c):** `parseStatsPeriod(…, defaultKind)`; auditoría con `bd-stats-period-bar` (semana por defecto, mes con
+  `?paciente=`); `bd-audit-filters` solo tipo y usuario.
+- **008d (3, 5):** `patient-clinical-header__chips` se divide en dos grupos: **clínico** (botón Antecedentes +
+  chips de alerta, "No refiere" y medicación) y **documentos** (Formulario 033 + Historial de cambios), a la derecha
+  en `≥ md` y debajo en `xs`. El panel de antecedentes toma la misma estructura de la receta: clase global
+  `.sheet-form` (`__header` con espacio para el ✕, `__body`, `__footer`) en `styles.scss`, con los márgenes de
+  `prescription-editor` (`--space-xl` laterales); la usan `prescription-editor`, `history-panel` y, desde la 012c,
+  el editor de tratamientos. Sin tests.
+  **Hecho (008d):** `.sheet-form` (`__title`, `__section`, `__subtitle`, `__footer`) global en `styles.scss`, con
+  padding menor en `< sm`; `history-panel` recibe `generalError`. Componente compartido nuevo en §2.4.
+- **012c (4):** `treatments-section` queda como la de recetas: lista, total de la sesión y botón "Registrar
+  tratamiento". El buscador del catálogo y `treatment-form` pasan a un componente `treatment-editor` dentro de
+  `bd-side-sheet` (`fullscreenBelowMd`, `.sheet-form`). "Tratar" en el panel de la pieza abre el panel con el
+  hallazgo elegido. Un solo panel lateral abierto a la vez en la atención (abrir uno cierra los otros). Ajusta
+  `encounter.page.spec.ts` (el flujo de registrar ahora abre el panel), sin casos nuevos.
+  **Hecho (012c):** `TreatmentEditorComponent` (exportado) en `bd-side-sheet`; `TreatmentsStore.editorOpen/openEditor/closeEditor`.
+  La página abre un panel a la vez (`openSheet`); si la receta está abierta pide «Descartar el borrador de la receta».
+- **023e (6):** el backend ya lo soporta: `POST /professionals` y `PUT /professionals/{id}` reciben `colorTag`
+  (`#RRGGBB`), con `PROFESSIONAL_MANAGE` (solo ADMIN). Lo que falta es la pantalla: `/direccion/profesionales`
+  (management, menú del director) con tabla (color, nombre, licencia, especialidades, cuenta, estado) y alta/edición
+  en `bd-side-sheet`. Color: 8 muestras predefinidas (`management/domain/professional-colors.ts`, son datos como los
+  colores del odontograma) + selector libre; aviso si otro profesional activo ya usa ese color. "Dar acceso" sigue en
+  Usuarios. Test de página: alta con color → `POST /professionals` con el body → aparece en la tabla; 400/409 →
+  mensaje.
+  **Hecho (023e):** `ProfessionalsApi.listAll/create/update`, `ProfessionalDetail`; colores en
+  `management/domain/professional-colors.ts`. Pendiente: el teléfono no se puede borrar al editar (PUT parcial del backend).
+- **013c (2):** con el backend 026: en el clic se abre la pestaña (como hoy), se pide `POST …/pdf-link` o
+  `…/receipt-link` y la pestaña navega a esa URL https (`/api/v1/…/receta.pdf?t=…`, 5 min). El visor del
+  dispositivo, descargar y compartir funcionan; el fallback "Abrir PDF" pasa a ser un `<a href>` normal (pide un
+  enlace nuevo si venció). `getBlob` y `showPdfInWindow` dejan de usarse para PDFs. Reemplaza F-13 por F-22.
+  Ajusta los casos de PDF de `encounter.page.spec.ts` y `patient-reception.page.spec.ts`.
+  **Hecho (013c):** `DocumentLink`, `showPdfUrlInWindow` e `isLinkExpired` en `shared/utils/pdf-window.ts`; `getBlob` borrado
+  de `ApiClient`. «Abrir PDF» pendiente es un `<a>` que renueva el enlace si venció.
+- **004d (7):** el formulario "Sin cita" muestra `duration-stepper` + `slot-picker` (Mañana · Tarde, bloques de
+  15 min) como al agendar, con `GET /availability?…&date=hoy&durationMinutes=15` (el backend ya excluye las horas
+  pasadas); el profesional por defecto sigue siendo el del hueco más cercano y su primer bloque queda elegido. Envía
+  `startAt` y `endAt` en `POST /appointments/walk-in`. Test: `reception-agenda.page.spec.ts` (el caso de walk-in
+  verifica el body con las horas).
+  **Hecho (004d):** `bd-slot-picker` gana `singleDay` (sin «Ver día siguiente», mensaje de hoy); el store usa
+  `firstValidStart()` y `submit` calcula `startAt`/`endAt` igual en los tres modos.
+- **Orden:** 016d → 017c → 008d → 012c → 023e (sin backend); backend 026 y 027 en paralelo; después 013c y 004d.
+  **Tanda completa y aprobada el 2026-10-24** (sin commit): build OK, `Test Files 16 passed (16)` · `Tests 72 passed (72)`.
+
 ### 5.20 Usuarios del director y cambio de contraseña — tareas 023a, 023b y 023c (P20, P21) · backend 019 `7fc03c2`
 - **Requerimiento nuevo del usuario** (backend D-24, reemplaza D-13): el director (ADMIN) gestiona las cuentas.
   Contradecía el MVP-SCOPE ("sin UI de usuarios"); ya se actualizó.
@@ -960,6 +1030,8 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | G-11 | Ningún endpoint lista los pagos de un paciente con su `id` (`AccountResponse` solo trae sumas por sesión; no hay `GET /payments/{id}`) | Reimprimir el comprobante o anular un abono de otra visita (015c) | `GET /patients/{patientId}/payments` (`BILLING_READ`) → `Payment[]` por `paidAt` desc, con anulados | Resuelto: backend 022 + frontend 015c (2026-10-22) |
 | G-12 | `UserResponse` no trae `system` ni el profesional vinculado | 023a/023c: el frontend no sabe qué cuentas son del sistema (bot) | Añadir `system: boolean` (y `professionalId?`) a `UserResponse` | opcional; mientras tanto, heurística F-17 |
 | G-13 | `PUT /auth/password` con la actual incorrecta responde 401 "Credenciales inválidas" (el handler global de `BadCredentialsException` pisa el mensaje "La contraseña actual no es correcta.") | 023b muestra un texto propio | Que el handler use `ex.getMessage()` o lanzar otra excepción (400/409) | Resuelto: backend 023 + frontend 023d (2026-10-22) |
+| G-14 | Los PDF (receta, comprobante) solo salen con Bearer: el frontend los abre como `blob:`, que falla en móviles y tablets | 013c | Enlace temporal firmado `POST …/pdf-link`, `…/receipt-link` + GET público con token (5 min) | backend 026 |
+| G-15 | `POST /appointments/walk-in` no acepta hora: siempre el primer hueco con la duración de la especialidad | 004d | `startAt`/`endAt` opcionales (hoy, desde el bloque actual, 15–240 min) | backend 027 |
 | G-8 | Ningún endpoint de `ScheduleController` usa `ApiResponse` (GET y POST `/professionals/{id}/schedules`, `…/effective`, `PUT /schedules/{id}`, `POST /schedules/{id}/deactivate`) | Agenda (003a), horarios (006) | Envolver en `ApiResponse` como el resto (decisión del usuario: corregir el backend) | **Resuelto**: backend 006c (`ScheduleApiIT`) |
 | G-9 | `ClinicalRecordController` no usa `ApiResponse` (clinical-record, PUT, conditions, history-entries, void); `currentMedication` vacía no se puede borrar | Cabecera clínica (008a: recibe `undefined` contra el backend real) y antecedentes (008b) | Envolver en `ApiResponse` y que `currentMedication` vacía pase a `null` | **Resuelto** (backend 005b `6fd4ab5`) |
 
@@ -987,6 +1059,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | F-19 | Cobro en la ficha de recepción: estado de cuenta en una sola columna, antes de "Citas" (la tabla de 6 columnas no cabe a media página). Abono: monto = saldo si > 0, método Efectivo, sesión = atención de hoy si la hay. Comprobante y anular solo del abono recién registrado hasta G-11 | Propuesta (2026-10-21) |
 | F-20 | Estadísticas: período en la URL (`?periodo=` día, semana, mes o rango, con `fecha` o `desde`/`hasta`), mes actual por defecto; siempre se envían `from` y `to`; barras horizontales en CSS sin `colorTag`. Las funciones de período de la 019 pasan a `shared/utils/calendar-period.ts` (las usan clinical y management) | Propuesta (2026-10-21) |
 | F-21 | `pdf-window.ts` (abrir pestaña en el clic, poner el blob, liberar la URL) pasa de `prescriptions/services` a `shared/utils`: lo usan recetas y cobros | Propuesta (2026-10-21) |
+| F-22 | PDFs por enlace temporal firmado del backend (026) en vez de `blob:` (reemplaza F-13): la pestaña se abre en el clic y navega a la URL https; nunca un enlace sin token (dato de salud, LOPDP) | Propuesta (2026-10-24) |
+| F-23 | Profesionales (alta y edición, con color de agenda) en `/direccion/profesionales`, solo DIRECTOR (`PROFESSIONAL_MANAGE`); colores de 8 muestras predefinidas + libre, tratados como dato | Propuesta (2026-10-24) |
+| F-24 | Top 3 de estadísticas como barras horizontales (`bd-bar-list`), no pastel | Propuesta (2026-10-24) |
 
 ## 9. Orden y seguimiento de tareas
 | Tarea | Pantalla | Depende de (frontend · backend) | Estado |
@@ -1041,6 +1116,13 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 021a | Examen estomatognático: un campo por región marcada, confirmación al desmarcar | 021 | Aprobada (ejecutó Haiku) |
 | 022 | Imagen Docker (nginx) y CI a GHCR (push a `main`+`develop`; imagen solo en `main`) | backend 018a | Aprobada (ejecutó Haiku) |
 | 022b | Job `deploy` por SSH al VPS de Contabo (cuando el VPS y los secretos estén listos) | 022 · backend 018a | Aprobada (ejecutó Haiku) |
+| 016d | Estadísticas: top 3 tratamientos y diagnósticos en barras | 016c | Aprobada (2026-10-24, ejecutó Haiku) |
+| 017c | Auditoría: filtros con período y estilo estándar | 017b | Aprobada (2026-10-24, ejecutó Gemini) |
+| 008d | Atención: cabecera en dos grupos y panel de antecedentes con márgenes de la receta | 008b | Aprobada (2026-10-24, ejecutó Haiku) |
+| 012c | Atención: tratamientos con formulario en panel lateral | 008d · 012b | Aprobada (2026-10-24, ejecutó Haiku) |
+| 023e | Profesionales del director: alta y edición con color de agenda | 023c | Aprobada (2026-10-24, ejecutó Gemini) |
+| 013c | Receta y comprobante: PDF por enlace temporal (sin `blob:`) | 013b · 015c · backend 026 | Aprobada (2026-10-24, ejecutó Haiku) |
+| 004d | Sin cita: hora y duración en bloques de 15 min | 004c · backend 027 | Aprobada (2026-10-24, ejecutó Gemini) |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015a → 015b.
@@ -1052,3 +1134,4 @@ solo lectura del director y el historial de pagos) y 015c cuando exista G-11 (bl
 023a porque crea el feature `management`.
 Orden desde el 2026-10-22 (rama `feat/home-branch`, ejecuta Gemini): backend **022 → 023 → 024 → 025**; frontend
 **015c** (tras backend 022) → **025** → **023d** (tras backend 023) → **016c** (tras backend 024) → **017b** (tras backend 025). Después, 014.
+Orden desde el 2026-10-24 (§5.22): **016d → 017c → 008d → 012c → 023e**; backend **026 y 027**; después **013c** y **004d**.

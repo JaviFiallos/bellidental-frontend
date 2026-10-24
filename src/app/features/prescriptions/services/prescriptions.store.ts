@@ -12,7 +12,13 @@ import {
 } from '../models/prescription.models';
 import { MedicationsApi } from './medications.api';
 import { PrescriptionsApi } from './prescriptions.api';
-import { closePdfWindow, openBlankPdfWindow, showPdfInWindow } from '../../../shared/utils/pdf-window';
+import {
+  closePdfWindow,
+  DocumentLink,
+  isLinkExpired,
+  openBlankPdfWindow,
+  showPdfUrlInWindow,
+} from '../../../shared/utils/pdf-window';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -88,8 +94,8 @@ export class PrescriptionsStore implements OnDestroy {
   readonly busyPrescriptionId = signal<string | null>(null);
   /** Error de una acción fuera del editor (imprimir, emitir tras cerrar el editor, anular). */
   readonly actionError = signal<string | null>(null);
-  /** PDF listo pero sin pestaña (bloqueada): la fila ofrece "Abrir PDF" desde un clic directo. */
-  readonly pendingPdf = signal<{ prescriptionId: string; pdf: Blob } | null>(null);
+  /** Enlace listo pero sin pestaña (bloqueada): la fila ofrece "Abrir PDF" como enlace en un clic directo. */
+  readonly pendingPdf = signal<{ prescriptionId: string; link: DocumentLink } | null>(null);
 
   readonly medicationResults = signal<Medication[]>([]);
   readonly medicationSearching = signal<boolean>(false);
@@ -247,18 +253,25 @@ export class PrescriptionsStore implements OnDestroy {
     );
   }
 
-  /** "Abrir PDF" tras un bloqueo: la pestaña se abre desde el clic del usuario. */
-  openPendingPdf(): void {
+  /**
+   * "Abrir PDF" tras un bloqueo: es un enlace, así que el navegador lo abre en el clic. Si el enlace ya venció,
+   * se cancela el clic, se pide uno nuevo y se avisa para volver a pulsar.
+   */
+  openPendingPdf(event: Event): void {
     const pending = this.pendingPdf();
-    if (!pending) return;
+    if (!pending || !isLinkExpired(pending.link)) return;
 
-    const target = openBlankPdfWindow();
-    if (!target) {
-      this.actionError.set('El navegador bloqueó la pestaña del PDF. Permite las ventanas emergentes e inténtalo de nuevo.');
-      return;
-    }
-    showPdfInWindow(target, pending.pdf);
-    this.pendingPdf.set(null);
+    event.preventDefault();
+    this.actionError.set(null);
+    this.api.pdfLink(pending.prescriptionId).subscribe({
+      next: (link) => {
+        this.pendingPdf.set({ prescriptionId: pending.prescriptionId, link });
+        this.actionError.set('El enlace venció; vuelve a pulsar Abrir PDF.');
+      },
+      error: (err: ApiError | Error) => {
+        this.actionError.set(errorMessageOf(err, 'No se pudo renovar el enlace del PDF'));
+      },
+    });
   }
 
   /** Anula un borrador o una receta emitida (sin motivo). La lista de la atención deja de mostrarla. */
@@ -346,13 +359,13 @@ export class PrescriptionsStore implements OnDestroy {
   }
 
   private openPdf(prescriptionId: string, target: Window | null): Observable<void> {
-    return this.api.pdf(prescriptionId).pipe(
-      tap((pdf) => {
+    return this.api.pdfLink(prescriptionId).pipe(
+      tap((link) => {
         if (target) {
-          showPdfInWindow(target, pdf);
+          showPdfUrlInWindow(target, link.url);
           this.pendingPdf.set(null);
         } else {
-          this.pendingPdf.set({ prescriptionId, pdf });
+          this.pendingPdf.set({ prescriptionId, link });
         }
       }),
       map(() => undefined),

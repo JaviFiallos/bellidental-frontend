@@ -23,7 +23,28 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
       </div>
 
       <div class="patient-clinical-header__line2">
-        <div class="patient-clinical-header__chips">
+        <div class="patient-clinical-header__clinical" role="group" aria-label="Antecedentes del paciente">
+          <!-- Botón de antecedentes -->
+          @if (isUnregistered()) {
+            <button
+              type="button"
+              class="btn-history-warning"
+              aria-haspopup="dialog"
+              (click)="openHistory.emit()"
+            >
+              Registrar antecedentes
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="btn-history-secondary"
+              aria-haspopup="dialog"
+              (click)="openHistory.emit()"
+            >
+              Antecedentes
+            </button>
+          }
+
           @if (activeEntries().length > 0) {
             @for (entry of activeEntries(); track entry.id) {
               <span class="chip-alert">
@@ -47,28 +68,9 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
               Medicación: {{ clinicalRecord()?.currentMedication }}
             </span>
           }
+        </div>
 
-          <!-- Botón de antecedentes -->
-          @if (isUnregistered()) {
-            <button
-              type="button"
-              class="btn-history-warning"
-              aria-haspopup="dialog"
-              (click)="openHistory.emit()"
-            >
-              Registrar antecedentes
-            </button>
-          } @else {
-            <button
-              type="button"
-              class="btn-history-secondary"
-              aria-haspopup="dialog"
-              (click)="openHistory.emit()"
-            >
-              Antecedentes
-            </button>
-          }
-
+        <div class="patient-clinical-header__documents" role="group" aria-label="Documentos del paciente">
           <!-- Enlace Formulario 033 -->
           <a
             class="btn-form-033"
@@ -92,6 +94,8 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
   `,
 
   styles: `
+    @use '../../../../shared/styles/breakpoints' as bp;
+
     .patient-clinical-header {
       display: flex;
       flex-direction: column;
@@ -127,15 +131,37 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
     }
 
     .patient-clinical-header__line2 {
-      overflow-x: auto;
-      padding-bottom: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-xs);
+
+      @include bp.bp-up('md') {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
     }
 
-    .patient-clinical-header__chips {
+    .patient-clinical-header__clinical {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: var(--space-xs);
-      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .patient-clinical-header__documents {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-xs);
+
+      @include bp.bp-up('md') {
+        flex-wrap: nowrap;
+        flex-shrink: 0;
+        justify-content: flex-end;
+      }
     }
 
     .chip-alert {
@@ -183,6 +209,8 @@ import { ClinicalRecord, HistoryEntry } from '../../models/clinical-record.model
     .chip-medication {
       display: inline-flex;
       align-items: center;
+      max-width: 100%;
+      overflow-wrap: anywhere;
       padding: 0.15rem 0.5rem;
       border-radius: var(--radius-pill);
       font-size: var(--fs-xs);

@@ -31,8 +31,8 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="prescription-editor" [formGroup]="header">
-      <h2 id="prescription-editor-title" class="prescription-editor__title">
+    <div class="prescription-editor sheet-form" [formGroup]="header">
+      <h2 id="prescription-editor-title" class="sheet-form__title">
         {{ prescription() ? 'Editar receta' : 'Nueva receta' }}
       </h2>
 
@@ -44,8 +44,8 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
         </select>
       </bd-field>
 
-      <section class="prescription-editor__block" aria-label="Medicamentos de la receta">
-        <h3 class="prescription-editor__subtitle">Medicamentos</h3>
+      <section class="sheet-form__section" aria-label="Medicamentos de la receta">
+        <h3 class="sheet-form__subtitle">Medicamentos</h3>
         <bd-prescription-item-form
           [medications]="medications()"
           [isSearching]="isSearching()"
@@ -63,7 +63,7 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
         />
       </section>
 
-      <section class="prescription-editor__block" aria-label="Indicaciones generales">
+      <section class="sheet-form__section" aria-label="Indicaciones generales">
         <bd-field label="Indicaciones generales" fieldId="prescription-general" hint="Opcional. Una línea por indicación">
           <textarea id="prescription-general" class="prescription-editor__textarea" rows="3" formControlName="generalInstructions"></textarea>
         </bd-field>
@@ -80,7 +80,7 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
         <bd-alert variant="error" [message]="error" />
       }
 
-      <footer class="prescription-editor__footer">
+      <footer class="sheet-form__footer">
         <button type="button" class="btn btn-outline prescription-editor__btn" (click)="close.emit()">Cancelar</button>
         <button type="button" class="btn btn-outline prescription-editor__btn" [disabled]="!canSave()" (click)="onSave()">
           {{ saving() ? 'Guardando…' : 'Guardar borrador' }}
@@ -92,35 +92,6 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
     </div>
   `,
   styles: `
-    .prescription-editor {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-md);
-      padding: var(--space-xl) var(--space-xl) var(--space-lg);
-    }
-
-    .prescription-editor__title {
-      font-family: var(--font-heading);
-      font-size: var(--fs-lg);
-      font-weight: 600;
-      color: var(--blue-950);
-      margin: 0;
-      padding-right: 2.5rem; /* Espacio para el botón cerrar de la hoja */
-    }
-
-    .prescription-editor__subtitle {
-      font-size: var(--fs-sm);
-      font-weight: 600;
-      color: var(--color-text-muted);
-      margin: 0 0 var(--space-xs);
-    }
-
-    .prescription-editor__block {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-    }
-
     .prescription-editor__select,
     .prescription-editor__textarea {
       width: 100%;
@@ -161,15 +132,6 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
     .prescription-editor__shortcut:focus-visible {
       outline: 2px solid var(--color-focus);
       outline-offset: 1px;
-    }
-
-    .prescription-editor__footer {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: var(--space-sm);
-      padding-top: var(--space-sm);
-      border-top: 1px solid var(--color-border);
     }
 
     .prescription-editor__btn {

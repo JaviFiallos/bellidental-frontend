@@ -4,7 +4,13 @@ import { Subject, switchMap, tap, catchError, EMPTY, finalize, forkJoin } from '
 import { ApiError } from '../../../core/api/api.models';
 import { ClinicClock } from '../../../core/services/clinic-clock.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { closePdfWindow, openBlankPdfWindow, showPdfInWindow } from '../../../shared/utils/pdf-window';
+import {
+  closePdfWindow,
+  DocumentLink,
+  isLinkExpired,
+  openBlankPdfWindow,
+  showPdfUrlInWindow,
+} from '../../../shared/utils/pdf-window';
 import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../models/billing.models';
 import { BillingApi } from './billing.api';
 
@@ -34,8 +40,8 @@ export class PatientAccountStore {
   readonly voiding = signal<boolean>(false);
   /** Error de imprimir o anular, mostrado en la franja "Abono registrado". */
   readonly actionError = signal<string | null>(null);
-  /** Comprobante descargado cuando la pestaña fue bloqueada; se abre con "Abrir PDF" en otro clic. */
-  readonly pendingReceipt = signal<{ paymentId: string; pdf: Blob } | null>(null);
+  /** Enlace al comprobante cuando la pestaña fue bloqueada; se abre con "Abrir PDF" (un enlace) en otro clic. */
+  readonly pendingReceipt = signal<{ paymentId: string; link: DocumentLink } | null>(null);
 
   /** Atención de hoy (la última si hay varias); null si no hay ninguna. */
   readonly defaultEncounterId = computed<string | null>(() => {
@@ -139,8 +145,8 @@ export class PatientAccountStore {
   }
 
   /**
-   * Pide el comprobante. La pestaña se abre antes de la petición, en el clic del usuario (mismo patrón que las
-   * recetas): si el navegador la bloquea, el PDF queda pendiente hasta "Abrir PDF".
+   * Pide el enlace al comprobante. La pestaña se abre antes de la petición, en el clic del usuario (mismo patrón
+   * que las recetas): si el navegador la bloquea, el enlace queda pendiente hasta "Abrir PDF".
    */
   printReceipt(paymentId?: string): void {
     const id = paymentId ?? this.lastPayment()?.id;
@@ -151,18 +157,18 @@ export class PatientAccountStore {
     this.actionError.set(null);
 
     this.api
-      .receipt(id)
+      .receiptLink(id)
       .pipe(
         finalize(() => this.printing.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (pdf) => {
+        next: (link) => {
           if (target) {
-            showPdfInWindow(target, pdf);
+            showPdfUrlInWindow(target, link.url);
             this.pendingReceipt.set(null);
           } else {
-            this.pendingReceipt.set({ paymentId: id, pdf });
+            this.pendingReceipt.set({ paymentId: id, link });
           }
         },
         error: (err: ApiError) => {
@@ -172,18 +178,28 @@ export class PatientAccountStore {
       });
   }
 
-  /** "Abrir PDF" tras un bloqueo: la pestaña se abre desde el clic del usuario. */
-  openPendingReceipt(): void {
+  /**
+   * "Abrir PDF" tras un bloqueo: es un enlace, así que el navegador lo abre en el clic. Si el enlace ya venció,
+   * se cancela el clic, se pide uno nuevo y se avisa para volver a pulsar.
+   */
+  openPendingReceipt(event: Event): void {
     const pending = this.pendingReceipt();
-    if (!pending) return;
+    if (!pending || !isLinkExpired(pending.link)) return;
 
-    const target = openBlankPdfWindow();
-    if (!target) {
-      this.actionError.set('El navegador bloqueó la pestaña del PDF. Permite las ventanas emergentes e inténtalo de nuevo.');
-      return;
-    }
-    showPdfInWindow(target, pending.pdf);
-    this.pendingReceipt.set(null);
+    event.preventDefault();
+    this.actionError.set(null);
+    this.api
+      .receiptLink(pending.paymentId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (link) => {
+          this.pendingReceipt.set({ paymentId: pending.paymentId, link });
+          this.actionError.set('El enlace venció; vuelve a pulsar Abrir PDF.');
+        },
+        error: (err: ApiError) => {
+          this.actionError.set(err.message);
+        },
+      });
   }
 
   /** Anula un abono con motivo. Luego vuelve a pedir la cuenta y abonos: el saldo sube de nuevo. */

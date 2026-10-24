@@ -33,15 +33,16 @@ import { Payment } from '../../models/billing.models';
       </div>
 
       <div class="last-payment__actions">
-        @if (hasPendingReceipt()) {
-          <button
-            type="button"
+        @if (pendingReceiptUrl(); as url) {
+          <a
             class="btn btn-primary last-payment__button"
-            [disabled]="voiding()"
-            (click)="openPending.emit()"
+            [href]="url"
+            target="_blank"
+            rel="noopener"
+            (click)="openPending.emit($event)"
           >
             Abrir PDF
-          </button>
+          </a>
         } @else {
           <button
             type="button"
@@ -158,11 +159,12 @@ export class LastPaymentComponent {
   readonly canVoid = input<boolean>(false);
   readonly printing = input<boolean>(false);
   readonly voiding = input<boolean>(false);
-  readonly hasPendingReceipt = input<boolean>(false);
+  /** Enlace del comprobante pendiente (pestaña bloqueada): se muestra como "Abrir PDF". */
+  readonly pendingReceiptUrl = input<string | null>(null);
   readonly errorMessage = input<string | null>(null);
 
   readonly print = output<void>();
-  readonly openPending = output<void>();
+  readonly openPending = output<MouseEvent>();
   readonly voidPayment = output<Payment>();
 
   readonly printerIcon = Printer;

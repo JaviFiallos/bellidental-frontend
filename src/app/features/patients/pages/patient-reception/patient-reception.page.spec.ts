@@ -245,16 +245,10 @@ describe('PatientReceptionPage', () => {
     harness.detectChanges();
   }
 
-  /** Sustituye solo las APIs del navegador que usa la pestaña del PDF. */
+  /** jsdom no tiene la pestaña del PDF: se sustituye solo `window.open`. */
   function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
     const pdfWindow = { location: { href: '' }, close: vi.fn() };
     vi.spyOn(window, 'open').mockReturnValue(pdfWindow as unknown as Window);
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      writable: true,
-      value: vi.fn(() => 'blob:rx-1'),
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
     return { pdfWindow };
   }
 
@@ -434,7 +428,7 @@ describe('PatientReceptionPage', () => {
     expect(findButton('Guardar abono')).toBeDefined();
   });
 
-  it('Imprimir comprobante del abono → GET /payments/{id}/receipt → la pestaña recibe el PDF', async () => {
+  it('Imprimir comprobante del abono → POST /payments/{id}/receipt-link → la pestaña recibe el enlace', async () => {
     const { pdfWindow } = stubPdfBrowserApis();
     await openAs(secretaria);
     flushInitialLoad();
@@ -447,12 +441,16 @@ describe('PatientReceptionPage', () => {
     findButton('Imprimir comprobante')!.click();
     harness.detectChanges();
 
-    const receiptRequest = httpMock.expectOne('/api/v1/payments/pay-1/receipt');
-    expect(receiptRequest.request.method).toBe('GET');
-    receiptRequest.flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    const receiptRequest = httpMock.expectOne('/api/v1/payments/pay-1/receipt-link');
+    expect(receiptRequest.request.method).toBe('POST');
+    receiptRequest.flush({
+      success: true,
+      message: 'Enlace generado',
+      data: { url: '/api/v1/payments/pay-1/comprobante.pdf?t=abc', expiresAt: '2026-10-19T10:47:00-05:00' },
+    });
     harness.detectChanges();
 
-    expect(pdfWindow.location.href).toBe('blob:rx-1');
+    expect(pdfWindow.location.href).toBe('/api/v1/payments/pay-1/comprobante.pdf?t=abc');
   });
 
   it('Anular el abono con motivo → POST /payments/{id}/void → Anulado y cuenta recargada', async () => {

@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
   inject,
   OnInit,
   signal,
@@ -34,6 +33,7 @@ import {
   FindingOption,
   PerformedTreatment,
   RecordTreatmentRequest,
+  TreatmentEditorComponent,
   TreatmentsSectionComponent,
   TreatmentsStore,
 } from '../../../treatments';
@@ -59,6 +59,9 @@ import { Diagnosis, DiagnosisCertainty } from '../../models/encounter.models';
 import { EncounterStore } from '../../services/encounter.store';
 import { HistoryPanelStore } from '../../services/history-panel.store';
 
+/** Paneles laterales de la atención: solo uno abierto a la vez. */
+type EncounterSheet = 'history' | 'prescription' | 'treatment';
+
 @Component({
   selector: 'bd-encounter-page',
   standalone: true,
@@ -71,6 +74,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     EncounterNotesComponent,
     DiagnosisListComponent,
     TreatmentsSectionComponent,
+    TreatmentEditorComponent,
     PrescriptionsSectionComponent,
     PrescriptionEditorComponent,
     EncounterExtraComponent,
@@ -166,7 +170,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             [patient]="store.patient()!"
             [clinicalRecord]="store.clinicalRecord()"
             [canViewChanges]="isDirector()"
-            (openHistory)="historyStore.open()"
+            (openHistory)="onOpenHistory()"
             (viewChanges)="onOpenChangesHistory()"
           />
 
@@ -233,11 +237,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           />
 
           <!-- 4b. Tratamientos: catálogo, registro, total y anulación -->
-          <div #treatmentsBlock>
           <bd-treatments-section
-            [diagnoses]="diagnosisOptions()"
-            [pendingFindings]="pendingFindingOptions()"
-            [selectedFindingId]="treatmentsStore.selectedFindingId()"
             [isReadOnly]="store.isReadOnly()"
             [items]="treatmentsStore.items()"
             [isLoading]="treatmentsStore.loading()"
@@ -245,24 +245,10 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             [sessionTotal]="treatmentsStore.sessionTotal()"
             [actionError]="treatmentsStore.actionError()"
             [voiding]="treatmentsStore.voiding()"
-            [query]="treatmentsStore.query()"
-            [results]="treatmentsStore.results()"
-            [catalogLoading]="treatmentsStore.catalogLoading()"
-            [catalogError]="treatmentsStore.catalogError()"
-            [selectedTreatment]="treatmentsStore.selectedTreatment()"
-            [selectedTooth]="treatmentsStore.selectedTooth()"
-            [saving]="treatmentsStore.saving()"
-            [saveError]="treatmentsStore.saveError()"
-            (catalogRequest)="treatmentsStore.ensureCatalog()"
-            (queryChange)="treatmentsStore.setQuery($event)"
-            (pick)="treatmentsStore.pickTreatment($event)"
-            (cancel)="treatmentsStore.clearSelection()"
-            (findingChange)="treatmentsStore.selectFinding($event)"
-            (register)="onRegisterTreatment($event)"
+            (openEditor)="onOpenTreatmentEditor()"
             (voidRequest)="onVoidTreatment($event)"
             (retryLoad)="treatmentsStore.reload()"
           />
-          </div>
 
           <!-- 4c. Receta: lista de la atención y borrador en el editor lateral -->
           <bd-prescriptions-section
@@ -275,11 +261,12 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             [actionError]="prescriptionsStore.actionError()"
             [busyPrescriptionId]="prescriptionsStore.busyPrescriptionId()"
             [pendingPdfId]="prescriptionsStore.pendingPdf()?.prescriptionId ?? null"
-            (newPrescription)="prescriptionsStore.openNew()"
-            (editPrescription)="prescriptionsStore.openEdit($event)"
+            [pendingPdfUrl]="prescriptionsStore.pendingPdf()?.link.url ?? null"
+            (newPrescription)="closeOtherSheets('prescription'); prescriptionsStore.openNew()"
+            (editPrescription)="closeOtherSheets('prescription'); prescriptionsStore.openEdit($event)"
             (emitPrescription)="onEmitPrescription($event)"
             (printPrescription)="onPrintPrescription($event)"
-            (openPendingPdf)="prescriptionsStore.openPendingPdf()"
+            (openPendingPdf)="prescriptionsStore.openPendingPdf($event)"
             (voidPrescription)="onVoidPrescription($event)"
             (redoPrescription)="onRedoPrescription($event)"
             (retryLoad)="prescriptionsStore.reload()"
@@ -345,11 +332,9 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           titleId="history-panel-title"
           (closed)="historyStore.close()"
         >
-          @if (historyStore.generalError()) {
-            <bd-alert variant="error" [message]="historyStore.generalError()" />
-          }
           <bd-history-panel
             [patientName]="store.patient()?.fullName || ''"
+            [generalError]="historyStore.generalError()"
             [conditions]="historyStore.conditions()"
             [conditionsLoading]="historyStore.conditionsLoading()"
             [conditionsError]="historyStore.conditionsError()"
@@ -398,6 +383,37 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
               (save)="onSavePrescription($event)"
               (saveAndEmit)="onSaveAndEmitPrescription($event)"
               (close)="prescriptionsStore.closeEditor()"
+            />
+          }
+        </bd-side-sheet>
+
+        <!-- 9. Registro de tratamiento en panel lateral (pantalla completa bajo md) -->
+        <bd-side-sheet
+          [isOpen]="treatmentsStore.editorOpen()"
+          [fullscreenBelowMd]="true"
+          titleId="treatment-editor-title"
+          (closed)="treatmentsStore.closeEditor()"
+        >
+          @if (treatmentsStore.editorOpen()) {
+            <bd-treatment-editor
+              [diagnoses]="diagnosisOptions()"
+              [pendingFindings]="pendingFindingOptions()"
+              [query]="treatmentsStore.query()"
+              [results]="treatmentsStore.results()"
+              [catalogLoading]="treatmentsStore.catalogLoading()"
+              [catalogError]="treatmentsStore.catalogError()"
+              [selectedTreatment]="treatmentsStore.selectedTreatment()"
+              [selectedTooth]="treatmentsStore.selectedTooth()"
+              [selectedFindingId]="treatmentsStore.selectedFindingId()"
+              [saving]="treatmentsStore.saving()"
+              [saveError]="treatmentsStore.saveError()"
+              (catalogRequest)="treatmentsStore.ensureCatalog()"
+              (queryChange)="treatmentsStore.setQuery($event)"
+              (pick)="treatmentsStore.pickTreatment($event)"
+              (cancel)="treatmentsStore.clearSelection()"
+              (close)="treatmentsStore.closeEditor()"
+              (findingChange)="treatmentsStore.selectFinding($event)"
+              (register)="onRegisterTreatment($event)"
             />
           }
         </bd-side-sheet>
@@ -561,7 +577,6 @@ export class EncounterPage implements OnInit {
   });
 
   readonly treatmentsSection = viewChild(TreatmentsSectionComponent);
-  readonly treatmentsBlock = viewChild<ElementRef<HTMLElement>>('treatmentsBlock');
 
   /** Hallazgos pendientes del paciente, en el formato que pide la sección de tratamientos. */
   readonly pendingFindingOptions = computed<FindingOption[]>(() => {
@@ -750,6 +765,42 @@ export class EncounterPage implements OnInit {
     });
   }
 
+  onOpenHistory(): void {
+    this.openSheet('history', () => this.historyStore.open());
+  }
+
+  onOpenTreatmentEditor(findingId: string | null = null): void {
+    this.openSheet('treatment', () => this.treatmentsStore.openEditor(findingId));
+  }
+
+  /** Abre un panel lateral cerrando los otros; si la receta está abierta, pide confirmar antes de descartarla. */
+  private openSheet(sheet: EncounterSheet, open: () => void): void {
+    if (sheet === 'prescription' || !this.prescriptionsStore.editorOpen()) {
+      this.closeOtherSheets(sheet);
+      open();
+      return;
+    }
+    this.confirmDialog
+      .open({
+        title: 'Descartar el borrador de la receta',
+        message: 'La receta abierta no se ha guardado. Si continúas, se pierden sus cambios.',
+        tone: 'danger',
+        confirmLabel: 'Descartar',
+      })
+      .subscribe((res) => {
+        if (!res.confirmed) return;
+        this.closeOtherSheets(sheet);
+        open();
+      });
+  }
+
+  /** Un solo panel lateral abierto: abrir uno cierra los otros dos. */
+  closeOtherSheets(sheet: EncounterSheet): void {
+    if (sheet !== 'history') this.historyStore.close();
+    if (sheet !== 'prescription') this.prescriptionsStore.closeEditor();
+    if (sheet !== 'treatment') this.treatmentsStore.closeEditor();
+  }
+
   onRegisterTreatment(request: RecordTreatmentRequest): void {
     const linksPendingFinding =
       !!request.dentalFindingId &&
@@ -762,27 +813,15 @@ export class EncounterPage implements OnInit {
         if (linksPendingFinding) {
           this.odontogramStore.reload();
         }
-        this.treatmentsSection()?.focusSearch();
+        this.treatmentsSection()?.focusOpenButton();
       },
       error: () => {},
     });
   }
 
-  /** "Tratar" en el panel de la pieza: preselecciona el hallazgo, lleva a Tratamientos y enfoca el buscador. */
+  /** "Tratar" en el panel de la pieza: abre el registro con el hallazgo preseleccionado. */
   onTreatFinding(finding: Finding): void {
-    this.treatmentsStore.selectFinding(finding.id);
-
-    // Diferido: el panel de la pieza se cierra en el siguiente ciclo y cambia la altura de la página.
-    setTimeout(() => {
-      const block = this.treatmentsBlock()?.nativeElement;
-      const reduceMotion =
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (block && typeof block.scrollIntoView === 'function') {
-        block.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-      }
-      this.treatmentsSection()?.focusSearch();
-    });
+    this.onOpenTreatmentEditor(finding.id);
   }
 
   onVoidTreatment(item: PerformedTreatment): void {
@@ -861,7 +900,10 @@ export class EncounterPage implements OnInit {
       .subscribe((res) => {
         if (!res.confirmed) return;
         this.prescriptionsStore.voidAndRedo(prescription).subscribe({
-          next: () => this.notificationService.success('Receta anulada'),
+          next: () => {
+            this.closeOtherSheets('prescription');
+            this.notificationService.success('Receta anulada');
+          },
           error: () => {},
         });
       });
