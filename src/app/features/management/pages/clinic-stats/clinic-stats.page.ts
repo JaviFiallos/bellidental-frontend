@@ -24,14 +24,14 @@ import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats
 import { BarListComponent } from '../../components/bar-list/bar-list.component';
 import { DailyActivityChartComponent } from '../../components/daily-activity-chart/daily-activity-chart.component';
 import { ProfessionalStatsTableComponent } from '../../components/professional-stats-table/professional-stats-table.component';
-import { TopDiagnosesTableComponent } from '../../components/top-diagnoses-table/top-diagnoses-table.component';
-import { TopTreatmentsTableComponent } from '../../components/top-treatments-table/top-treatments-table.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { groupDailyStats } from '../../domain/daily-series';
 import {
   appointmentStatusRows,
   channelRows,
   paymentMethodRows,
+  topDiagnosisRows,
+  topTreatmentRows,
 } from '../../domain/stats-labels';
 
 @Component({
@@ -46,8 +46,6 @@ import {
     SkeletonComponent,
     StatsKpisComponent,
     StatsPeriodBarComponent,
-    TopDiagnosesTableComponent,
-    TopTreatmentsTableComponent,
   ],
   providers: [ClinicStatsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -102,12 +100,20 @@ import {
 
             <section class="card clinic-stats__panel" aria-labelledby="stats-treatment-title">
               <h2 id="stats-treatment-title" class="clinic-stats__panel-title">Top 3 tratamientos</h2>
-              <bd-top-treatments-table [rows]="stats.topTreatments" />
+              <bd-bar-list
+                [rows]="topTreatmentRowsView()"
+                ariaLabel="Top 3 tratamientos"
+                emptyText="Sin tratamientos en el período"
+              />
             </section>
 
             <section class="card clinic-stats__panel" aria-labelledby="stats-diagnoses-title">
               <h2 id="stats-diagnoses-title" class="clinic-stats__panel-title">Top 3 diagnósticos</h2>
-              <bd-top-diagnoses-table [rows]="stats.topDiagnoses ?? []" />
+              <bd-bar-list
+                [rows]="topDiagnosisRowsView()"
+                ariaLabel="Top 3 diagnósticos"
+                emptyText="Sin diagnósticos en el período"
+              />
             </section>
           } @else {
             <section class="card clinic-stats__panel clinic-stats__panel--full" aria-busy="true">
@@ -194,6 +200,14 @@ export class ClinicStatsPage {
     paymentMethodRows(this.store.summary()?.billing.byMethod ?? {}, (value) =>
       this.moneyPipe.transform(value)
     )
+  );
+  readonly topTreatmentRowsView = computed(() =>
+    topTreatmentRows(this.store.summary()?.topTreatments ?? [], (value) =>
+      this.moneyPipe.transform(value)
+    )
+  );
+  readonly topDiagnosisRowsView = computed(() =>
+    topDiagnosisRows(this.store.summary()?.topDiagnoses ?? [])
   );
 
   /** Período leído de la URL (`?periodo=&fecha=&desde=&hasta=`), para que "Atrás" lo conserve. */

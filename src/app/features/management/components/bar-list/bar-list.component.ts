@@ -8,6 +8,8 @@ export interface BarRow {
   value: number;
   valueText: string;
   tone?: BarTone;
+  rank?: number;
+  detail?: string;
 }
 
 /** Lista de barras horizontales en CSS. La cifra siempre va visible junto a la etiqueta. */
@@ -21,7 +23,17 @@ export interface BarRow {
         @for (row of rows(); track row.key) {
           <li class="bar-list__item">
             <div class="bar-list__header">
-              <span class="bar-list__label">{{ row.label }}</span>
+              <span class="bar-list__name">
+                @if (row.rank !== undefined) {
+                  <span class="bar-list__rank" aria-hidden="true">{{ row.rank }}</span>
+                }
+                <span class="bar-list__text">
+                  <span class="bar-list__label">{{ row.label }}</span>
+                  @if (row.detail) {
+                    <span class="bar-list__detail">{{ row.detail }}</span>
+                  }
+                </span>
+              </span>
               <span class="bar-list__value">{{ row.valueText }}</span>
             </div>
             <div class="bar-list__track">
@@ -58,10 +70,43 @@ export interface BarRow {
       font-size: var(--fs-sm);
     }
 
+    .bar-list__name {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-sm);
+      min-width: 0;
+    }
+
+    .bar-list__rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--blue-950);
+      background-color: var(--blue-50);
+    }
+
+    .bar-list__text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
     .bar-list__label {
       color: var(--slate-600);
       overflow-wrap: anywhere;
       min-width: 0;
+    }
+
+    .bar-list__detail {
+      font-size: var(--fs-xs);
+      color: var(--color-text-muted);
+      overflow-wrap: anywhere;
     }
 
     .bar-list__value {

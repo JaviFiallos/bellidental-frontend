@@ -1,6 +1,11 @@
 import { PAYMENT_METHOD_LABELS, PaymentMethod } from '../../billing';
 import type { BarRow } from '../components/bar-list/bar-list.component';
-import { AppointmentStatusKey, ChannelKey } from '../models/dashboard.models';
+import {
+  AppointmentStatusKey,
+  ChannelKey,
+  TopDiagnosis,
+  TopTreatment,
+} from '../models/dashboard.models';
 
 const APPOINTMENT_STATUS_ROWS: { key: AppointmentStatusKey; label: string; tone: BarRow['tone'] }[] = [
   { key: 'PENDING', label: 'Agendadas', tone: 'scheduled' },
@@ -45,4 +50,33 @@ export function paymentMethodRows(
     const value = byMethod[method] ?? 0;
     return { key: method, label: PAYMENT_METHOD_LABELS[method], value, valueText: formatMoney(value) };
   });
+}
+
+function countWithUnit(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+export function topTreatmentRows(
+  rows: TopTreatment[],
+  formatMoney: (value: number) => string
+): BarRow[] {
+  return rows.map((treatment, index) => ({
+    key: treatment.code,
+    label: treatment.name,
+    value: treatment.quantity,
+    valueText: countWithUnit(treatment.quantity, 'vez', 'veces'),
+    detail: `${treatment.code} · ${formatMoney(treatment.amount)}`,
+    rank: index + 1,
+  }));
+}
+
+export function topDiagnosisRows(rows: TopDiagnosis[]): BarRow[] {
+  return rows.map((diagnosis, index) => ({
+    key: diagnosis.code,
+    label: diagnosis.description,
+    value: diagnosis.occurrences,
+    valueText: countWithUnit(diagnosis.occurrences, 'vez', 'veces'),
+    detail: `${diagnosis.code} · ${countWithUnit(diagnosis.patients, 'paciente', 'pacientes')}`,
+    rank: index + 1,
+  }));
 }
