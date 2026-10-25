@@ -27,7 +27,12 @@ import {
   mockPatientOdontogramEmpty,
   mockPatientOdontogramWithFindings,
   mockPerformedResina,
+  mockDiagnosisZ464,
+  mockDiagnosisZ464ApiResponse,
+  mockIcd10Z464ApiResponse,
+  mockPerformedControlOrtodoncia,
   mockTreatmentCatalogApiResponse,
+  mockTreatmentCatalogWithControlApiResponse,
   mockTreatmentResina,
 } from '../../testing/fixtures';
 import { Finding, PatientOdontogram } from '../../../odontogram';
@@ -232,6 +237,120 @@ describe('EncounterPage', () => {
     const completeBtn = fixture.nativeElement.querySelector('.complete-bar__btn') as HTMLButtonElement;
     expect(completeBtn).toBeTruthy();
     expect(completeBtn.disabled).toBe(false);
+  });
+
+  it('clic en Control de ortodoncia → PUT con motivo, POST Z46.4 y POST D8670 a $0 → se ven Z46.4 y el control en la lista', async () => {
+    vi.useFakeTimers();
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    // Atención sin motivo ni diagnósticos
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, chiefComplaint: null },
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+
+    // Clic en «Control de ortodoncia»
+    const controlButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.diagnosis-list button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.includes('Control de ortodoncia')) as HTMLButtonElement;
+    controlButton.click();
+    fixture.detectChanges();
+
+    // PUT con el motivo (sale sin esperar el debounce)
+    const updateReq = httpMock.expectOne(
+      (req) => req.method === 'PUT' && req.url === '/api/v1/encounters/enc-1'
+    );
+    expect(updateReq.request.body.chiefComplaint).toBe('Control de ortodoncia (cambio de ligas)');
+    updateReq.flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, chiefComplaint: 'Control de ortodoncia (cambio de ligas)' },
+    });
+
+    // GET /api/v1/icd10?query=Z46.4 → POST diagnóstico con certeza definitiva
+    const icdReq = httpMock.expectOne(
+      (req) => req.url === '/api/v1/icd10' && req.params.get('query') === 'Z46.4'
+    );
+    icdReq.flush(mockIcd10Z464ApiResponse);
+
+    const addReq = httpMock.expectOne('/api/v1/encounters/enc-1/diagnoses');
+    expect(addReq.request.method).toBe('POST');
+    expect(addReq.request.body).toEqual({ icd10Id: 205, certainty: 'DEFINITIVE' });
+    addReq.flush(mockDiagnosisZ464ApiResponse);
+    fixture.detectChanges();
+
+    // GET /api/v1/treatments → POST tratamiento D8670 a $0 ligado al Z46.4
+    const catalogReq = httpMock.expectOne('/api/v1/treatments');
+    expect(catalogReq.request.method).toBe('GET');
+    catalogReq.flush(mockTreatmentCatalogWithControlApiResponse);
+    fixture.detectChanges();
+
+    const recordReq = httpMock.expectOne('/api/v1/encounters/enc-1/treatments');
+    expect(recordReq.request.method).toBe('POST');
+    expect(recordReq.request.body).toEqual({
+      treatmentId: 3,
+      quantity: 1,
+      price: 0,
+      encounterDiagnosisId: 'diag-2',
+    });
+    recordReq.flush({
+      success: true,
+      message: 'Tratamiento registrado',
+      data: mockPerformedControlOrtodoncia,
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Z46.4');
+    expect(compiled.textContent).toContain('D8670');
+    expect(compiled.textContent).toContain('$ 0,00');
+  });
+
+  it('sin D8670 en el catálogo → mensaje "Falta el tratamiento…" y no hay POST de tratamiento', async () => {
+    vi.useFakeTimers();
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    // Atención con motivo y Z46.4 ya registrado: solo falta el tratamiento
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, diagnoses: [mockDiagnosisZ464] },
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+
+    const controlButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.diagnosis-list button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.includes('Control de ortodoncia')) as HTMLButtonElement;
+    controlButton.click();
+    fixture.detectChanges();
+
+    // El catálogo no trae D8670 (solo Resina y Profilaxis)
+    httpMock.expectOne('/api/v1/treatments').flush(mockTreatmentCatalogApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(httpMock.match((req) => req.method === 'POST' && req.url === '/api/v1/encounters/enc-1/treatments')).toHaveLength(0);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Falta el tratamiento "Control de ortodoncia" (D8670)');
   });
 
   it('completa la atención → POST y navega a /consultorio', async () => {

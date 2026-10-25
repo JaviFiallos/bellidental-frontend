@@ -1064,6 +1064,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | G-14 | Los PDF (receta, comprobante) solo salen con Bearer: el frontend los abre como `blob:`, que falla en móviles y tablets | 013c | Enlace temporal firmado `POST …/pdf-link`, `…/receipt-link` + GET público con token (5 min) | backend 026 |
 | G-15 | `POST /appointments/walk-in` no acepta hora: siempre el primer hueco con la duración de la especialidad | 004d | `startAt`/`endAt` opcionales (hoy, desde el bloque actual, 15–240 min) | backend 027 |
 | G-16 | No hay lista de pacientes con última atención ni saldo (`GET /patients` solo busca por texto) | 005c | `GET /patients/list` con vista, período, saldo y paginación en una consulta | backend 029 |
+| G-17 | Los cambios de ligas (la mayoría de atenciones) no se pueden completar: no hay CIE-10 de control ortodóntico ni tratamientos de ortodoncia | 026 | V22: Z46.4, especialidad Ortodoncia (15 min), D8080 (monto total) y D8670 (control $0); D-32 | backend 030 |
 | G-8 | Ningún endpoint de `ScheduleController` usa `ApiResponse` (GET y POST `/professionals/{id}/schedules`, `…/effective`, `PUT /schedules/{id}`, `POST /schedules/{id}/deactivate`) | Agenda (003a), horarios (006) | Envolver en `ApiResponse` como el resto (decisión del usuario: corregir el backend) | **Resuelto**: backend 006c (`ScheduleApiIT`) |
 | G-9 | `ClinicalRecordController` no usa `ApiResponse` (clinical-record, PUT, conditions, history-entries, void); `currentMedication` vacía no se puede borrar | Cabecera clínica (008a: recibe `undefined` contra el backend real) y antecedentes (008b) | Envolver en `ApiResponse` y que `currentMedication` vacía pase a `null` | **Resuelto** (backend 005b `6fd4ab5`) |
 
@@ -1138,6 +1139,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 023c | Usuarios: roles, restablecer contraseña y acceso de profesionales | 023a | Commit `08b4969` (ejecutó Haiku) |
 | 024 | Catálogo de tratamientos y especialidades del director | 023a (`management`) · backend 021 `2cf12d1` | Aprobada (ejecutó Haiku) |
 | 025 | Cobrar desde la atención y desde la cita (diálogo de cobro de `billing`) | 015c · backend 022 | Aprobada (2026-10-22) |
+| 026 | Atención: botón «Control de ortodoncia» (motivo + Z46.4 + D8670 a $0); ortodoncia = monto total D8080 + abonos libres | 008a · 012a · backend 030 | Aprobada (2026-10-25, ejecutó Haiku) |
 | 016c | Estadísticas: actividad por día, top 3 tratamientos y top 3 diagnósticos | 016b · backend 024 | Aprobada (2026-10-22) |
 | 017b | Auditoría: pantalla `/direccion/auditoria` y historial completo de la atención | 017 · backend 025 | Aprobada (2026-10-22) |
 | 023d | Cambiar mi contraseña: usar el 400 del backend | 023b · backend 023 | Aprobada (2026-10-22) |

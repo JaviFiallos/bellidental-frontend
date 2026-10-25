@@ -60,6 +60,7 @@ import {
 import { Diagnosis, DiagnosisCertainty } from '../../models/encounter.models';
 import { EncounterStore } from '../../services/encounter.store';
 import { HistoryPanelStore } from '../../services/history-panel.store';
+import { OrthodonticControlService } from '../../services/orthodontic-control.service';
 
 /** Paneles laterales de la atención: solo uno abierto a la vez. */
 type EncounterSheet = 'history' | 'prescription' | 'treatment';
@@ -87,7 +88,14 @@ type EncounterSheet = 'history' | 'prescription' | 'treatment';
     ClinicTimePipe,
     MoneyPipe,
   ],
-  providers: [EncounterStore, HistoryPanelStore, OdontogramStore, TreatmentsStore, PrescriptionsStore],
+  providers: [
+    EncounterStore,
+    HistoryPanelStore,
+    OdontogramStore,
+    TreatmentsStore,
+    PrescriptionsStore,
+    OrthodonticControlService,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="encounter-page">
@@ -236,6 +244,10 @@ type EncounterSheet = 'history' | 'prescription' | 'treatment';
             (queryChange)="store.searchIcd10($event)"
             (addDiagnosis)="onAddDiagnosis($event)"
             (voidDiagnosis)="onVoidDiagnosis($event)"
+            [showOrthodonticControl]="!store.isReadOnly()"
+            [orthodonticBusy]="orthodonticControl.working() || treatmentsStore.loading()"
+            [orthodonticError]="orthodonticControl.error()"
+            (orthodonticControl)="onOrthodonticControl()"
           />
 
           <!-- 4b. Tratamientos: catálogo, registro, total y anulación -->
@@ -561,6 +573,7 @@ export class EncounterPage implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private readonly auditHistory = inject(AuditHistoryDialogService);
   private readonly paymentDialog = inject(PaymentDialogService);
+  readonly orthodonticControl = inject(OrthodonticControlService);
 
   readonly isDirector = computed<boolean>(() => this.sessionStore.profile() === 'DIRECTOR');
   readonly chargeNotice = signal<{ total: number } | null>(null);
@@ -679,6 +692,16 @@ export class EncounterPage implements OnInit {
           });
         }
       });
+  }
+
+  onOrthodonticControl(): void {
+    this.orthodonticControl.apply().subscribe((outcome) => {
+      this.notificationService.success(
+        outcome === 'REGISTERED'
+          ? 'Control de ortodoncia registrado'
+          : 'El control de ortodoncia ya está registrado'
+      );
+    });
   }
 
   onComplete(): void {
