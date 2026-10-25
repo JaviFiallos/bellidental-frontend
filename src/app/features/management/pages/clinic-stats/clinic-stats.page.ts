@@ -17,10 +17,10 @@ import {
   parseStatsPeriod,
   shiftStatsAnchor,
   StatsPeriodKind,
-} from '../../domain/stats-period';
+} from '../../../../shared/utils/stats-period';
 import { ClinicStatsStore } from '../../services/clinic-stats.store';
 import { StatsKpisComponent } from '../../components/stats-kpis/stats-kpis.component';
-import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats-period-bar.component';
+import { StatsPeriodBarComponent } from '../../../../shared/components/stats-period-bar/stats-period-bar.component';
 import { BarListComponent } from '../../components/bar-list/bar-list.component';
 import { DailyActivityChartComponent } from '../../components/daily-activity-chart/daily-activity-chart.component';
 import { ProfessionalStatsTableComponent } from '../../components/professional-stats-table/professional-stats-table.component';
@@ -235,7 +235,8 @@ export class ClinicStatsPage {
 
   onKindChange(kind: StatsPeriodKind): void {
     if (kind === 'rango') {
-      this.navigateToRange(this.period().from, this.period().to);
+      const today = this.clinicClock.todayDateString();
+      this.navigateToRange(this.period().from ?? today, this.period().to ?? today);
       return;
     }
     this.navigateTo(kind, this.period().anchorDate);

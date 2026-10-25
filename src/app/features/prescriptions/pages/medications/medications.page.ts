@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { SessionStore } from '../../../../core/auth/session.store';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
@@ -39,13 +40,17 @@ import { MedicationCatalogStore } from '../../services/medication-catalog.store'
       class="medications-page"
       [class.medications-page--panel-open]="store.activePanel() !== null"
     >
-      <bd-page-header title="Medicamentos" [subtitle]="subtitle()">
-        <button type="button" class="btn btn-accent" (click)="store.openNewMedication()">
-          Nuevo medicamento
-        </button>
+      <bd-page-header title="Medicamentos" [subtitle]="unlinkedUser() ? null : subtitle()">
+        @if (!unlinkedUser()) {
+          <button type="button" class="btn btn-accent" (click)="store.openNewMedication()">
+            Nuevo medicamento
+          </button>
+        }
       </bd-page-header>
 
-      @if (store.loading()) {
+      @if (unlinkedUser()) {
+        <bd-empty-state title="Tu usuario no está registrado como profesional" />
+      } @else if (store.loading()) {
         <div class="medications-page__skeleton" aria-busy="true">
           <bd-skeleton height="2.5rem" width="100%" />
           <bd-skeleton height="2.5rem" width="100%" />
@@ -247,6 +252,10 @@ import { MedicationCatalogStore } from '../../services/medication-catalog.store'
 export class MedicationsPage {
   readonly store = inject(MedicationCatalogStore);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly sessionStore = inject(SessionStore);
+
+  /** Sin profesional vinculado no se administra el catálogo (mismo aviso que «Mis atenciones»). */
+  readonly unlinkedUser = computed(() => !this.sessionStore.currentUser()?.professionalId);
 
   readonly subtitle = computed(() => summarizeMedications(this.store.medications()));
 
@@ -267,7 +276,9 @@ export class MedicationsPage {
   });
 
   constructor() {
-    this.store.load();
+    if (!this.unlinkedUser()) {
+      this.store.load();
+    }
   }
 
   onSearchInput(event: Event): void {

@@ -86,6 +86,9 @@
     flex-direction: column;
     gap: 4px;
     overflow-y: auto;
+    // Barra fina y del tono del menú (la nativa clara rompe el degradado azul).
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--white) 25%, transparent) transparent;
   }
 
   &__link {

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
-import { formatPercent } from '../../domain/stats-period';
+import { formatPercent } from '../../domain/stats-labels';
 import { DashboardSummary } from '../../models/dashboard.models';
 
 @Component({

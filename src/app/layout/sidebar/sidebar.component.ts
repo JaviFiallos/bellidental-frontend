@@ -21,16 +21,11 @@ export class SidebarComponent {
   readonly mode = input<SidebarMode>('full');
 
   readonly logout = output<void>();
-  readonly searchRequested = output<void>();
 
   readonly logoutIcon: LucideIconData = LogOut;
   readonly accountIcon: LucideIconData = KeyRound;
 
   onLogout(): void {
     this.logout.emit();
-  }
-
-  onSearchClick(): void {
-    this.searchRequested.emit();
   }
 }

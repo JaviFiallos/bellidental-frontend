@@ -80,3 +80,14 @@ export function topDiagnosisRows(rows: TopDiagnosis[]): BarRow[] {
     rank: index + 1,
   }));
 }
+
+const percentFormatter = new Intl.NumberFormat('es-EC', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** Porcentaje con una decimal y coma, p. ej. "5,9 %". */
+export function formatPercent(value: number): string {
+  return `${percentFormatter.format(value)} %`;
+}
+

@@ -92,7 +92,7 @@ import { PatientsApi } from '../../services/patients.api';
           }
         </div>
 
-        @if (isSecretaria()) {
+        @if (isSecretaria() || isDirector()) {
           <bd-admin-notes
             [notes]="current.adminNotes"
             [canEdit]="canEdit()"
@@ -253,7 +253,7 @@ export class PatientReceptionPage implements OnInit {
   readonly shieldIcon = ShieldCheck;
   readonly isDirector = computed(() => this.sessionStore.profile() === 'DIRECTOR');
   readonly canEdit = computed(
-    () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')
+    () => (this.isSecretaria() || this.isDirector()) && this.sessionStore.hasPermission('PATIENT_UPDATE')
   );
   readonly canViewAccount = computed(
     () => this.sessionStore.hasPermission('BILLING_READ')

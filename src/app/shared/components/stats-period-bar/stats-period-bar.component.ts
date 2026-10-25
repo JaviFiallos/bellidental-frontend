@@ -1,21 +1,30 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   input,
   output,
   signal,
   untracked,
 } from '@angular/core';
-import { DateNavComponent } from '../../../../shared/components/date-nav/date-nav.component';
-import { FieldComponent } from '../../../../shared/components/field/field.component';
+import { DateNavComponent } from '../date-nav/date-nav.component';
+import { FieldComponent } from '../field/field.component';
 import {
   SegmentedComponent,
   SegmentedOption,
-} from '../../../../shared/components/segmented/segmented.component';
-import { StatsPeriod, StatsPeriodKind, validateStatsRange } from '../../domain/stats-period';
+} from '../segmented/segmented.component';
+import { StatsPeriod, StatsPeriodKind, validateStatsRange } from '../../utils/stats-period';
 
 const PERIOD_OPTIONS: SegmentedOption<StatsPeriodKind>[] = [
+  { value: 'dia', label: 'Día' },
+  { value: 'semana', label: 'Semana' },
+  { value: 'mes', label: 'Mes' },
+  { value: 'rango', label: 'Rango' },
+];
+
+const PERIOD_OPTIONS_WITH_ALL: SegmentedOption<StatsPeriodKind>[] = [
+  { value: 'todas', label: 'Todas' },
   { value: 'dia', label: 'Día' },
   { value: 'semana', label: 'Semana' },
   { value: 'mes', label: 'Mes' },
@@ -31,7 +40,7 @@ const PERIOD_OPTIONS: SegmentedOption<StatsPeriodKind>[] = [
     <div class="stats-period-bar">
       <bd-segmented
         label="Período"
-        [options]="periodOptions"
+        [options]="periodOptions()"
         [value]="period().kind"
         (valueChange)="kindChange.emit($event)"
       />
@@ -63,7 +72,7 @@ const PERIOD_OPTIONS: SegmentedOption<StatsPeriodKind>[] = [
             <p class="stats-period-bar__error" role="alert">{{ message }}</p>
           }
         </form>
-      } @else {
+      } @else if (period().kind !== 'todas') {
         <bd-date-nav
           [date]="period().anchorDate"
           [label]="period().label"
@@ -77,7 +86,7 @@ const PERIOD_OPTIONS: SegmentedOption<StatsPeriodKind>[] = [
     </div>
   `,
   styles: `
-    @use '../../../../shared/styles/breakpoints' as bp;
+    @use '../../styles/breakpoints' as bp;
 
     .stats-period-bar {
       display: flex;
@@ -126,13 +135,16 @@ const PERIOD_OPTIONS: SegmentedOption<StatsPeriodKind>[] = [
 })
 export class StatsPeriodBarComponent {
   readonly period = input.required<StatsPeriod>();
+  readonly allowAll = input<boolean>(false);
 
   readonly kindChange = output<StatsPeriodKind>();
   readonly shift = output<-1 | 1>();
   readonly today = output<void>();
   readonly rangeApply = output<{ from: string; to: string }>();
 
-  readonly periodOptions = PERIOD_OPTIONS;
+  readonly periodOptions = computed(() =>
+    this.allowAll() ? PERIOD_OPTIONS_WITH_ALL : PERIOD_OPTIONS
+  );
 
   readonly fromDate = signal<string>('');
   readonly toDate = signal<string>('');
@@ -143,8 +155,8 @@ export class StatsPeriodBarComponent {
     effect(() => {
       const period = this.period();
       untracked(() => {
-        this.fromDate.set(period.from);
-        this.toDate.set(period.to);
+        this.fromDate.set(period.from ?? '');
+        this.toDate.set(period.to ?? '');
         this.rangeError.set(null);
       });
     });
@@ -160,3 +172,4 @@ export class StatsPeriodBarComponent {
     }
   }
 }
+

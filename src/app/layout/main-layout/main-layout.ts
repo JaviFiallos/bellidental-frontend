@@ -136,13 +136,6 @@ export class MainLayout implements OnInit {
     this.headerRef()?.focusSearch();
   }
 
-  onSearchRequested(): void {
-    if (this.isDrawerOpen()) {
-      this.closeDrawer();
-    }
-    this.focusSearch();
-  }
-
   onSearchQueryChange(text: string): void {
     this.patientSearchStore.setQuery(text);
   }

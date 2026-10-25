@@ -6,6 +6,8 @@ import { Page } from '../../../core/api/page';
 import {
   CreatePatientRequest,
   Patient,
+  PatientListFilters,
+  PatientListItem,
   UpdatePatientRequest,
 } from '../models/patient.models';
 
@@ -14,6 +16,29 @@ import {
 })
 export class PatientsApi {
   private readonly api = inject(ApiClient);
+
+  list(filters: PatientListFilters): Observable<Page<PatientListItem>> {
+    let params = new HttpParams();
+    if (filters.view) {
+      params = params.set('view', filters.view);
+    }
+    if (filters.from) {
+      params = params.set('from', filters.from);
+    }
+    if (filters.to) {
+      params = params.set('to', filters.to);
+    }
+    if (filters.withBalance) {
+      params = params.set('withBalance', 'true');
+    }
+    if (filters.query && filters.query.trim().length > 0) {
+      params = params.set('query', filters.query.trim());
+    }
+    params = params.set('page', (filters.page ?? 0).toString());
+    params = params.set('size', (filters.size ?? 20).toString());
+
+    return this.api.get<Page<PatientListItem>>('/api/v1/patients/list', { params });
+  }
 
   search(query: string, page = 0, size = 8): Observable<Page<Patient>> {
     const params = new HttpParams()

@@ -4,6 +4,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { SessionStore } from '../../../../core/auth/session.store';
 import { ToastHostComponent } from '../../../../shared/components/toast-host/toast-host.component';
 import { Medication } from '../../models/prescription.models';
 
@@ -113,6 +114,13 @@ describe('MedicationsPage', () => {
       ],
     });
     httpMock = TestBed.inject(HttpTestingController);
+    TestBed.inject(SessionStore).setCurrentUser({
+      userId: 'u-odo',
+      email: 'odontologa@bellidental.local',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_CREATE'],
+      professionalId: 'prof-odo',
+    });
   });
 
   afterEach(() => {

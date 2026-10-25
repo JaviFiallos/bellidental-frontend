@@ -10,38 +10,22 @@
   <ul class="sidebar__menu">
     @for (item of items(); track item.label) {
       <li class="sidebar__menu-item">
-        @if (item.isSearchAction) {
-          <button
-            type="button"
-            class="sidebar__link sidebar__link--btn"
-            (click)="onSearchClick()"
-            [attr.aria-label]="mode() === 'icons' ? item.label : null"
-          >
-            <bd-icon [name]="item.icon" [size]="20" class="sidebar__link-icon" />
-            @if (mode() !== 'icons') {
-              <span class="sidebar__link-label">{{ item.label }}</span>
-            } @else {
-              <span class="sidebar__tooltip" role="tooltip">{{ item.label }}</span>
-            }
-          </button>
-        } @else {
-          <a
-            [routerLink]="item.route"
-            routerLinkActive="is-active"
-            [routerLinkActiveOptions]="{ exact: !!item.exact }"
-            [attr.aria-current]="rla.isActive ? 'page' : null"
-            [attr.aria-label]="mode() === 'icons' ? item.label : null"
-            #rla="routerLinkActive"
-            class="sidebar__link"
-          >
-            <bd-icon [name]="item.icon" [size]="20" class="sidebar__link-icon" />
-            @if (mode() !== 'icons') {
-              <span class="sidebar__link-label">{{ item.label }}</span>
-            } @else {
-              <span class="sidebar__tooltip" role="tooltip">{{ item.label }}</span>
-            }
-          </a>
-        }
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{ exact: !!item.exact }"
+          [attr.aria-current]="rla.isActive ? 'page' : null"
+          [attr.aria-label]="mode() === 'icons' ? item.label : null"
+          #rla="routerLinkActive"
+          class="sidebar__link"
+        >
+          <bd-icon [name]="item.icon" [size]="20" class="sidebar__link-icon" />
+          @if (mode() !== 'icons') {
+            <span class="sidebar__link-label">{{ item.label }}</span>
+          } @else {
+            <span class="sidebar__tooltip" role="tooltip">{{ item.label }}</span>
+          }
+        </a>
       </li>
     }
   </ul>

@@ -5,16 +5,16 @@ import {
   isValidDateString,
   rangeLabel,
   shiftCalendarAnchor,
-} from '../../../shared/utils/calendar-period';
+} from './calendar-period';
 
-export type StatsPeriodKind = CalendarPeriodKind | 'rango';
+export type StatsPeriodKind = CalendarPeriodKind | 'rango' | 'todas';
 
 export interface StatsPeriod {
   kind: StatsPeriodKind;
-  /** Primer día del período (YYYY-MM-DD, inclusivo). */
-  from: string;
-  /** Último día del período (YYYY-MM-DD, inclusivo). */
-  to: string;
+  /** Primer día del período (YYYY-MM-DD, inclusivo) o null si es 'todas'. */
+  from: string | null;
+  /** Último día del período (YYYY-MM-DD, inclusivo) o null si es 'todas'. */
+  to: string | null;
   label: string;
   /** Fecha de ancla para ‹ › (en rango, el día inicial). */
   anchorDate: string;
@@ -24,11 +24,6 @@ export interface StatsPeriod {
 
 const MAX_RANGE_DAYS = 366;
 const MS_PER_DAY = 86_400_000;
-
-const percentFormatter = new Intl.NumberFormat('es-EC', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
 
 function inclusiveDays(from: string, to: string): number {
   const start = Date.parse(`${from}T00:00:00Z`);
@@ -69,9 +64,24 @@ export function parseStatsPeriod(
   fromParam: string | null,
   toParam: string | null,
   todayDate: string,
-  defaultKind: CalendarPeriodKind = 'mes'
+  defaultKind: StatsPeriodKind = 'mes',
+  allowAll = false
 ): StatsPeriod {
-  const defaultPeriod = buildCalendarPeriod(defaultKind, todayDate, todayDate);
+  if (allowAll && (kindParam === 'todas' || (!kindParam && defaultKind === 'todas'))) {
+    return {
+      kind: 'todas',
+      from: null,
+      to: null,
+      label: 'Todas las fechas',
+      anchorDate: isValidDateString(dateParam) ? dateParam : todayDate,
+      unit: 'día',
+      isToday: false,
+    };
+  }
+
+  const defaultCalendarKind: CalendarPeriodKind =
+    defaultKind === 'todas' || defaultKind === 'rango' ? 'mes' : defaultKind;
+  const defaultPeriod = buildCalendarPeriod(defaultCalendarKind, todayDate, todayDate);
 
   if (kindParam === 'rango') {
     const isValidRange =
@@ -91,13 +101,9 @@ export function parseStatsPeriod(
 /** Nueva fecha de ancla al mover ‹ o ›; en rango no se usa y se devuelve el ancla actual. */
 export function shiftStatsAnchor(period: StatsPeriod, direction: -1 | 1): string {
   const kind = period.kind;
-  if (kind === 'rango') {
+  if (kind === 'rango' || kind === 'todas') {
     return period.anchorDate;
   }
   return shiftCalendarAnchor({ kind, anchorDate: period.anchorDate }, direction);
 }
 
-/** Porcentaje con una decimal y coma, p. ej. "5,9 %". */
-export function formatPercent(value: number): string {
-  return `${percentFormatter.format(value)} %`;
-}

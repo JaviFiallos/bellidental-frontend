@@ -16,14 +16,14 @@ import {
   AuditFiltersComponent,
   AuditFiltersValues,
 } from '../../components/audit-filters/audit-filters.component';
-import { StatsPeriodBarComponent } from '../../components/stats-period-bar/stats-period-bar.component';
+import { StatsPeriodBarComponent } from '../../../../shared/components/stats-period-bar/stats-period-bar.component';
 import { AuditTimelineComponent } from '../../components/audit-timeline/audit-timeline.component';
 import { AUDIT_ENTITY_LABELS } from '../../domain/audit-display';
 import {
   parseStatsPeriod,
   shiftStatsAnchor,
   StatsPeriodKind,
-} from '../../domain/stats-period';
+} from '../../../../shared/utils/stats-period';
 import { AuditEntityName, AuditLogEntry } from '../../models/audit.models';
 import { AuditHistoryDialogService } from '../../services/audit-history-dialog.service';
 import { AuditLogStore } from '../../services/audit-log.store';
@@ -143,8 +143,8 @@ export class AuditLogPage implements OnInit {
 
       untracked(() => {
         this.store.load({
-          from: period.from,
-          to: period.to,
+          from: period.from ?? '',
+          to: period.to ?? '',
           entity: entity || undefined,
           userId: userId || undefined,
           patientId: patientId || undefined,
@@ -161,7 +161,8 @@ export class AuditLogPage implements OnInit {
 
   onKindChange(kind: StatsPeriodKind): void {
     if (kind === 'rango') {
-      this.navigateToRange(this.period().from, this.period().to);
+      const today = this.clock.todayDateString();
+      this.navigateToRange(this.period().from ?? today, this.period().to ?? today);
       return;
     }
     this.navigateTo(kind, this.period().anchorDate);

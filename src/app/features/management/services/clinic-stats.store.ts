@@ -5,7 +5,7 @@ import { catchError, switchMap, tap } from 'rxjs/operators';
 import { ApiError } from '../../../core/api/api.models';
 import { DashboardSummary } from '../models/dashboard.models';
 import { DashboardApi } from './dashboard.api';
-import { StatsPeriod } from '../domain/stats-period';
+import { StatsPeriod } from '../../../shared/utils/stats-period';
 
 @Injectable()
 export class ClinicStatsStore {
@@ -43,7 +43,7 @@ export class ClinicStatsStore {
     this.error.set(null);
     this.summary.set(null);
 
-    return this.dashboardApi.summary(period.from, period.to).pipe(
+    return this.dashboardApi.summary(period.from ?? '', period.to ?? '').pipe(
       tap({
         next: (summary) => {
           this.summary.set(summary);

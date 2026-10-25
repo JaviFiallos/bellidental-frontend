@@ -192,6 +192,7 @@ Así el director no ve la recepción aunque su rol ADMIN tenga esos permisos en 
 /direccion/estadisticas             DIRECTOR             Estadísticas de la clínica     P16       016a, 016b
 /direccion/usuarios                 DIRECTOR             Usuarios                       P20       023a, 023c
 /direccion/catalogo                 DIRECTOR             Catálogo de tratamientos y especialidades  P22  024
+/pacientes                          todos                Lista de pacientes (atendidos, registrados)        005c
 /direccion/profesionales            DIRECTOR             Profesionales (datos, especialidades, color)       023e
 /cuenta/contrasena                  todos (sin profileGuard) Cambiar mi contraseña       P21       023b
 ```
@@ -864,6 +865,35 @@ Ocho correcciones agrupadas por pantalla. Solo 013c y 004d necesitan backend (02
 - **Orden:** 016d → 017c → 008d → 012c → 023e (sin backend); backend 026 y 027 en paralelo; después 013c y 004d.
   **Tanda completa y aprobada el 2026-10-24** (sin commit): build OK, `Test Files 16 passed (16)` · `Tests 72 passed (72)`.
 
+### 5.23 Medicamentos y posologías administrables — tareas 013d y 013e (pedido del doctor, 2026-10-24) · backend 028 `f8cb1d8`
+- **Depende de:** 013a/013b. **Backend:** 028 (D-30) y semilla V19 `29f2bb9`.
+- **API:** `GET /medications/manage` · `POST /medications` · `PUT /medications/{id}` (409 si ya se usó en recetas) ·
+  `POST /medications/{id}/deactivate|activate` · `POST /medications/{id}/presets` · `PUT /medication-presets/{id}` ·
+  `POST /medication-presets/{id}/deactivate|activate` (todo `RECORD_CREATE`: ODONTOLOGO y DIRECTOR).
+- **013d — página:** `/consultorio/medicamentos`, menú «Medicamentos» (odontólogo y director). Lista con búsqueda e
+  inactivos; medicamento y posologías en un solo `bd-side-sheet`. Catálogo compartido, sin eliminar, posología en texto
+  libre. Formularios reutilizables `medication-form` y `medication-preset-form`.
+- **013e — desde la receta:** sin salir de la atención (los ítems viven en memoria hasta «Guardar borrador»):
+  «＋ Agregar «texto»» en el combobox sin resultados abre `medication-form` dentro del editor y deja el medicamento
+  seleccionado; «Guardar como plantilla» crea la posología con lo escrito en el ítem.
+- Tareas: `docs/tasks/013d-medicamentos-catalogo.md`, `docs/tasks/013e-receta-agregar-medicamento-y-plantilla.md`.
+
+### 5.24 Lista de pacientes — tarea 005c (pedido del usuario, 2026-10-24) · backend 029
+- **Ruta:** `/pacientes` (los tres perfiles); el ítem «Pacientes» del menú deja de abrir el buscador (el del header sigue).
+- **Vistas:** «Últimos atendidos» (por última atención) · «Últimos registrados» (por alta), paginadas de 20.
+- **Filtros:** período (`bd-stats-period-bar`, movido a `shared/`, con «Todas» opcional), texto y «Solo con saldo
+  pendiente» (con `BILLING_READ`).
+- **Columnas:** Nombres, Apellidos, Cédula, Edad, Última atención o Registrado, Saldo pendiente (`BILLING_READ`),
+  Formulario 033 (odontólogo y director), Ver más (→ `/pacientes/:id`).
+- **API:** `GET /patients/list?view=ATTENDED|CREATED&from&to&withBalance&query&page&size` → `Page<PatientListItem>`
+  (G-16).
+- **También (2026-10-24, sin tarea):**
+  - el director edita los datos personales y las observaciones del paciente (`canEdit` por
+    `PATIENT_UPDATE` en la ficha y ruta `pacientes/:id/editar` con `DIRECTOR`);
+  - nuevo orden del menú;
+  - barra de desplazamiento del sidebar con el tono del menú.
+- Tarea: `docs/tasks/005c-lista-de-pacientes.md`.
+
 ### 5.20 Usuarios del director y cambio de contraseña — tareas 023a, 023b y 023c (P20, P21) · backend 019 `7fc03c2`
 - **Requerimiento nuevo del usuario** (backend D-24, reemplaza D-13): el director (ADMIN) gestiona las cuentas.
   Contradecía el MVP-SCOPE ("sin UI de usuarios"); ya se actualizó.
@@ -998,6 +1028,7 @@ incisal (`SurfaceLabelResolver`).
 | `POST /encounters/{id}/treatments` | body `{ treatmentId, quantity?, price?, encounterDiagnosisId?, toothCode?, surfaceCode?, notes?, dentalFindingId? }` → `PerformedTreatment { id, encounterId, treatmentId, treatmentCode, treatmentName, encounterDiagnosisId, dentalFindingId, toothCode, surfaceCode, quantity, price, total, notes, createdAt }` |
 | `GET /encounters/{id}/treatments` · `POST /performed-treatments/{id}/void` `{ voidReason }` | `PerformedTreatment[]` (no anulados) · `message` |
 | `GET /medications?query` | `[{ id, name, presentation, concentration, route, presets[{ id, label, dose, frequency, duration, instructions }] }]` (máx. 20, `query` 1+) |
+| `GET /medications/manage` · `POST/PUT /medications` · `POST /medications/{id}/presets` · `PUT /medication-presets/{id}` | `Medication`/`MedicationPreset` con `active` al final; requests `{name, presentation, concentration, route?}` y `{label, dose, frequency, duration, instructions?}` (backend 028) |
 | `POST /encounters/{id}/prescriptions` · `PUT /prescriptions/{id}` | body `{ encounterDiagnosisId, generalInstructions?, items[{ medicationId, medicationPresetId?, dose?, frequency?, duration?, quantity?, instructions? }] }` → `Prescription { id, encounterId, encounterDiagnosisId, icd10Code, icd10Description, status DRAFT/ISSUED, prescribedAt, generalInstructions, voided, items[{ id, medicationId, medicationName, presentation, concentration, medicationPresetId, dose, frequency, duration, quantity, instructions }] }` |
 | `GET /encounters/{id}/prescriptions` · `GET /prescriptions/{id}` · `POST /prescriptions/{id}/issue` · `/void` | `Prescription[]` (no anuladas) · `Prescription` |
 | `GET /prescriptions/{id}/pdf` | binario `application/pdf` (sin `ApiResponse`; 409 JSON si no está emitida) |
@@ -1032,6 +1063,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | G-13 | `PUT /auth/password` con la actual incorrecta responde 401 "Credenciales inválidas" (el handler global de `BadCredentialsException` pisa el mensaje "La contraseña actual no es correcta.") | 023b muestra un texto propio | Que el handler use `ex.getMessage()` o lanzar otra excepción (400/409) | Resuelto: backend 023 + frontend 023d (2026-10-22) |
 | G-14 | Los PDF (receta, comprobante) solo salen con Bearer: el frontend los abre como `blob:`, que falla en móviles y tablets | 013c | Enlace temporal firmado `POST …/pdf-link`, `…/receipt-link` + GET público con token (5 min) | backend 026 |
 | G-15 | `POST /appointments/walk-in` no acepta hora: siempre el primer hueco con la duración de la especialidad | 004d | `startAt`/`endAt` opcionales (hoy, desde el bloque actual, 15–240 min) | backend 027 |
+| G-16 | No hay lista de pacientes con última atención ni saldo (`GET /patients` solo busca por texto) | 005c | `GET /patients/list` con vista, período, saldo y paginación en una consulta | backend 029 |
 | G-8 | Ningún endpoint de `ScheduleController` usa `ApiResponse` (GET y POST `/professionals/{id}/schedules`, `…/effective`, `PUT /schedules/{id}`, `POST /schedules/{id}/deactivate`) | Agenda (003a), horarios (006) | Envolver en `ApiResponse` como el resto (decisión del usuario: corregir el backend) | **Resuelto**: backend 006c (`ScheduleApiIT`) |
 | G-9 | `ClinicalRecordController` no usa `ApiResponse` (clinical-record, PUT, conditions, history-entries, void); `currentMedication` vacía no se puede borrar | Cabecera clínica (008a: recibe `undefined` contra el backend real) y antecedentes (008b) | Envolver en `ApiResponse` y que `currentMedication` vacía pase a `null` | **Resuelto** (backend 005b `6fd4ab5`) |
 
@@ -1062,6 +1094,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | F-22 | PDFs por enlace temporal firmado del backend (026) en vez de `blob:` (reemplaza F-13): la pestaña se abre en el clic y navega a la URL https; nunca un enlace sin token (dato de salud, LOPDP) | Propuesta (2026-10-24) |
 | F-23 | Profesionales (alta y edición, con color de agenda) en `/direccion/profesionales`, solo DIRECTOR (`PROFESSIONAL_MANAGE`); colores de 8 muestras predefinidas + libre, tratados como dato | Propuesta (2026-10-24) |
 | F-24 | Top 3 de estadísticas como barras horizontales (`bd-bar-list`), no pastel | Propuesta (2026-10-24) |
+| F-25 | Usuarios solo crea **secretarias** (rol fijo); los odontólogos se crean en Profesionales y reciben cuenta con «Dar acceso». En «Roles», «Odontólogo» solo aparece si la cuenta tiene profesional vinculado (o ya lo tiene, para quitarlo). Lista ordenada: director, odontólogos, secretarias, bot. Sin cambios de backend | Aplicado (2026-10-25, sin tarea) |
 
 ## 9. Orden y seguimiento de tareas
 | Tarea | Pantalla | Depende de (frontend · backend) | Estado |
@@ -1123,6 +1156,9 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 023e | Profesionales del director: alta y edición con color de agenda | 023c | Aprobada (2026-10-24, ejecutó Gemini) |
 | 013c | Receta y comprobante: PDF por enlace temporal (sin `blob:`) | 013b · 015c · backend 026 | Aprobada (2026-10-24, ejecutó Haiku) |
 | 004d | Sin cita: hora y duración en bloques de 15 min | 004c · backend 027 | Aprobada (2026-10-24, ejecutó Gemini) |
+| 013d | Medicamentos y posologías: página de administración | 013b · backend 028 | Aprobada (2026-10-24) |
+| 013e | Receta: agregar medicamento que falta y guardar posología como plantilla | 013d | Aprobada (2026-10-24) |
+| 005c | Pacientes: lista de últimos atendidos y últimos registrados | 005b · backend 029 | Aprobada (2026-10-25) |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015a → 015b.

@@ -51,6 +51,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'pacientes',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/patients/pages/patient-list/patient-list.page').then(
+            (m) => m.PatientListPage
+          ),
+      },
+      {
         path: 'pacientes/:id',
         loadComponent: () =>
           import('./features/patients/pages/patient-reception/patient-reception.page').then(
