@@ -1130,6 +1130,202 @@ describe('EncounterPage', () => {
     expect(editor.querySelector('.prescription-item-list')?.textContent).toContain('Amoxicilina');
   });
 
+  it('medicamento que no existe → agregar desde la receta → queda seleccionado', async () => {
+    vi.useFakeTimers();
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterWithDiagnosisApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Nueva receta').click();
+    fixture.detectChanges();
+
+    const diagnosisSelect = fixture.nativeElement.querySelector(
+      '#prescription-diagnosis'
+    ) as HTMLSelectElement;
+    expect(diagnosisSelect.value).toBe('diag-1');
+
+    const medicationInput = fixture.nativeElement.querySelector(
+      '.prescription-item-form .combobox-input'
+    ) as HTMLInputElement;
+    medicationInput.value = 'Prednisona';
+    medicationInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    vi.advanceTimersByTime(250);
+
+    const searchReq = httpMock.expectOne('/api/v1/medications?query=Prednisona');
+    expect(searchReq.request.method).toBe('GET');
+    searchReq.flush({ success: true, message: 'OK', data: [] });
+    fixture.detectChanges();
+
+    const addAction = document.querySelector<HTMLElement>('.combobox-action');
+    expect(addAction, 'acción Agregar Prednisona').toBeTruthy();
+    expect(addAction?.textContent).toContain('＋ Agregar «Prednisona»');
+    addAction!.click();
+    fixture.detectChanges();
+
+    const medForm = fixture.nativeElement.querySelector('bd-medication-form') as HTMLElement;
+    expect(medForm).toBeTruthy();
+    const nameInput = medForm.querySelector('#medication-name') as HTMLInputElement;
+    expect(nameInput.value).toBe('Prednisona');
+
+    typeInto(fixture.nativeElement, '#medication-presentation', 'tableta');
+    typeInto(fixture.nativeElement, '#medication-concentration', '20 mg');
+    fixture.detectChanges();
+
+    const submitBtn = medForm.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const postReq = httpMock.expectOne('/api/v1/medications');
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      name: 'Prednisona',
+      presentation: 'tableta',
+      concentration: '20 mg',
+    });
+    postReq.flush(
+      {
+        success: true,
+        message: 'Medicamento creado.',
+        data: {
+          id: 50,
+          name: 'Prednisona',
+          presentation: 'tableta',
+          concentration: '20 mg',
+          route: null,
+          presets: [],
+          active: true,
+        },
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('bd-medication-form')).toBeNull();
+    const itemForm = fixture.nativeElement.querySelector('.prescription-item-form') as HTMLElement;
+    expect(itemForm).toBeTruthy();
+    const updatedInput = itemForm.querySelector('.combobox-input') as HTMLInputElement;
+    expect(updatedInput.value).toContain('Prednisona 20 mg · tableta');
+    expect((fixture.nativeElement.querySelector('#prescription-diagnosis') as HTMLSelectElement).value).toBe('diag-1');
+  });
+
+  it('guardar posología como plantilla → POST y aparece el botón', async () => {
+    vi.useFakeTimers();
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterWithDiagnosisApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Nueva receta').click();
+    fixture.detectChanges();
+
+    const medicationInput = fixture.nativeElement.querySelector(
+      '.prescription-item-form .combobox-input'
+    ) as HTMLInputElement;
+    medicationInput.value = 'ibu';
+    medicationInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    vi.advanceTimersByTime(250);
+
+    const searchReq = httpMock.expectOne('/api/v1/medications?query=ibu');
+    searchReq.flush({
+      success: true,
+      message: 'OK',
+      data: [
+        {
+          id: 12,
+          name: 'Ibuprofeno',
+          presentation: 'tableta',
+          concentration: '400 mg',
+          route: 'oral',
+          presets: [],
+          active: true,
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const option = Array.from(
+      document.querySelectorAll<HTMLElement>('.combobox-option')
+    ).find((opt) => opt.textContent?.includes('Ibuprofeno'));
+    option!.click();
+    fixture.detectChanges();
+
+    typeInto(fixture.nativeElement, '#prescription-dose', '400 mg');
+    typeInto(fixture.nativeElement, '#prescription-frequency', 'cada 8 horas');
+    typeInto(fixture.nativeElement, '#prescription-duration', '5 días');
+    fixture.detectChanges();
+
+    const saveAsPresetBtn = findButton(fixture.nativeElement, 'Guardar como plantilla');
+    saveAsPresetBtn.click();
+    fixture.detectChanges();
+
+    const presetNameInput = fixture.nativeElement.querySelector(
+      '#prescription-preset-name'
+    ) as HTMLInputElement;
+    expect(presetNameInput.value).toBe('Cada 8 horas × 5 días');
+
+    const inlineContainer = fixture.nativeElement.querySelector(
+      '.prescription-item-form__save-preset-inline'
+    ) as HTMLElement;
+    const savePresetBtn = findButton(inlineContainer, 'Guardar');
+    savePresetBtn.click();
+    fixture.detectChanges();
+
+    const postPresetReq = httpMock.expectOne('/api/v1/medications/12/presets');
+    expect(postPresetReq.request.method).toBe('POST');
+    expect(postPresetReq.request.body).toEqual({
+      label: 'Cada 8 horas × 5 días',
+      dose: '400 mg',
+      frequency: 'cada 8 horas',
+      duration: '5 días',
+    });
+    postPresetReq.flush(
+      {
+        success: true,
+        message: 'Plantilla creada.',
+        data: {
+          id: 77,
+          label: 'Cada 8 horas × 5 días',
+          dose: '400 mg',
+          frequency: 'cada 8 horas',
+          duration: '5 días',
+          instructions: null,
+          active: true,
+        },
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const activePresetBtn = fixture.nativeElement.querySelector(
+      '.prescription-item-form [aria-pressed="true"]'
+    ) as HTMLElement;
+    expect(activePresetBtn).toBeTruthy();
+    expect(activePresetBtn.textContent).toContain('Cada 8 horas × 5 días');
+  });
+
   /** jsdom no tiene la pestaña del PDF: se sustituye solo `window.open`. */
   function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
     const pdfWindow = { location: { href: '' }, close: vi.fn() };

@@ -38,6 +38,8 @@ import {
   TreatmentsStore,
 } from '../../../treatments';
 import {
+  MedicationPresetRequest,
+  MedicationRequest,
   Prescription,
   PrescriptionEditorComponent,
   PrescriptionHeaderDraft,
@@ -375,11 +377,19 @@ type EncounterSheet = 'history' | 'prescription' | 'treatment';
               [saving]="prescriptionsStore.saving()"
               [saveError]="prescriptionsStore.saveError()"
               [copiedFrom]="prescriptionsStore.copiedFrom()"
+              [medicationSaving]="prescriptionsStore.medicationSaving()"
+              [medicationSaveError]="prescriptionsStore.medicationSaveError()"
+              [presetSaving]="prescriptionsStore.presetSaving()"
+              [presetSaveError]="prescriptionsStore.presetSaveError()"
+              [createdMedication]="prescriptionsStore.createdMedication()"
+              [createdPreset]="prescriptionsStore.createdPreset()"
               (medicationQueryChange)="prescriptionsStore.searchMedications($event)"
               (addItem)="prescriptionsStore.upsertItem($event)"
               (editItem)="prescriptionsStore.editItem($event)"
               (removeItem)="prescriptionsStore.removeItem($event)"
               (cancelItemEdit)="prescriptionsStore.cancelItemEdit()"
+              (createMedication)="onCreateMedicationFromPrescription($event)"
+              (savePreset)="onSavePresetFromPrescription($event)"
               (save)="onSavePrescription($event)"
               (saveAndEmit)="onSaveAndEmitPrescription($event)"
               (close)="prescriptionsStore.closeEditor()"
@@ -842,6 +852,18 @@ export class EncounterPage implements OnInit {
           error: () => {},
         });
       });
+  }
+
+  onCreateMedicationFromPrescription(request: MedicationRequest): void {
+    this.prescriptionsStore.createMedication(request).subscribe({
+      error: () => {},
+    });
+  }
+
+  onSavePresetFromPrescription(event: { medicationId: number; request: MedicationPresetRequest }): void {
+    this.prescriptionsStore.savePreset(event.medicationId, event.request).subscribe({
+      error: () => {},
+    });
   }
 
   onSavePrescription(draft: PrescriptionHeaderDraft): void {

@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, inject, input, OnInit, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  OnInit,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { FieldComponent } from '../../../../shared/components/field/field.component';
@@ -6,9 +16,13 @@ import {
   DiagnosisOption,
   DraftItem,
   Medication,
+  MedicationPreset,
+  MedicationPresetRequest,
+  MedicationRequest,
   Prescription,
   PrescriptionHeaderDraft,
 } from '../../models/prescription.models';
+import { MedicationFormComponent } from '../medication-form/medication-form.component';
 import { PrescriptionItemFormComponent } from '../prescription-item-form/prescription-item-form.component';
 import { PrescriptionItemListComponent } from '../prescription-item-list/prescription-item-list.component';
 
@@ -26,6 +40,7 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
     ReactiveFormsModule,
     AlertComponent,
     FieldComponent,
+    MedicationFormComponent,
     PrescriptionItemFormComponent,
     PrescriptionItemListComponent,
   ],
@@ -45,50 +60,73 @@ const GENERAL_INSTRUCTION_SHORTCUTS: readonly string[] = [
       </bd-field>
 
       <section class="sheet-form__section" aria-label="Medicamentos de la receta">
-        <h3 class="sheet-form__subtitle">Medicamentos</h3>
-        <bd-prescription-item-form
-          [medications]="medications()"
-          [isSearching]="isSearching()"
-          [searchError]="searchError()"
-          [editingItem]="editingItem()"
-          (queryChange)="medicationQueryChange.emit($event)"
-          (addItem)="addItem.emit($event)"
-          (cancelEdit)="cancelItemEdit.emit()"
-        />
-        <bd-prescription-item-list
-          [items]="items()"
-          [editingIndex]="editingItemIndex()"
-          (edit)="editItem.emit($event)"
-          (remove)="removeItem.emit($event)"
-        />
-      </section>
+        <h3 class="sheet-form__subtitle">
+          {{ showingMedicationForm() ? 'Nuevo medicamento' : 'Medicamentos' }}
+        </h3>
 
-      <section class="sheet-form__section" aria-label="Indicaciones generales">
-        <bd-field label="Indicaciones generales" fieldId="prescription-general" hint="Opcional. Una línea por indicación">
-          <textarea id="prescription-general" class="prescription-editor__textarea" rows="3" formControlName="generalInstructions"></textarea>
-        </bd-field>
-        <div class="prescription-editor__shortcuts" role="group" aria-label="Indicaciones frecuentes">
-          @for (shortcut of shortcuts; track shortcut) {
-            <button type="button" class="prescription-editor__shortcut" (click)="addShortcut(shortcut)">
-              {{ shortcut }}
-            </button>
-          }
+        @if (showingMedicationForm()) {
+          <bd-medication-form
+            [medication]="newMedicationInitial()"
+            [saving]="medicationSaving()"
+            [errorMessage]="medicationSaveError()"
+            (save)="createMedication.emit($event)"
+            (cancel)="onCancelCreateMedication()"
+          />
+        }
+        <!-- Oculto (no destruido) mientras se crea el medicamento: conserva la búsqueda y la dosis escritas. -->
+        <div [hidden]="showingMedicationForm()">
+          <bd-prescription-item-form
+            [medications]="medications()"
+            [isSearching]="isSearching()"
+            [searchError]="searchError()"
+            [editingItem]="editingItem()"
+            [createdMedication]="createdMedication()"
+            [createdPreset]="createdPreset()"
+            [isPresetSaving]="presetSaving()"
+            [presetSaveError]="presetSaveError()"
+            (queryChange)="medicationQueryChange.emit($event)"
+            (addItem)="addItem.emit($event)"
+            (cancelEdit)="cancelItemEdit.emit()"
+            (requestAddMedication)="onAddMedicationRequested($event)"
+            (savePreset)="savePreset.emit($event)"
+          />
+          <bd-prescription-item-list
+            [items]="items()"
+            [editingIndex]="editingItemIndex()"
+            (edit)="editItem.emit($event)"
+            (remove)="removeItem.emit($event)"
+          />
         </div>
       </section>
 
-      @if (saveError(); as error) {
-        <bd-alert variant="error" [message]="error" />
-      }
+      @if (!showingMedicationForm()) {
+        <section class="sheet-form__section" aria-label="Indicaciones generales">
+          <bd-field label="Indicaciones generales" fieldId="prescription-general" hint="Opcional. Una línea por indicación">
+            <textarea id="prescription-general" class="prescription-editor__textarea" rows="3" formControlName="generalInstructions"></textarea>
+          </bd-field>
+          <div class="prescription-editor__shortcuts" role="group" aria-label="Indicaciones frecuentes">
+            @for (shortcut of shortcuts; track shortcut) {
+              <button type="button" class="prescription-editor__shortcut" (click)="addShortcut(shortcut)">
+                {{ shortcut }}
+              </button>
+            }
+          </div>
+        </section>
 
-      <footer class="sheet-form__footer">
-        <button type="button" class="btn btn-outline prescription-editor__btn" (click)="close.emit()">Cancelar</button>
-        <button type="button" class="btn btn-outline prescription-editor__btn" [disabled]="!canSave()" (click)="onSave()">
-          {{ saving() ? 'Guardando…' : 'Guardar borrador' }}
-        </button>
-        <button type="button" class="btn btn-primary prescription-editor__btn" [disabled]="!canSave()" (click)="onSaveAndEmit()">
-          {{ saving() ? 'Emitiendo…' : 'Emitir e imprimir' }}
-        </button>
-      </footer>
+        @if (saveError(); as error) {
+          <bd-alert variant="error" [message]="error" />
+        }
+
+        <footer class="sheet-form__footer">
+          <button type="button" class="btn btn-outline prescription-editor__btn" (click)="close.emit()">Cancelar</button>
+          <button type="button" class="btn btn-outline prescription-editor__btn" [disabled]="!canSave()" (click)="onSave()">
+            {{ saving() ? 'Guardando…' : 'Guardar borrador' }}
+          </button>
+          <button type="button" class="btn btn-primary prescription-editor__btn" [disabled]="!canSave()" (click)="onSaveAndEmit()">
+            {{ saving() ? 'Emitiendo…' : 'Emitir e imprimir' }}
+          </button>
+        </footer>
+      }
     </div>
   `,
   styles: `
@@ -155,21 +193,45 @@ export class PrescriptionEditorComponent implements OnInit {
   readonly saving = input<boolean>(false);
   readonly saveError = input<string | null>(null);
 
+  readonly medicationSaving = input<boolean>(false);
+  readonly medicationSaveError = input<string | null>(null);
+  readonly presetSaving = input<boolean>(false);
+  readonly presetSaveError = input<string | null>(null);
+  readonly createdMedication = input<Medication | null>(null);
+  readonly createdPreset = input<MedicationPreset | null>(null);
+
   readonly medicationQueryChange = output<string>();
   readonly addItem = output<DraftItem>();
   readonly editItem = output<number>();
   readonly removeItem = output<number>();
   readonly cancelItemEdit = output<void>();
+  readonly createMedication = output<MedicationRequest>();
+  readonly savePreset = output<{ medicationId: number; request: MedicationPresetRequest }>();
   readonly save = output<PrescriptionHeaderDraft>();
   readonly saveAndEmit = output<PrescriptionHeaderDraft>();
   readonly close = output<void>();
 
   readonly shortcuts = GENERAL_INSTRUCTION_SHORTCUTS;
 
+  readonly showingMedicationForm = signal<boolean>(false);
+  readonly newMedicationInitial = signal<{ name: string } | null>(null);
+
   readonly header = this.fb.nonNullable.group({
     encounterDiagnosisId: '',
     generalInstructions: '',
   });
+
+  constructor() {
+    effect(() => {
+      const created = this.createdMedication();
+      if (created) {
+        untracked(() => {
+          this.showingMedicationForm.set(false);
+          this.newMedicationInitial.set(null);
+        });
+      }
+    });
+  }
 
   ngOnInit(): void {
     const source = this.prescription() ?? this.copiedFrom();
@@ -177,6 +239,18 @@ export class PrescriptionEditorComponent implements OnInit {
       encounterDiagnosisId: source?.encounterDiagnosisId ?? this.diagnoses()[0]?.id ?? '',
       generalInstructions: source?.generalInstructions ?? '',
     });
+  }
+
+  onAddMedicationRequested(searchText: string): void {
+    const trimmed = searchText.trim();
+    const name = trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : '';
+    this.newMedicationInitial.set({ name });
+    this.showingMedicationForm.set(true);
+  }
+
+  onCancelCreateMedication(): void {
+    this.showingMedicationForm.set(false);
+    this.newMedicationInitial.set(null);
   }
 
   canSave(): boolean {
