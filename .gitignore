@@ -42,3 +42,7 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Binarios locales de la skill impeccable (se descargan solos)
+.claude/skills/impeccable/scripts/bin/
+.gemini/skills/impeccable/scripts/bin/
