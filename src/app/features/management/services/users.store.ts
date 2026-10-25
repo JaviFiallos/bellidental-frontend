@@ -25,6 +25,12 @@ export class UsersStore {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly users = signal<User[]>([]);
+  /** Director, odontólogos, secretarias y al final las cuentas del sistema (bot); dentro de cada grupo, por usuario. */
+  readonly sortedUsers = computed(() =>
+    [...this.users()].sort(
+      (a, b) => userGroupOrder(a) - userGroupOrder(b) || a.username.localeCompare(b.username, 'es')
+    )
+  );
   readonly professionals = signal<Professional[]>([]);
   readonly professionalsByUserId = computed(() => indexProfessionalsByUserId(this.professionals()));
   readonly professionalsWithoutAccess = computed(() =>
@@ -121,7 +127,7 @@ export class UsersStore {
             username: created.username,
             temporaryPassword: request.temporaryPassword,
           });
-          this.notifications.success('Usuario creado');
+          this.notifications.success('Secretaria creada');
           this.reloadUsers();
         },
         error: (err: ApiError) => this.failSaving(err, 'No se pudo crear el usuario'),
@@ -254,6 +260,13 @@ export class UsersStore {
         },
       });
   }
+}
+
+function userGroupOrder(user: User): number {
+  if (user.roles.includes('ADMIN')) return 0;
+  if (user.roles.includes('ODONTOLOGO')) return 1;
+  if (user.roles.includes('SECRETARIA')) return 2;
+  return 3;
 }
 
 function indexProfessionalsByUserId(professionals: Professional[]): ReadonlyMap<string, Professional> {

@@ -13,10 +13,16 @@ import { AssignableRole, User } from '../../models/user.models';
     <form class="roles-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <fieldset class="roles-form__roles" [attr.aria-invalid]="rolesError() !== null">
         <legend class="roles-form__legend">Roles</legend>
-        <label class="roles-form__check" for="roles-odontologo">
-          <input id="roles-odontologo" type="checkbox" formControlName="odontologo" />
-          Odontólogo
-        </label>
+        @if (showDentistRole()) {
+          <label class="roles-form__check" for="roles-odontologo">
+            <input id="roles-odontologo" type="checkbox" formControlName="odontologo" />
+            Odontólogo
+          </label>
+        } @else {
+          <p class="roles-form__note">
+            Para ser odontólogo, la cuenta debe estar vinculada a un profesional (Profesionales → «Dar acceso»).
+          </p>
+        }
         <label class="roles-form__check" for="roles-secretaria">
           <input id="roles-secretaria" type="checkbox" formControlName="secretaria" />
           Secretaria
@@ -55,6 +61,12 @@ import { AssignableRole, User } from '../../models/user.models';
       padding: 0;
       border: none;
       min-width: 0;
+    }
+
+    .roles-form__note {
+      margin: 0;
+      font-size: var(--fs-sm);
+      color: var(--color-text-muted);
     }
 
     .roles-form__legend {
@@ -101,6 +113,8 @@ export class UserRolesFormComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
 
   readonly user = input.required<User>();
+  /** La cuenta está vinculada a un profesional: solo entonces puede tener el rol Odontólogo. */
+  readonly hasProfessional = input<boolean>(false);
   readonly saving = input<boolean>(false);
   readonly errorMessage = input<string | null>(null);
 
@@ -119,6 +133,11 @@ export class UserRolesFormComponent implements OnInit {
       odontologo: this.user().roles.includes('ODONTOLOGO'),
       secretaria: this.user().roles.includes('SECRETARIA'),
     });
+  }
+
+  /** Se muestra si puede tenerlo, o si ya lo tiene (para poder quitarlo). */
+  showDentistRole(): boolean {
+    return this.hasProfessional() || this.user().roles.includes('ODONTOLOGO');
   }
 
   rolesError(): string | null {

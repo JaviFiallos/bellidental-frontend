@@ -34,7 +34,7 @@ import { UsersStore } from '../../services/users.store';
   template: `
     <section class="users-page" [class.users-page--panel-open]="store.activePanel() !== null">
       <bd-page-header title="Usuarios" [subtitle]="accountsSummary()">
-        <button type="button" class="btn btn-accent" (click)="store.openCreate()">Nuevo usuario</button>
+        <button type="button" class="btn btn-accent" (click)="store.openCreate()">Nueva secretaria</button>
       </bd-page-header>
 
       @if (store.passwordNotice(); as notice) {
@@ -70,7 +70,7 @@ import { UsersStore } from '../../services/users.store';
         </bd-alert>
       } @else {
         <bd-user-table
-          [users]="store.users()"
+          [users]="store.sortedUsers()"
           [professionalsByUserId]="store.professionalsByUserId()"
           [busyUserId]="store.busyUserId()"
           (deactivate)="onDeactivate($event)"
@@ -111,6 +111,7 @@ import { UsersStore } from '../../services/users.store';
                 @if (store.selectedUser(); as user) {
                   <bd-user-roles-form
                     [user]="user"
+                    [hasProfessional]="store.professionalsByUserId().has(user.id)"
                     [saving]="store.saving()"
                     [errorMessage]="store.saveError()"
                     (submitted)="store.updateRoles($event)"
@@ -216,7 +217,7 @@ export class UsersPage {
     const professional = this.store.selectedProfessional();
     switch (this.store.activePanel()) {
       case 'create':
-        return 'Nuevo usuario';
+        return 'Nueva secretaria';
       case 'roles':
         return user ? `Roles de «${user.username}»` : 'Roles';
       case 'reset':

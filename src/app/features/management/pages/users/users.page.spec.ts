@@ -120,12 +120,10 @@ async function loadList(harness: RouterTestingHarness, httpMock: HttpTestingCont
 }
 
 async function openCreatePanelWithForm(harness: RouterTestingHarness) {
-  findButton('Nuevo usuario')?.click();
+  findButton('Nueva secretaria')?.click();
   await settle(harness);
 
   typeInto('#user-email', 'ana.perez@bellidental.local');
-  const secretaria = document.querySelector<HTMLInputElement>('#user-role-secretaria');
-  secretaria?.click();
   typeInto('#user-temporary-password', 'Temporal.2026');
   await settle(harness);
 }
@@ -153,7 +151,7 @@ describe('UsersPage', () => {
     httpMock.verify();
   });
 
-  it('abrir Usuarios → lista con roles y profesional; Nuevo usuario → POST /users → la lista se recarga', async () => {
+  it('abrir Usuarios → lista con roles y profesional; Nueva secretaria → POST /users → la lista se recarga', async () => {
     const harness = await RouterTestingHarness.create('/direccion/usuarios');
     await loadList(harness, httpMock);
 
@@ -164,7 +162,7 @@ describe('UsersPage', () => {
     expect(listText).toContain('4 cuentas · 4 activas');
 
     await openCreatePanelWithForm(harness);
-    findButton('Crear usuario')?.click();
+    findButton('Crear secretaria')?.click();
     await settle(harness);
 
     const createRequest = httpMock.expectOne({ method: 'POST', url: '/api/v1/users' });
@@ -193,7 +191,7 @@ describe('UsersPage', () => {
     await loadList(harness, httpMock);
     await openCreatePanelWithForm(harness);
 
-    findButton('Crear usuario')?.click();
+    findButton('Crear secretaria')?.click();
     await settle(harness);
 
     const createRequest = httpMock.expectOne({ method: 'POST', url: '/api/v1/users' });
