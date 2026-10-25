@@ -36,7 +36,7 @@ export const routes: Routes = [
       },
       {
         path: 'pacientes/:id/editar',
-        canActivate: [profileGuard('SECRETARIA')],
+        canActivate: [profileGuard('SECRETARIA', 'DIRECTOR')],
         loadComponent: () =>
           import('./features/patients/pages/patient-form/patient-form.page').then(
             (m) => m.PatientFormPage
@@ -71,6 +71,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/clinical/pages/my-encounters/my-encounters.page').then(
             (m) => m.MyEncountersPage
+          ),
+      },
+      {
+        path: 'consultorio/medicamentos',
+        canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
+        loadComponent: () =>
+          import('./features/prescriptions/pages/medications/medications.page').then(
+            (m) => m.MedicationsPage
           ),
       },
       {

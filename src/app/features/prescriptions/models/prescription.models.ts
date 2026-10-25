@@ -6,6 +6,7 @@ export interface MedicationPreset {
   frequency: string;
   duration: string;
   instructions: string | null;
+  active: boolean;
 }
 
 export interface Medication {
@@ -13,8 +14,24 @@ export interface Medication {
   name: string;
   presentation: string;
   concentration: string;
-  route: string;
+  route: string | null;
   presets: MedicationPreset[];
+  active: boolean;
+}
+
+export interface MedicationRequest {
+  name: string;
+  presentation: string;
+  concentration: string;
+  route?: string;
+}
+
+export interface MedicationPresetRequest {
+  label: string;
+  dose: string;
+  frequency: string;
+  duration: string;
+  instructions?: string;
 }
 
 export type PrescriptionStatus = 'DRAFT' | 'ISSUED';

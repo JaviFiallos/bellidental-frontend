@@ -697,6 +697,7 @@ export const mockMedicationAmoxicilina: Medication = {
   presentation: 'cápsula',
   concentration: '500 mg',
   route: 'oral',
+  active: true,
   presets: [
     {
       id: 1,
@@ -705,6 +706,7 @@ export const mockMedicationAmoxicilina: Medication = {
       frequency: 'cada 8 horas',
       duration: '7 días',
       instructions: null,
+      active: true,
     },
   ],
 };

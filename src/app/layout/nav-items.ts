@@ -5,6 +5,7 @@ import {
   ChartColumn,
   ClipboardList,
   History,
+  Pill,
   ShieldCheck,
   Stethoscope,
   UserCog,
@@ -35,17 +36,19 @@ export function getNavItemsForProfile(profile: Profile | null): NavItem[] {
         { label: 'Mis citas', icon: CalendarCheck, route: '/consultorio', exact: true },
         { label: 'Mis atenciones', icon: History, route: '/consultorio/atenciones' },
         { label: 'Pacientes', icon: Users, isSearchAction: true },
+        { label: 'Medicamentos', icon: Pill, route: '/consultorio/medicamentos' },
       ];
     case 'DIRECTOR':
       return [
         { label: 'Mis citas', icon: CalendarCheck, route: '/consultorio', exact: true },
         { label: 'Mis atenciones', icon: History, route: '/consultorio/atenciones' },
         { label: 'Pacientes', icon: Users, isSearchAction: true },
-        { label: 'Estadísticas', icon: ChartColumn, route: '/direccion/estadisticas' },
-        { label: 'Auditoría', icon: ShieldCheck, route: '/direccion/auditoria' },
-        { label: 'Usuarios', icon: UserCog, route: '/direccion/usuarios' },
         { label: 'Profesionales', icon: Stethoscope, route: '/direccion/profesionales' },
         { label: 'Catálogo', icon: ClipboardList, route: '/direccion/catalogo' },
+        { label: 'Medicamentos', icon: Pill, route: '/consultorio/medicamentos' },
+        { label: 'Usuarios', icon: UserCog, route: '/direccion/usuarios' },
+        { label: 'Auditoría', icon: ShieldCheck, route: '/direccion/auditoria' },
+        { label: 'Estadísticas', icon: ChartColumn, route: '/direccion/estadisticas' },
       ];
     default:
       return [];
