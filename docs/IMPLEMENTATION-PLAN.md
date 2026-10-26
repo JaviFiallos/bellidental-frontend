@@ -1140,6 +1140,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 024 | Catálogo de tratamientos y especialidades del director | 023a (`management`) · backend 021 `2cf12d1` | Aprobada (ejecutó Haiku) |
 | 025 | Cobrar desde la atención y desde la cita (diálogo de cobro de `billing`) | 015c · backend 022 | Aprobada (2026-10-22) |
 | 026 | Atención: botón «Control de ortodoncia» (motivo + Z46.4 + D8670 a $0); ortodoncia = monto total D8080 + abonos libres | 008a · 012a · backend 030 | Aprobada (2026-10-25, ejecutó Haiku) |
+| 027 | Aviso de privacidad público `/privacidad` (estático en `public/`, nginx `$uri.html`) para Meta | — | Aprobada (2026-10-25, ejecutó Gemini) |
 | 016c | Estadísticas: actividad por día, top 3 tratamientos y top 3 diagnósticos | 016b · backend 024 | Aprobada (2026-10-22) |
 | 017b | Auditoría: pantalla `/direccion/auditoria` y historial completo de la atención | 017 · backend 025 | Aprobada (2026-10-22) |
 | 023d | Cambiar mi contraseña: usar el 400 del backend | 023b · backend 023 | Aprobada (2026-10-22) |
