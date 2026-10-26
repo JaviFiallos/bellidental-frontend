@@ -36,7 +36,7 @@ export const routes: Routes = [
       },
       {
         path: 'pacientes/:id/editar',
-        canActivate: [profileGuard('SECRETARIA')],
+        canActivate: [profileGuard('SECRETARIA', 'DIRECTOR')],
         loadComponent: () =>
           import('./features/patients/pages/patient-form/patient-form.page').then(
             (m) => m.PatientFormPage
@@ -48,6 +48,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/clinical/pages/form-033/form-033.page').then(
             (m) => m.Form033Page
+          ),
+      },
+      {
+        path: 'pacientes',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/patients/pages/patient-list/patient-list.page').then(
+            (m) => m.PatientListPage
           ),
       },
       {
@@ -74,6 +82,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'consultorio/medicamentos',
+        canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
+        loadComponent: () =>
+          import('./features/prescriptions/pages/medications/medications.page').then(
+            (m) => m.MedicationsPage
+          ),
+      },
+      {
         path: 'consultorio/atencion/:encounterId',
         canActivate: [profileGuard('ODONTOLOGO', 'DIRECTOR')],
         loadComponent: () =>
@@ -85,15 +101,44 @@ export const routes: Routes = [
         path: 'direccion/estadisticas',
         canActivate: [profileGuard('DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Estadísticas', task: 'tarea 016' },
+          import('./features/management/pages/clinic-stats/clinic-stats.page').then(
+            (m) => m.ClinicStatsPage
+          ),
       },
       {
         path: 'direccion/auditoria',
         canActivate: [profileGuard('DIRECTOR')],
         loadComponent: () =>
-          import('./layout/coming-soon/coming-soon.page').then((m) => m.ComingSoonPage),
-        data: { title: 'Auditoría', task: 'tarea 017' },
+          import('./features/management/pages/audit-log/audit-log.page').then(
+            (m) => m.AuditLogPage
+          ),
+      },
+      {
+        path: 'direccion/usuarios',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./features/management/pages/users/users.page').then((m) => m.UsersPage),
+      },
+      {
+        path: 'direccion/catalogo',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./features/management/pages/catalog/catalog.page').then((m) => m.CatalogPage),
+      },
+      {
+        path: 'direccion/profesionales',
+        canActivate: [profileGuard('DIRECTOR')],
+        loadComponent: () =>
+          import('./features/management/pages/professionals/professionals.page').then(
+            (m) => m.ProfessionalsPage
+          ),
+      },
+      {
+        path: 'cuenta/contrasena',
+        loadComponent: () =>
+          import('./features/auth/pages/change-password/change-password.page').then(
+            (m) => m.ChangePasswordPage
+          ),
       },
     ],
   },

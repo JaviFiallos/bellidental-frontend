@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aviso de privacidad — Bellidental</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <style>
+    /* Tokens del sistema de diseño (copiados de src/app/shared/styles/_tokens.scss) */
+    :root {
+      --blue-950: #0A1C2E;
+      --blue-900: #0F2A44;
+      --blue-800: #1C3C5C;
+      --blue-700: #24507A;
+      --blue-600: #2C5F8A;
+      --blue-500: #4A7BA6;
+      --blue-100: #E6F0F8;
+      --blue-50:  #EFF6FB;
+
+      --gold-700: #9A5B1C;
+      --gold-600: #C97B2E;
+      --gold-400: #E3A857;
+      --gold-100: #FBF0DC;
+
+      --coral-700: #B04A31;
+      --coral-500: #D9724F;
+      --coral-100: #FBE7DF;
+
+      --teal-700: #1F6F66;
+      --teal-500: #2F8F83;
+      --teal-100: #DDF1EE;
+
+      --slate-800: #2E3A46;
+      --slate-600: #4F5D6B;
+      --slate-500: #6B7684;
+      --slate-300: #C5CFD9;
+      --slate-200: #E1E7ED;
+      --slate-100: #EDF1F5;
+      --slate-50:  #F7F9FB;
+      --white:     #FFFFFF;
+
+      --color-bg:            var(--slate-50);
+      --color-surface:       var(--white);
+      --color-text:          var(--slate-800);
+      --color-text-muted:    var(--slate-500);
+      --color-border:        var(--slate-200);
+      --color-primary:       var(--blue-800);
+      --color-primary-hover: var(--blue-700);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+
+      --shadow-sm: 0 1px 3px rgba(15, 42, 68, 0.06);
+      --shadow-md: 0 4px 16px rgba(15, 42, 68, 0.08);
+
+      --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      font-size: 1rem;
+      -webkit-font-smoothing: antialiased;
+      padding: 1.25rem 1rem 3rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* Cabecera de marca */
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      line-height: 1.2;
+    }
+
+    .brand-subtitle {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+    }
+
+    /* Tarjeta principal de lectura */
+    .privacy-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+      padding: 1.5rem 1.125rem;
+    }
+
+    @media (min-width: 600px) {
+      body {
+        padding: 2.5rem 1.5rem 4rem;
+      }
+
+      .privacy-card {
+        padding: 2.5rem 2.25rem;
+      }
+
+      .brand-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.25rem;
+        gap: 1rem;
+      }
+
+      .brand-logo {
+        width: 48px;
+        height: 48px;
+      }
+
+      .brand-title {
+        font-size: 1.35rem;
+      }
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--blue-950);
+      margin-bottom: 0.5rem;
+      line-height: 1.25;
+    }
+
+    @media (min-width: 600px) {
+      h1 {
+        font-size: 1.75rem;
+      }
+    }
+
+    .intro-meta {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.875rem;
+      border-bottom: 1px solid var(--slate-100);
+    }
+
+    .intro-lead {
+      font-size: 1rem;
+      color: var(--slate-800);
+      margin-bottom: 1.75rem;
+      line-height: 1.6;
+    }
+
+    .section {
+      margin-bottom: 1.75rem;
+      scroll-margin-top: 1.5rem;
+    }
+
+    .section:last-of-type {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--blue-900);
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      line-height: 1.35;
+    }
+
+    @media (min-width: 600px) {
+      h2 {
+        font-size: 1.2rem;
+      }
+    }
+
+    .section-num {
+      color: var(--blue-600);
+      font-size: 1.05rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    p {
+      margin-bottom: 0.75rem;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul, ol {
+      margin: 0.5rem 0 0.85rem 1.25rem;
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    li:last-child {
+      margin-bottom: 0;
+    }
+
+    strong {
+      color: var(--blue-950);
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--color-primary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 150ms ease;
+    }
+
+    a:hover {
+      color: var(--blue-600);
+    }
+
+    .callout {
+      background-color: var(--blue-50);
+      border-left: 4px solid var(--blue-600);
+      padding: 0.875rem 1rem;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin: 0.875rem 0;
+      font-size: 0.9375rem;
+    }
+
+    .callout-warning {
+      background-color: var(--gold-100);
+      border-left-color: var(--gold-600);
+      color: var(--gold-700);
+    }
+
+    .callout-warning strong {
+      color: var(--gold-700);
+    }
+
+    .highlight-card {
+      background-color: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius-sm);
+      padding: 0.875rem 1rem;
+      margin: 0.875rem 0;
+    }
+
+    footer {
+      margin-top: 2.25rem;
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--slate-500);
+    }
+
+    footer p {
+      margin-bottom: 0.25rem;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--blue-600);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="brand-header">
+      <img src="/brand/bellidental-logo.webp" alt="Bellidental" class="brand-logo" width="48" height="48">
+      <div class="brand-info">
+        <span class="brand-title">Bellidental</span>
+        <span class="brand-subtitle">Centro Odontológico</span>
+      </div>
+    </header>
+
+    <main class="privacy-card">
+      <h1>Aviso de privacidad</h1>
+      <div class="intro-meta">
+        <span>Conforme a la Ley Orgánica de Protección de Datos Personales (LOPDP) del Ecuador</span>
+      </div>
+
+      <p class="intro-lead">
+        En la clínica odontológica <strong>Bellidental</strong> nos comprometemos a proteger la privacidad,
+        confidencialidad y seguridad de los datos personales de nuestros pacientes y usuarios, aplicando los
+        principios de licitud, transparencia, finalidad, minimización y seguridad de conformidad con la normativa
+        ecuatoriana vigente.
+      </p>
+
+      <!-- 1. Responsable -->
+      <section class="section" id="responsable">
+        <h2><span class="section-num">1.</span> Responsable del tratamiento</h2>
+        <p>
+          El responsable del tratamiento de sus datos personales es la clínica odontológica <strong>Bellidental</strong>.
+        </p>
+        <p>
+          El sistema digital y el asistente virtual se encuentran actualmente en una etapa piloto como parte de un
+          proyecto de titulación de la <strong>Universidad Técnica de Ambato (UTA)</strong>.
+        </p>
+        <div class="callout">
+          <p>
+            <strong>Canal de contacto para dudas y privacidad:</strong><br>
+            Correo electrónico: <a href="mailto:bellidental.piloto@gmail.com">bellidental.piloto@gmail.com</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- 2. Datos que tratamos -->
+      <section class="section" id="datos">
+        <h2><span class="section-num">2.</span> Datos que tratamos</h2>
+        <p>Para brindarle nuestros servicios, tratamos las siguientes categorías de información:</p>
+        <ul>
+          <li>
+            <strong>A través del asistente virtual (bot de WhatsApp):</strong> número de teléfono (en formato internacional),
+            nombre y datos necesarios para la gestión de citas odontológicas (fecha, hora, especialidad requerida y estado de la cita),
+            así como el contenido en texto de los mensajes enviados en la conversación para interpretar su requerimiento.
+          </li>
+          <li>
+            <strong>En la clínica dental (atención presencial):</strong> datos de identificación, historia clínica
+            odontológica completa (Formulario 033 del Ministerio de Salud Pública - MSP, odontograma, diagnósticos,
+            evolución y recetas) y datos de facturación o cobros.
+          </li>
+        </ul>
+        <p>
+          La historia clínica y los cobros son confidenciales y únicamente son accesibles por el personal asistencial y
+          administrativo autorizado de la clínica según su perfil.
+        </p>
+      </section>
+
+      <!-- 3. Para qué -->
+      <section class="section" id="finalidades">
+        <h2><span class="section-num">3.</span> Para qué utilizamos sus datos (Finalidades)</h2>
+        <p>Los datos recabados son tratados exclusivamente para los siguientes fines:</p>
+        <ul>
+          <li>Agendar, consultar, reprogramar y cancelar citas odontológicas.</li>
+          <li>Enviar recordatorios, confirmaciones y avisos importantes sobre sus turnos a través de WhatsApp.</li>
+          <li>Proveer la atención médica odontológica requerida y registrar adecuadamente la historia clínica del paciente.</li>
+          <li>Llevar el control clínico y de gestión conforme a las regulaciones sanitarias de la República del Ecuador.</li>
+        </ul>
+      </section>
+
+      <!-- 4. Base legal -->
+      <section class="section" id="base-legal">
+        <h2><span class="section-num">4.</span> Base legal del tratamiento</h2>
+        <p>El tratamiento de sus datos se fundamenta en:</p>
+        <ul>
+          <li>
+            <strong>Consentimiento libre, específico, informado e inequívoco:</strong> solicitado y aceptado por el
+            paciente en el chat de WhatsApp antes de iniciar cualquier gestión con el asistente virtual o tratamiento
+            de datos personales (Art. 7 y 8 de la LOPDP).
+          </li>
+          <li>
+            <strong>Obligación legal sanitaria:</strong> la apertura, registro y custodia de la historia clínica
+            única responden a una obligación legal y sanitaria estipulada por la Ley Orgánica de Salud del Ecuador y las
+            normas del Ministerio de Salud Pública (MSP).
+          </li>
+        </ul>
+      </section>
+
+      <!-- 5. Encargados -->
+      <section class="section" id="encargados">
+        <h2><span class="section-num">5.</span> Encargados del tratamiento (Terceros)</h2>
+        <p>
+          Para operar los servicios tecnológicos, la clínica recurre a proveedores especializados que actúan como
+          encargados del tratamiento bajo estrictas cláusulas de confidencialidad y seguridad:
+        </p>
+        <ul>
+          <li>
+            <strong>Meta Platforms, Inc.:</strong> proveedor de la infraestructura y de la API oficial WhatsApp
+            Business Cloud API, empleada para el transporte y entrega de los mensajes del chat.
+          </li>
+          <li>
+            <strong>Contabo GmbH:</strong> proveedor de infraestructura de servidores (VPS) donde residen de forma
+            segura la base de datos y la aplicación del sistema.
+          </li>
+          <li>
+            <strong>Groq Inc.:</strong> proveedor del modelo de procesamiento de lenguaje natural e inteligencia
+            artificial utilizado para comprender e interpretar el texto de los mensajes en el chat de WhatsApp.
+            <em>Groq Inc. no recibe datos de historias clínicas, odontogramas ni registros de cobros.</em>
+          </li>
+        </ul>
+        <div class="callout">
+          <p>
+            <strong>Nota sobre transferencia internacional:</strong> Se informa que los proveedores tecnológicos
+            mencionados pueden procesar o almacenar información en centros de datos ubicados fuera del Ecuador (tales
+            como Estados Unidos o la Unión Europea), operando bajo estándares internacionales de seguridad y protección
+            de la información.
+          </p>
+        </div>
+      </section>
+
+      <!-- 6. Conservación -->
+      <section class="section" id="conservacion">
+        <h2><span class="section-num">6.</span> Conservación de los datos</h2>
+        <p>Los periodos de retención de los datos se ajustan a su naturaleza y requerimientos legales:</p>
+        <ul>
+          <li>
+            <strong>Datos de citas y consentimiento:</strong> se mantienen mientras el paciente continúe recibiendo
+            atención en la clínica odontológica o hasta que solicite la revocatoria de su consentimiento o eliminación de
+            sus datos.
+          </li>
+          <li>
+            <strong>Historia clínica:</strong> se conserva por el plazo mínimo obligatorio estipulado por la
+            normativa sanitaria del Ministerio de Salud Pública (MSP) del Ecuador.
+          </li>
+          <li>
+            <strong>Principio de integridad médica y financiera:</strong> por motivos de seguridad sanitaria,
+            trazabilidad y auditoría médica o fiscal, los datos clínicos y registros de cobro no se borran del sistema;
+            en caso de corrección o anulación, se anulan con registro del motivo, fecha y profesional responsable.
+          </li>
+        </ul>
+      </section>
+
+      <!-- 7. Derechos y eliminación de datos -->
+      <section class="section" id="eliminacion">
+        <h2><span class="section-num">7.</span> Derechos de los titulares y eliminación de datos</h2>
+        <p>
+          De acuerdo con la LOPDP, usted cuenta con los derechos de <strong>acceso</strong>, <strong>rectificación</strong>,
+          <strong>eliminación</strong>, <strong>oposición</strong> y <strong>retiro (revocatoria) de su consentimiento</strong>.
+        </p>
+
+        <div class="highlight-card">
+          <p><strong>¿Cómo ejercer sus derechos o solicitar la eliminación de datos?</strong></p>
+          <ol>
+            <li>
+              <strong>En recepción:</strong> acudiendo personalmente a las instalaciones de la clínica odontológica Bellidental.
+            </li>
+            <li>
+              <strong>Por correo electrónico:</strong> enviando su solicitud a
+              <a href="mailto:bellidental.piloto@gmail.com">bellidental.piloto@gmail.com</a> indicando su nombre completo,
+              número de identificación o teléfono asociado y el requerimiento específico.
+            </li>
+          </ol>
+          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--slate-600);">
+            <strong>Plazo de respuesta:</strong> toda solicitud será atendida y respondida en un plazo máximo de
+            quince (15) días hábiles contados a partir de su recepción, conforme a la LOPDP.
+          </p>
+        </div>
+
+        <div class="callout callout-warning">
+          <p>
+            <strong>Detención inmediata del asistente virtual:</strong><br>
+            Si interactúa con nuestro bot de WhatsApp y desea revocar su consentimiento o suspender la atención automatizada,
+            escriba la frase <strong>"No acepto"</strong> en el chat. El asistente virtual detendrá de inmediato su operación
+            y no se procesarán más mensajes por esa vía.
+          </p>
+        </div>
+      </section>
+
+      <!-- 8. Seguridad -->
+      <section class="section" id="seguridad">
+        <h2><span class="section-num">8.</span> Seguridad de la información</h2>
+        <p>
+          Adoptamos medidas técnicas y organizativas adecuadas para salvaguardar sus datos personales contra acceso no
+          autorizado, pérdida, alteración o divulgación indebida:
+        </p>
+        <ul>
+          <li>
+            <strong>Control de acceso por perfil:</strong> autenticación estricta con usuario y contraseña segregada
+            según roles definidos (secretaria, odontólogo/a, director administrativo).
+          </li>
+          <li>
+            <strong>Cifrado de comunicaciones:</strong> todas las transmisiones de datos entre su navegador o cliente y
+            el servidor se realizan mediante canales cifrados utilizando el protocolo HTTPS / TLS.
+          </li>
+          <li>
+            <strong>Pistas de auditoría:</strong> registro sistemático de eventos relevantes de acceso, creación y
+            modificación de datos para garantizar la trazabilidad y la responsabilidad proactiva.
+          </li>
+        </ul>
+      </section>
+
+      <!-- 9. Fecha de última actualización -->
+      <section class="section" id="actualizacion">
+        <h2><span class="section-num">9.</span> Fecha de última actualización</h2>
+        <p>
+          Este aviso de privacidad fue actualizado por última vez el <strong>2026-10-25</strong> (25 de octubre de 2026).
+          Cualquier modificación futura será publicada en esta misma dirección web.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>Bellidental — Clínica Odontológica</p>
+      <p>Ambato, Ecuador</p>
+    </footer>
+  </div>
+</body>
+</html>

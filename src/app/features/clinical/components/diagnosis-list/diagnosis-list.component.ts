@@ -6,22 +6,46 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Smile } from 'lucide-angular';
+import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ComboboxComponent } from '../../../../shared/components/combobox/combobox.component';
 import {
   SegmentedComponent,
   SegmentedOption,
 } from '../../../../shared/components/segmented/segmented.component';
+import {
+  IconComponent,
+  LucideIconData,
+} from '../../../../shared/components/icon/icon.component';
 import { Diagnosis, DiagnosisCertainty } from '../../models/encounter.models';
 import { Icd10Code } from '../../models/icd10.models';
 
 @Component({
   selector: 'bd-diagnosis-list',
   standalone: true,
-  imports: [ComboboxComponent, SegmentedComponent],
+  imports: [AlertComponent, ComboboxComponent, IconComponent, SegmentedComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="diagnosis-list" aria-label="Diagnósticos de la atención">
-      <h2 class="diagnosis-list__title">Diagnósticos</h2>
+      <div class="diagnosis-list__header">
+        <h2 class="diagnosis-list__title">Diagnósticos</h2>
+
+        @if (showOrthodonticControl()) {
+          <button
+            type="button"
+            class="btn btn-outline diagnosis-list__orthodontic-btn"
+            [disabled]="orthodonticBusy()"
+            (click)="orthodonticControl.emit()"
+          >
+            <bd-icon [name]="smileIcon" [size]="16" />
+            {{ orthodonticBusy() ? 'Registrando…' : 'Control de ortodoncia' }}
+          </button>
+        }
+      </div>
+
+      @if (orthodonticError()) {
+        <bd-alert variant="error" [message]="orthodonticError()" />
+      }
 
       @if (!isReadOnly()) {
         <div class="diagnosis-list__add-bar">
@@ -116,11 +140,32 @@ import { Icd10Code } from '../../models/icd10.models';
       gap: var(--space-md);
     }
 
+    .diagnosis-list__header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-xs);
+    }
+
     .diagnosis-list__title {
       margin: 0;
       font-size: var(--fs-md);
       font-weight: 700;
       color: var(--blue-950);
+    }
+
+    .diagnosis-list__orthodontic-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      width: 100%;
+      min-height: 44px;
+
+      @include bp.bp-up(sm) {
+        width: auto;
+      }
     }
 
     .diagnosis-list__add-bar {
@@ -285,6 +330,13 @@ export class DiagnosisListComponent {
   readonly queryChange = output<string>();
   readonly addDiagnosis = output<{ icd10Id: number; certainty: DiagnosisCertainty }>();
   readonly voidDiagnosis = output<Diagnosis>();
+
+  // Control de ortodoncia (cambio de ligas): el botón lo decide la página según la atención
+  readonly showOrthodonticControl = input<boolean>(false);
+  readonly orthodonticBusy = input<boolean>(false);
+  readonly orthodonticError = input<string | null>(null);
+  readonly orthodonticControl = output<void>();
+  readonly smileIcon: LucideIconData = Smile;
 
   readonly comboboxRef = viewChild<ComboboxComponent<Icd10Code>>('combobox');
 

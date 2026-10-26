@@ -24,6 +24,7 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
 import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
 import { Patient, PatientSearchStore } from '../../../patients';
+import { PaymentDialogService } from '../../../billing';
 import { AgendaByStatusComponent } from '../../components/agenda-by-status/agenda-by-status.component';
 import { AgendaDayListComponent } from '../../components/agenda-day-list/agenda-day-list.component';
 import { AgendaGridComponent } from '../../components/agenda-grid/agenda-grid.component';
@@ -372,6 +373,7 @@ export class ReceptionAgendaPage implements OnInit {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly sessionStore = inject(SessionStore);
   private readonly notificationService = inject(NotificationService);
+  private readonly paymentDialog = inject(PaymentDialogService);
 
   readonly calendarXIcon: LucideIconData = CalendarX;
   private readonly clinicTimePipe = new ClinicTimePipe();
@@ -604,6 +606,16 @@ export class ReceptionAgendaPage implements OnInit {
   onPanelAction(action: AppointmentActionType): void {
     const appt = this.store.selectedAppointment();
     if (!appt) return;
+
+    if (action === 'charge') {
+      if (!appt.encounterId) return;
+      this.paymentDialog.open({
+        patientId: appt.patientId,
+        patientName: appt.patientName,
+        encounterId: appt.encounterId,
+      });
+      return;
+    }
 
     if (action === 'reschedule') {
       this.formStore.setProfessionals(this.store.professionals());

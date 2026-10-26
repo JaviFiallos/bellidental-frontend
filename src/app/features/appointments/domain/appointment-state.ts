@@ -89,19 +89,40 @@ export function appointmentDisplayState(appointment: {
   };
 }
 
-export type AppointmentActionType = 'check-in' | 'confirm' | 'no-show' | 'cancel' | 'reschedule';
+export type AppointmentActionType =
+  | 'check-in'
+  | 'confirm'
+  | 'no-show'
+  | 'cancel'
+  | 'reschedule'
+  | 'charge';
 
 export function availableActions(
   appointment: {
     status: AppointmentStatus;
     startAt: string;
     checkedInAt?: string | null;
+    encounterId?: string | null;
+    encounterStatus?: EncounterStatus | null;
+    encounterVoided?: boolean;
   },
   now: Date,
   isToday: boolean,
   hasPermission: (permission: string) => boolean = () => true
 ): AppointmentActionType[] {
-  const { status, startAt, checkedInAt } = appointment;
+  const { status, startAt, checkedInAt, encounterId, encounterStatus, encounterVoided } = appointment;
+
+  if (status === 'ATTENDED') {
+    if (
+      encounterId &&
+      encounterStatus === 'COMPLETED' &&
+      !encounterVoided &&
+      hasPermission('BILLING_CREATE')
+    ) {
+      return ['charge'];
+    }
+    return [];
+  }
 
   if (status !== 'PENDING' && status !== 'CONFIRMED') {
     return [];

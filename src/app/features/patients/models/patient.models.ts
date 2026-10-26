@@ -68,3 +68,28 @@ export interface UpdatePatientRequest {
   emergencyContactPhoneE164: string;
   adminNotes: string;
 }
+
+export type PatientListView = 'ATTENDED' | 'CREATED';
+
+export interface PatientListItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  documentType: DocumentType;
+  documentNumber: string;
+  age: number | null;
+  lastEncounterAt: string | null;
+  createdAt: string;
+  pendingBalance: number | null; // null sin BILLING_READ
+}
+
+export interface PatientListFilters {
+  view?: PatientListView;
+  from?: string | null;
+  to?: string | null;
+  withBalance?: boolean;
+  query?: string | null;
+  page?: number;
+  size?: number;
+}

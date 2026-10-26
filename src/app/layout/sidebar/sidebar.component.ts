@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavItem } from '../nav-items';
 import { IconComponent, LucideIconData } from '../../shared/components/icon/icon.component';
-import { LogOut } from 'lucide-angular';
+import { KeyRound, LogOut } from 'lucide-angular';
 
 export type SidebarMode = 'drawer' | 'icons' | 'full';
 
@@ -21,15 +21,11 @@ export class SidebarComponent {
   readonly mode = input<SidebarMode>('full');
 
   readonly logout = output<void>();
-  readonly searchRequested = output<void>();
 
   readonly logoutIcon: LucideIconData = LogOut;
+  readonly accountIcon: LucideIconData = KeyRound;
 
   onLogout(): void {
     this.logout.emit();
-  }
-
-  onSearchClick(): void {
-    this.searchRequested.emit();
   }
 }

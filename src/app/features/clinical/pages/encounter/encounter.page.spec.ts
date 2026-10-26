@@ -27,7 +27,12 @@ import {
   mockPatientOdontogramEmpty,
   mockPatientOdontogramWithFindings,
   mockPerformedResina,
+  mockDiagnosisZ464,
+  mockDiagnosisZ464ApiResponse,
+  mockIcd10Z464ApiResponse,
+  mockPerformedControlOrtodoncia,
   mockTreatmentCatalogApiResponse,
+  mockTreatmentCatalogWithControlApiResponse,
   mockTreatmentResina,
 } from '../../testing/fixtures';
 import { Finding, PatientOdontogram } from '../../../odontogram';
@@ -232,6 +237,120 @@ describe('EncounterPage', () => {
     const completeBtn = fixture.nativeElement.querySelector('.complete-bar__btn') as HTMLButtonElement;
     expect(completeBtn).toBeTruthy();
     expect(completeBtn.disabled).toBe(false);
+  });
+
+  it('clic en Control de ortodoncia → PUT con motivo, POST Z46.4 y POST D8670 a $0 → se ven Z46.4 y el control en la lista', async () => {
+    vi.useFakeTimers();
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    // Atención sin motivo ni diagnósticos
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, chiefComplaint: null },
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+
+    // Clic en «Control de ortodoncia»
+    const controlButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.diagnosis-list button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.includes('Control de ortodoncia')) as HTMLButtonElement;
+    controlButton.click();
+    fixture.detectChanges();
+
+    // PUT con el motivo (sale sin esperar el debounce)
+    const updateReq = httpMock.expectOne(
+      (req) => req.method === 'PUT' && req.url === '/api/v1/encounters/enc-1'
+    );
+    expect(updateReq.request.body.chiefComplaint).toBe('Control de ortodoncia (cambio de ligas)');
+    updateReq.flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, chiefComplaint: 'Control de ortodoncia (cambio de ligas)' },
+    });
+
+    // GET /api/v1/icd10?query=Z46.4 → POST diagnóstico con certeza definitiva
+    const icdReq = httpMock.expectOne(
+      (req) => req.url === '/api/v1/icd10' && req.params.get('query') === 'Z46.4'
+    );
+    icdReq.flush(mockIcd10Z464ApiResponse);
+
+    const addReq = httpMock.expectOne('/api/v1/encounters/enc-1/diagnoses');
+    expect(addReq.request.method).toBe('POST');
+    expect(addReq.request.body).toEqual({ icd10Id: 205, certainty: 'DEFINITIVE' });
+    addReq.flush(mockDiagnosisZ464ApiResponse);
+    fixture.detectChanges();
+
+    // GET /api/v1/treatments → POST tratamiento D8670 a $0 ligado al Z46.4
+    const catalogReq = httpMock.expectOne('/api/v1/treatments');
+    expect(catalogReq.request.method).toBe('GET');
+    catalogReq.flush(mockTreatmentCatalogWithControlApiResponse);
+    fixture.detectChanges();
+
+    const recordReq = httpMock.expectOne('/api/v1/encounters/enc-1/treatments');
+    expect(recordReq.request.method).toBe('POST');
+    expect(recordReq.request.body).toEqual({
+      treatmentId: 3,
+      quantity: 1,
+      price: 0,
+      encounterDiagnosisId: 'diag-2',
+    });
+    recordReq.flush({
+      success: true,
+      message: 'Tratamiento registrado',
+      data: mockPerformedControlOrtodoncia,
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Z46.4');
+    expect(compiled.textContent).toContain('D8670');
+    expect(compiled.textContent).toContain('$ 0,00');
+  });
+
+  it('sin D8670 en el catálogo → mensaje "Falta el tratamiento…" y no hay POST de tratamiento', async () => {
+    vi.useFakeTimers();
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    // Atención con motivo y Z46.4 ya registrado: solo falta el tratamiento
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      ...mockEncounterApiResponse,
+      data: { ...mockEncounterOpen, diagnoses: [mockDiagnosisZ464] },
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+
+    const controlButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.diagnosis-list button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.includes('Control de ortodoncia')) as HTMLButtonElement;
+    controlButton.click();
+    fixture.detectChanges();
+
+    // El catálogo no trae D8670 (solo Resina y Profilaxis)
+    httpMock.expectOne('/api/v1/treatments').flush(mockTreatmentCatalogApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(httpMock.match((req) => req.method === 'POST' && req.url === '/api/v1/encounters/enc-1/treatments')).toHaveLength(0);
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Falta el tratamiento "Control de ortodoncia" (D8670)');
   });
 
   it('completa la atención → POST y navega a /consultorio', async () => {
@@ -724,15 +843,14 @@ describe('EncounterPage', () => {
     expect(treatButton).toBeTruthy();
     treatButton!.click();
     fixture.detectChanges();
-    // La página hace scroll y foco al buscador en un setTimeout (tras cerrar el panel de la pieza)
-    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    // 2. Foco en el buscador → GET /api/v1/treatments, y se elige D2330
+    // 2. El panel "Registrar tratamiento" abre con el buscador enfocado → GET /api/v1/treatments, y se elige D2330
     const catalogReq = httpMock.expectOne('/api/v1/treatments');
     catalogReq.flush(mockTreatmentCatalogApiResponse);
     fixture.detectChanges();
-    const searchInput = compiled.querySelector('.treatments-section .combobox-input') as HTMLInputElement;
+    const searchInput = compiled.querySelector('.treatment-editor .combobox-input') as HTMLInputElement;
     searchInput.value = 'resina';
     searchInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -921,9 +1039,14 @@ describe('EncounterPage', () => {
     fixture.detectChanges();
     flushOdontogram(httpMock);
 
-    // Foco en el buscador → GET /api/v1/treatments (catálogo completo, sin query)
+    // Clic en «Registrar tratamiento» → se abre el panel; foco en el buscador → GET /api/v1/treatments (catálogo completo, sin query)
+    const openButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.treatments-section button') as NodeListOf<HTMLButtonElement>
+    ).find((button) => button.textContent?.trim() === 'Registrar tratamiento') as HTMLButtonElement;
+    openButton.click();
+    fixture.detectChanges();
     const searchInput = fixture.nativeElement.querySelector(
-      '.treatments-section .combobox-input'
+      '.treatment-editor .combobox-input'
     ) as HTMLInputElement;
     searchInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
     const catalogReq = httpMock.expectOne('/api/v1/treatments');
@@ -964,6 +1087,7 @@ describe('EncounterPage', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.treatment-editor')).toBeNull();
     expect(compiled.textContent).toContain('D2330');
     expect(compiled.textContent).toContain('Total de la sesión');
     expect(compiled.textContent).toContain('$ 60,00');
@@ -1125,16 +1249,206 @@ describe('EncounterPage', () => {
     expect(editor.querySelector('.prescription-item-list')?.textContent).toContain('Amoxicilina');
   });
 
-  /** jsdom no tiene la pestaña del PDF ni URL de blobs: se sustituyen solo esas APIs del navegador. */
+  it('medicamento que no existe → agregar desde la receta → queda seleccionado', async () => {
+    vi.useFakeTimers();
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterWithDiagnosisApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Nueva receta').click();
+    fixture.detectChanges();
+
+    const diagnosisSelect = fixture.nativeElement.querySelector(
+      '#prescription-diagnosis'
+    ) as HTMLSelectElement;
+    expect(diagnosisSelect.value).toBe('diag-1');
+
+    const medicationInput = fixture.nativeElement.querySelector(
+      '.prescription-item-form .combobox-input'
+    ) as HTMLInputElement;
+    medicationInput.value = 'Prednisona';
+    medicationInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    vi.advanceTimersByTime(250);
+
+    const searchReq = httpMock.expectOne('/api/v1/medications?query=Prednisona');
+    expect(searchReq.request.method).toBe('GET');
+    searchReq.flush({ success: true, message: 'OK', data: [] });
+    fixture.detectChanges();
+
+    const addAction = document.querySelector<HTMLElement>('.combobox-action');
+    expect(addAction, 'acción Agregar Prednisona').toBeTruthy();
+    expect(addAction?.textContent).toContain('＋ Agregar «Prednisona»');
+    addAction!.click();
+    fixture.detectChanges();
+
+    const medForm = fixture.nativeElement.querySelector('bd-medication-form') as HTMLElement;
+    expect(medForm).toBeTruthy();
+    const nameInput = medForm.querySelector('#medication-name') as HTMLInputElement;
+    expect(nameInput.value).toBe('Prednisona');
+
+    typeInto(fixture.nativeElement, '#medication-presentation', 'tableta');
+    typeInto(fixture.nativeElement, '#medication-concentration', '20 mg');
+    fixture.detectChanges();
+
+    const submitBtn = medForm.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const postReq = httpMock.expectOne('/api/v1/medications');
+    expect(postReq.request.method).toBe('POST');
+    expect(postReq.request.body).toEqual({
+      name: 'Prednisona',
+      presentation: 'tableta',
+      concentration: '20 mg',
+    });
+    postReq.flush(
+      {
+        success: true,
+        message: 'Medicamento creado.',
+        data: {
+          id: 50,
+          name: 'Prednisona',
+          presentation: 'tableta',
+          concentration: '20 mg',
+          route: null,
+          presets: [],
+          active: true,
+        },
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('bd-medication-form')).toBeNull();
+    const itemForm = fixture.nativeElement.querySelector('.prescription-item-form') as HTMLElement;
+    expect(itemForm).toBeTruthy();
+    const updatedInput = itemForm.querySelector('.combobox-input') as HTMLInputElement;
+    expect(updatedInput.value).toContain('Prednisona 20 mg · tableta');
+    expect((fixture.nativeElement.querySelector('#prescription-diagnosis') as HTMLSelectElement).value).toBe('diag-1');
+  });
+
+  it('guardar posología como plantilla → POST y aparece el botón', async () => {
+    vi.useFakeTimers();
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock);
+    flushPrescriptions(httpMock);
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush(mockEncounterWithDiagnosisApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock
+      .expectOne('/api/v1/patients/pat-1/clinical-record')
+      .flush(mockClinicalRecordApiResponse);
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    fixture.detectChanges();
+
+    findButton(fixture.nativeElement, 'Nueva receta').click();
+    fixture.detectChanges();
+
+    const medicationInput = fixture.nativeElement.querySelector(
+      '.prescription-item-form .combobox-input'
+    ) as HTMLInputElement;
+    medicationInput.value = 'ibu';
+    medicationInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    vi.advanceTimersByTime(250);
+
+    const searchReq = httpMock.expectOne('/api/v1/medications?query=ibu');
+    searchReq.flush({
+      success: true,
+      message: 'OK',
+      data: [
+        {
+          id: 12,
+          name: 'Ibuprofeno',
+          presentation: 'tableta',
+          concentration: '400 mg',
+          route: 'oral',
+          presets: [],
+          active: true,
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const option = Array.from(
+      document.querySelectorAll<HTMLElement>('.combobox-option')
+    ).find((opt) => opt.textContent?.includes('Ibuprofeno'));
+    option!.click();
+    fixture.detectChanges();
+
+    typeInto(fixture.nativeElement, '#prescription-dose', '400 mg');
+    typeInto(fixture.nativeElement, '#prescription-frequency', 'cada 8 horas');
+    typeInto(fixture.nativeElement, '#prescription-duration', '5 días');
+    fixture.detectChanges();
+
+    const saveAsPresetBtn = findButton(fixture.nativeElement, 'Guardar como plantilla');
+    saveAsPresetBtn.click();
+    fixture.detectChanges();
+
+    const presetNameInput = fixture.nativeElement.querySelector(
+      '#prescription-preset-name'
+    ) as HTMLInputElement;
+    expect(presetNameInput.value).toBe('Cada 8 horas × 5 días');
+
+    const inlineContainer = fixture.nativeElement.querySelector(
+      '.prescription-item-form__save-preset-inline'
+    ) as HTMLElement;
+    const savePresetBtn = findButton(inlineContainer, 'Guardar');
+    savePresetBtn.click();
+    fixture.detectChanges();
+
+    const postPresetReq = httpMock.expectOne('/api/v1/medications/12/presets');
+    expect(postPresetReq.request.method).toBe('POST');
+    expect(postPresetReq.request.body).toEqual({
+      label: 'Cada 8 horas × 5 días',
+      dose: '400 mg',
+      frequency: 'cada 8 horas',
+      duration: '5 días',
+    });
+    postPresetReq.flush(
+      {
+        success: true,
+        message: 'Plantilla creada.',
+        data: {
+          id: 77,
+          label: 'Cada 8 horas × 5 días',
+          dose: '400 mg',
+          frequency: 'cada 8 horas',
+          duration: '5 días',
+          instructions: null,
+          active: true,
+        },
+      },
+      { status: 201, statusText: 'Created' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const activePresetBtn = fixture.nativeElement.querySelector(
+      '.prescription-item-form [aria-pressed="true"]'
+    ) as HTMLElement;
+    expect(activePresetBtn).toBeTruthy();
+    expect(activePresetBtn.textContent).toContain('Cada 8 horas × 5 días');
+  });
+
+  /** jsdom no tiene la pestaña del PDF: se sustituye solo `window.open`. */
   function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
     const pdfWindow = { location: { href: '' }, close: vi.fn() };
     vi.spyOn(window, 'open').mockReturnValue(pdfWindow as unknown as Window);
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      writable: true,
-      value: vi.fn(() => 'blob:rx-1'),
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
     return { pdfWindow };
   }
 
@@ -1174,16 +1488,20 @@ describe('EncounterPage', () => {
     });
     fixture.detectChanges();
 
-    // GET /api/v1/prescriptions/rx-1/pdf, binario (sin ApiResponse)
-    const pdfReq = httpMock.expectOne('/api/v1/prescriptions/rx-1/pdf');
-    expect(pdfReq.request.method).toBe('GET');
-    pdfReq.flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    // POST /api/v1/prescriptions/rx-1/pdf-link → enlace temporal al PDF
+    const pdfReq = httpMock.expectOne('/api/v1/prescriptions/rx-1/pdf-link');
+    expect(pdfReq.request.method).toBe('POST');
+    pdfReq.flush({
+      success: true,
+      message: 'Enlace generado',
+      data: { url: '/api/v1/prescriptions/rx-1/receta.pdf?t=abc', expiresAt: '2026-10-19T10:47:00-05:00' },
+    });
     fixture.detectChanges();
     await fixture.whenStable();
 
     const section = fixture.nativeElement.querySelector('.prescriptions-section') as HTMLElement;
     expect(section.textContent).toContain('Emitida');
-    expect(pdfWindow.location.href).toBe('blob:rx-1');
+    expect(pdfWindow.location.href).toBe('/api/v1/prescriptions/rx-1/receta.pdf?t=abc');
   });
 
   it('Emitir con la atención bloqueada → mensaje y sigue en borrador', async () => {
@@ -1206,7 +1524,7 @@ describe('EncounterPage', () => {
     expect(section.textContent).toContain('Borrador');
     // La pestaña vacía se cerró y no se pidió el PDF
     expect(pdfWindow.close).toHaveBeenCalled();
-    expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf')).toHaveLength(0);
+    expect(httpMock.match('/api/v1/prescriptions/rx-1/pdf-link')).toHaveLength(0);
   });
 
   async function openExamPanelWithEncounter(encounterData: Encounter): Promise<void> {
@@ -1345,5 +1663,219 @@ describe('EncounterPage', () => {
     expect(regionButton('5 Lengua').getAttribute('aria-pressed')).toBe('false');
     expect(regionTextarea('8 · Carrillos').value).toBe('línea alba');
     expect(fixture.nativeElement.querySelector('#stomatognathic-region-5')).toBeNull();
+  });
+
+  it('completar con total > 0 → "Cobrar ahora" → GET account → guardar → POST /patients/{id}/payments con { amount, method: "EFECTIVO", encounterId } → se ve "Abono registrado C-000001"', async () => {
+    sessionStore.setCurrentUser({
+      userId: 'user-prof-1',
+      email: 'odontologa@bellidental.local',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_READ', 'RECORD_UPDATE', 'RECORD_CREATE', 'BILLING_CREATE'],
+      professionalId: 'prof-1',
+    });
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock, 'enc-1', [mockPerformedResina]);
+    flushPrescriptions(httpMock);
+
+    const encounterWithDiag = {
+      ...mockEncounterApiResponse.data,
+      diagnoses: [mockDiagnosisApiResponse.data],
+    };
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      success: true,
+      message: 'OK',
+      data: encounterWithDiag,
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1/clinical-record').flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    await fixture.whenStable();
+
+    const completeBtn = fixture.nativeElement.querySelector('.complete-bar__btn') as HTMLButtonElement;
+    completeBtn.click();
+    fixture.detectChanges();
+
+    const compReq = httpMock.expectOne('/api/v1/encounters/enc-1/complete');
+    compReq.flush(mockEncounterCompletedApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const chargeNotice = fixture.nativeElement.querySelector('.encounter-page__charge-notice');
+    expect(chargeNotice).not.toBeNull();
+    expect(chargeNotice.textContent).toContain('Total de la sesión');
+
+    const cobrarBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    ).find((b: any) => b.textContent?.includes('Cobrar ahora')) as HTMLButtonElement;
+    expect(cobrarBtn).not.toBeNull();
+    cobrarBtn.click();
+    fixture.detectChanges();
+
+    const accountReq = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    accountReq.flush({
+      success: true,
+      message: 'Cuenta obtenida',
+      data: {
+        patientId: 'pat-1',
+        patientName: 'David Bellido',
+        totalCharges: 40,
+        totalPayments: 0,
+        balance: 40,
+        sessions: [
+          {
+            encounterId: 'enc-1',
+            date: '2026-10-22',
+            professionalName: 'Odontóloga Principal',
+            treatments: ['Resina simple'],
+            charge: 40,
+            payment: 0,
+            runningBalance: 40,
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const dialog = document.querySelector('.payment-dialog') as HTMLElement;
+    expect(dialog).not.toBeNull();
+
+    const submitBtn = dialog.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(submitBtn).not.toBeNull();
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const payReq = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(payReq.request.method).toBe('POST');
+    expect(payReq.request.body).toEqual({
+      amount: 40,
+      method: 'EFECTIVO',
+      encounterId: 'enc-1',
+    });
+    payReq.flush({
+      success: true,
+      message: 'Abono registrado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: 'enc-1',
+        amount: 40,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000001',
+        paidAt: '2026-10-22T10:00:00Z',
+        receivedBy: 'user-prof-1',
+        voided: false,
+        voidReason: null,
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(dialog.textContent).toContain('Abono registrado');
+    expect(dialog.textContent).toContain('C-000001');
+
+    const closeBtn = dialog.querySelector('.payment-dialog__btn-done') as HTMLButtonElement;
+    closeBtn?.click();
+    fixture.detectChanges();
+  });
+
+  it('guardar el cobro con 403 → se ve "No tienes permiso"', async () => {
+    sessionStore.setCurrentUser({
+      userId: 'user-prof-1',
+      email: 'odontologa@bellidental.local',
+      roles: ['ODONTOLOGO'],
+      permissions: ['RECORD_READ', 'RECORD_UPDATE', 'RECORD_CREATE', 'BILLING_CREATE'],
+      professionalId: 'prof-1',
+    });
+
+    fixture = TestBed.createComponent(EncounterPage);
+    fixture.detectChanges();
+    flushTreatments(httpMock, 'enc-1', [mockPerformedResina]);
+    flushPrescriptions(httpMock);
+
+    const encounterWithDiag = {
+      ...mockEncounterApiResponse.data,
+      diagnoses: [mockDiagnosisApiResponse.data],
+    };
+
+    httpMock.expectOne('/api/v1/encounters/enc-1').flush({
+      success: true,
+      message: 'OK',
+      data: encounterWithDiag,
+    });
+    httpMock.expectOne('/api/v1/patients/pat-1').flush(mockPatientApiResponse);
+    httpMock.expectOne('/api/v1/patients/pat-1/clinical-record').flush(mockClinicalRecordApiResponse);
+
+    fixture.detectChanges();
+    flushOdontogram(httpMock);
+    await fixture.whenStable();
+
+    const completeBtn = fixture.nativeElement.querySelector('.complete-bar__btn') as HTMLButtonElement;
+    completeBtn.click();
+    fixture.detectChanges();
+
+    const compReq = httpMock.expectOne('/api/v1/encounters/enc-1/complete');
+    compReq.flush(mockEncounterCompletedApiResponse);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const cobrarBtn = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    ).find((b: any) => b.textContent?.includes('Cobrar ahora')) as HTMLButtonElement;
+    cobrarBtn.click();
+    fixture.detectChanges();
+
+    const accountReq = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    accountReq.flush({
+      success: true,
+      message: 'Cuenta obtenida',
+      data: {
+        patientId: 'pat-1',
+        patientName: 'David Bellido',
+        totalCharges: 40,
+        totalPayments: 0,
+        balance: 40,
+        sessions: [
+          {
+            encounterId: 'enc-1',
+            date: '2026-10-22',
+            professionalName: 'Odontóloga Principal',
+            treatments: ['Resina simple'],
+            charge: 40,
+            payment: 0,
+            runningBalance: 40,
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const dialog = document.querySelector('.payment-dialog') as HTMLElement;
+    expect(dialog).not.toBeNull();
+
+    const submitBtn = dialog.querySelector('button[type="submit"]') as HTMLButtonElement;
+    submitBtn.click();
+    fixture.detectChanges();
+
+    const payReq = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(payReq.request.method).toBe('POST');
+    payReq.flush(
+      { success: false, message: 'Forbidden', data: null },
+      { status: 403, statusText: 'Forbidden' }
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(dialog.textContent).toContain('No tienes permiso');
+
+    const closeBtn = dialog.querySelector('.payment-dialog__close-btn') as HTMLButtonElement;
+    closeBtn?.click();
+    fixture.detectChanges();
   });
 });

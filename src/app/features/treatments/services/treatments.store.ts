@@ -35,6 +35,7 @@ export class TreatmentsStore {
   readonly selectedTreatment = signal<Treatment | null>(null);
   readonly selectedTooth = signal<number | null>(null);
   readonly selectedFindingId = signal<string | null>(null);
+  readonly editorOpen = signal<boolean>(false);
 
   readonly saving = signal<boolean>(false);
   readonly saveError = signal<string | null>(null);
@@ -115,6 +116,19 @@ export class TreatmentsStore {
     this.saveError.set(null);
   }
 
+  /** Abre el panel de registro; con findingId, el tratamiento va ligado a ese hallazgo pendiente. */
+  openEditor(findingId: string | null = null): void {
+    this.clearSelection();
+    this.selectedFindingId.set(findingId);
+    this.editorOpen.set(true);
+  }
+
+  closeEditor(): void {
+    this.clearSelection();
+    this.setQuery('');
+    this.editorOpen.set(false);
+  }
+
   selectFinding(findingId: string | null): void {
     this.saveError.set(null);
     this.selectedFindingId.set(findingId);
@@ -140,8 +154,7 @@ export class TreatmentsStore {
         next: (created) => {
           this.items.update((items) => [...items, created]);
           this.saving.set(false);
-          this.selectedTreatment.set(null);
-          this.selectedFindingId.set(null);
+          this.closeEditor();
         },
         error: (err: ApiError | Error) => {
           this.saving.set(false);

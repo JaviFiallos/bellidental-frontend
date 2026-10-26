@@ -697,6 +697,7 @@ export const mockMedicationAmoxicilina: Medication = {
   presentation: 'cápsula',
   concentration: '500 mg',
   route: 'oral',
+  active: true,
   presets: [
     {
       id: 1,
@@ -705,6 +706,7 @@ export const mockMedicationAmoxicilina: Medication = {
       frequency: 'cada 8 horas',
       duration: '7 días',
       instructions: null,
+      active: true,
     },
   ],
 };
@@ -853,3 +855,57 @@ export const mockEncounterSession2: Encounter = {
   ],
 };
 
+
+export const mockIcd10Z464: Icd10Code = {
+  id: 205,
+  code: 'Z46.4',
+  description: 'Adaptación y ajuste de dispositivo ortodóncico',
+  category: 'Factores que influyen en el estado de salud',
+};
+
+export const mockIcd10Z464ApiResponse: ApiResponse<Icd10Code[]> = {
+  success: true,
+  message: 'Códigos CIE-10 obtenidos',
+  data: [mockIcd10Z464],
+};
+
+export const mockDiagnosisZ464: Diagnosis = {
+  id: 'diag-2',
+  icd10Id: 205,
+  code: 'Z46.4',
+  description: 'Adaptación y ajuste de dispositivo ortodóncico',
+  certainty: 'DEFINITIVE',
+  voidedAt: null,
+};
+
+export const mockDiagnosisZ464ApiResponse: ApiResponse<Diagnosis> = {
+  success: true,
+  message: 'Diagnóstico agregado',
+  data: mockDiagnosisZ464,
+};
+
+export const mockTreatmentControlOrtodoncia: Treatment = {
+  id: 3,
+  code: 'D8670',
+  name: 'Control de ortodoncia',
+  description: null,
+  basePrice: 0,
+};
+
+export const mockTreatmentCatalogWithControlApiResponse: ApiResponse<Treatment[]> = {
+  success: true,
+  message: 'Catálogo de tratamientos obtenido',
+  data: [mockTreatmentResina, mockTreatmentProfilaxis, mockTreatmentControlOrtodoncia],
+};
+
+export const mockPerformedControlOrtodoncia: PerformedTreatment = {
+  ...mockPerformedResina,
+  id: 'pt-2',
+  treatmentId: 3,
+  treatmentCode: 'D8670',
+  treatmentName: 'Control de ortodoncia',
+  encounterDiagnosisId: 'diag-2',
+  quantity: 1,
+  price: 0,
+  total: 0,
+};

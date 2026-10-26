@@ -4,10 +4,15 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { ApplicationRef } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CurrentUser } from '../../../../core/auth/auth.models';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiResponse } from '../../../../core/api/api.models';
 import { Appointment } from '../../../appointments';
+import { CreatePaymentRequest, PatientAccount, Payment, PaymentListItem } from '../../../billing';
+import { AuditEntry } from '../../../management';
 import { Patient } from '../../models/patient.models';
 import { PatientReceptionPage } from './patient-reception.page';
 
@@ -38,6 +43,84 @@ const patientResponse: Patient = {
   active: true,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
+};
+
+const director: CurrentUser = {
+  userId: '11111111-1111-1111-1111-111111111111',
+  email: 'director@bellidental.local',
+  roles: ['ADMIN', 'ODONTOLOGO'],
+  permissions: ['PATIENT_READ', 'RECORD_READ', 'BILLING_READ'],
+  professionalId: '55555555-5555-5555-5555-555555555555',
+};
+
+const auditResponse: AuditEntry[] = [
+  {
+    revision: 10,
+    at: '2026-10-02T14:05:00Z',
+    userId: '33333333-3333-3333-3333-333333333333',
+    username: 'secretaria',
+    type: 'ADD',
+    changes: [
+      { field: 'active', oldValue: null, newValue: 'true' },
+      { field: 'firstName', oldValue: null, newValue: 'David' },
+      { field: 'id', oldValue: null, newValue: 'pat-1' },
+      { field: 'phoneE164', oldValue: null, newValue: '593987654321' },
+    ],
+  },
+  {
+    revision: 15,
+    at: '2026-10-09T15:42:10Z',
+    userId: '33333333-3333-3333-3333-333333333333',
+    username: 'secretaria',
+    type: 'MOD',
+    changes: [
+      { field: 'phoneE164', oldValue: '593987654321', newValue: '593991112233' },
+      { field: 'updatedAt', oldValue: '2026-10-02T09:05-05:00', newValue: '2026-10-09T10:42:10-05:00' },
+    ],
+  },
+];
+
+const secretaria: CurrentUser = {
+  userId: 'user-sec',
+  email: 'secretaria@bellidental.com',
+  roles: ['SECRETARIA'],
+  permissions: [
+    'PATIENT_READ',
+    'PATIENT_UPDATE',
+    'APPOINTMENT_READ',
+    'APPOINTMENT_UPDATE',
+    'APPOINTMENT_CANCEL',
+    'BILLING_READ',
+    'BILLING_CREATE',
+  ],
+};
+
+const accountResponse: PatientAccount = {
+  patientId: 'pat-1',
+  patientName: 'David Pérez',
+  totalCharges: 65,
+  totalPayments: 40,
+  balance: 25,
+  sessions: [
+    {
+      encounterId: 'enc-1',
+      date: '2026-10-03T09:10:00-05:00',
+      professionalName: 'Daniel Vargas',
+      treatments: ['Profilaxis x1'],
+      charge: 25,
+      payment: 25,
+      runningBalance: 0,
+    },
+    {
+      encounterId: 'enc-2',
+      date: '2026-10-08T10:40:00-05:00',
+      professionalName: 'Daniel Vargas',
+      treatments: ['Resina compuesta 2 caras x1'],
+      charge: 40,
+      payment: 15,
+      runningBalance: 25,
+    },
+  ],
 };
 
 const appointmentsResponse: Appointment[] = [
@@ -116,18 +199,16 @@ describe('PatientReceptionPage', () => {
     });
 
     httpMock = TestBed.inject(HttpTestingController);
-    TestBed.inject(SessionStore).setCurrentUser({
-      userId: 'user-sec',
-      email: 'secretaria@bellidental.com',
-      roles: ['SECRETARIA'],
-      permissions: ['PATIENT_READ', 'PATIENT_UPDATE', 'APPOINTMENT_READ', 'APPOINTMENT_UPDATE', 'APPOINTMENT_CANCEL'],
-    });
-
-    harness = await RouterTestingHarness.create('/pacientes/pat-1');
-    fixture = harness.fixture;
   });
 
+  async function openAs(user: CurrentUser): Promise<void> {
+    TestBed.inject(SessionStore).setCurrentUser(user);
+    harness = await RouterTestingHarness.create('/pacientes/pat-1');
+    fixture = harness.fixture;
+  }
+
   afterEach(() => {
+    TestBed.inject(Dialog).closeAll();
     httpMock.verify();
     vi.useRealTimers();
   });
@@ -147,6 +228,61 @@ describe('PatientReceptionPage', () => {
     };
     appointmentsRequest.flush(appointmentsBody);
 
+    const accountRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    expect(accountRequest.request.method).toBe('GET');
+    const accountBody: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
+    accountRequest.flush(accountBody);
+
+    const paymentsRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(paymentsRequest.request.method).toBe('GET');
+    const paymentsBody: ApiResponse<PaymentListItem[]> = {
+      success: true,
+      message: 'Abonos obtenidos',
+      data: [],
+    };
+    paymentsRequest.flush(paymentsBody);
+
+    harness.detectChanges();
+  }
+
+  /** jsdom no tiene la pestaña del PDF: se sustituye solo `window.open`. */
+  function stubPdfBrowserApis(): { pdfWindow: { location: { href: string }; close: ReturnType<typeof vi.fn> } } {
+    const pdfWindow = { location: { href: '' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(pdfWindow as unknown as Window);
+    return { pdfWindow };
+  }
+
+  /** Registra un abono de $ 25,00 en efectivo desde el formulario (POST) y responde la recarga de la cuenta y abonos. */
+  function registerPaymentFromForm(): void {
+    findButton('Registrar abono')!.click();
+    harness.detectChanges();
+    findButton('Guardar abono')!.click();
+
+    const paymentRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    const payment: ApiResponse<Payment> = {
+      success: true,
+      message: 'Abono registrado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000045',
+        paidAt: '2026-10-10T12:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: false,
+        voidReason: null,
+      },
+    };
+    paymentRequest.flush(payment);
+
+    const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    const reloaded: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
+    reloadRequest.flush(reloaded);
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    reloadPayments.flush({ success: true, message: 'Abonos obtenidos', data: [] });
     harness.detectChanges();
   }
 
@@ -156,7 +292,8 @@ describe('PatientReceptionPage', () => {
     );
   }
 
-  it('abrir /pacientes/pat-1 → GET paciente y citas → identificación, observaciones, próxima y anteriores', () => {
+  it('abrir /pacientes/pat-1 → GET paciente y citas → identificación, observaciones, próxima y anteriores', async () => {
+    await openAs(secretaria);
     flushInitialLoad();
 
     const element = fixture.nativeElement as HTMLElement;
@@ -168,12 +305,13 @@ describe('PatientReceptionPage', () => {
     expect(next.textContent).toContain('10:30');
     expect(next.textContent).toContain('Confirmada');
 
-    const previousTable = element.querySelector('table') as HTMLElement;
+    const previousTable = element.querySelector('table[aria-label="Citas anteriores del paciente"]') as HTMLElement;
     expect(previousTable.textContent).toContain('Atendida');
     expect(previousTable.textContent).toContain('Cancelada');
   });
 
-  it('"Editar observaciones" → escribir → salir del campo → PUT { adminNotes } → se ve el texto nuevo sin textarea', () => {
+  it('"Editar observaciones" → escribir → salir del campo → PUT { adminNotes } → se ve el texto nuevo sin textarea', async () => {
+    await openAs(secretaria);
     flushInitialLoad();
 
     findButton('Editar observaciones')!.click();
@@ -199,5 +337,321 @@ describe('PatientReceptionPage', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.textContent).toContain('Abona $100 mensuales');
     expect(element.querySelector('textarea')).toBeNull();
+  });
+  it('Registrar abono con el saldo → POST /payments → la cuenta se recarga sin saldo pendiente', async () => {
+    await openAs(secretaria);
+    flushInitialLoad();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('Saldo pendiente');
+    expect(element.textContent).toContain('$ 25,00');
+
+    findButton('Registrar abono')!.click();
+    harness.detectChanges();
+    const amountInput = element.querySelector('#payment-amount') as HTMLInputElement;
+    expect(amountInput.value).toBe('25,00');
+
+    findButton('Guardar abono')!.click();
+
+    const paymentRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(paymentRequest.request.method).toBe('POST');
+    const expectedBody: CreatePaymentRequest = { amount: 25, method: 'EFECTIVO' };
+    expect(paymentRequest.request.body).toEqual(expectedBody);
+
+    const payment: ApiResponse<Payment> = {
+      success: true,
+      message: 'Abono registrado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000045',
+        paidAt: '2026-10-10T12:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: false,
+        voidReason: null,
+      },
+    };
+    paymentRequest.flush(payment);
+
+    const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    expect(reloadRequest.request.method).toBe('GET');
+    const reloaded: ApiResponse<PatientAccount> = {
+      success: true,
+      message: 'Cuenta obtenida',
+      data: {
+        ...accountResponse,
+        totalPayments: 65,
+        balance: 0,
+        sessions: [
+          accountResponse.sessions[0],
+          { ...accountResponse.sessions[1], payment: 40, runningBalance: 0 },
+        ],
+      },
+    };
+    reloadRequest.flush(reloaded);
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    reloadPayments.flush({ success: true, message: 'Abonos obtenidos', data: [] });
+    harness.detectChanges();
+
+    expect(element.textContent).toContain('Sin saldo pendiente');
+    expect(findButton('Guardar abono')).toBeUndefined();
+  });
+
+  it('Abono a una sesión que no corresponde → 409 → mensaje en el formulario', async () => {
+    await openAs(secretaria);
+    flushInitialLoad();
+
+    const element = fixture.nativeElement as HTMLElement;
+    findButton('Registrar abono')!.click();
+    harness.detectChanges();
+
+    const sessionSelect = element.querySelector('#payment-session') as HTMLSelectElement;
+    sessionSelect.value = 'enc-2';
+    sessionSelect.dispatchEvent(new Event('change'));
+
+    findButton('Guardar abono')!.click();
+
+    const paymentRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    const expectedBody: CreatePaymentRequest = { amount: 25, method: 'EFECTIVO', encounterId: 'enc-2' };
+    expect(paymentRequest.request.body).toEqual(expectedBody);
+    paymentRequest.flush(
+      { success: false, message: 'La atención no pertenece a este paciente.', data: null },
+      { status: 409, statusText: 'Conflict' }
+    );
+    harness.detectChanges();
+
+    expect(element.textContent).toContain('La atención no pertenece a este paciente.');
+    expect(findButton('Guardar abono')).toBeDefined();
+  });
+
+  it('Imprimir comprobante del abono → POST /payments/{id}/receipt-link → la pestaña recibe el enlace', async () => {
+    const { pdfWindow } = stubPdfBrowserApis();
+    await openAs(secretaria);
+    flushInitialLoad();
+    registerPaymentFromForm();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('Abono registrado');
+    expect(element.textContent).toContain('C-000045');
+
+    findButton('Imprimir comprobante')!.click();
+    harness.detectChanges();
+
+    const receiptRequest = httpMock.expectOne('/api/v1/payments/pay-1/receipt-link');
+    expect(receiptRequest.request.method).toBe('POST');
+    receiptRequest.flush({
+      success: true,
+      message: 'Enlace generado',
+      data: { url: '/api/v1/payments/pay-1/comprobante.pdf?t=abc', expiresAt: '2026-10-19T10:47:00-05:00' },
+    });
+    harness.detectChanges();
+
+    expect(pdfWindow.location.href).toBe('/api/v1/payments/pay-1/comprobante.pdf?t=abc');
+  });
+
+  it('Anular el abono con motivo → POST /payments/{id}/void → Anulado y cuenta recargada', async () => {
+    await openAs(secretaria);
+    flushInitialLoad();
+    registerPaymentFromForm();
+
+    const element = fixture.nativeElement as HTMLElement;
+    findButton('Anular')!.click();
+    harness.detectChanges();
+
+    const reasonInput = document.querySelector('.confirm-dialog__textarea') as HTMLTextAreaElement;
+    reasonInput.value = 'Monto mal digitado';
+    reasonInput.dispatchEvent(new Event('input'));
+    TestBed.inject(ApplicationRef).tick();
+
+    const confirmButton = document.querySelector('.confirm-dialog .btn-danger') as HTMLButtonElement;
+    confirmButton.click();
+
+    const voidRequest = httpMock.expectOne('/api/v1/payments/pay-1/void');
+    expect(voidRequest.request.method).toBe('POST');
+    expect(voidRequest.request.body).toEqual({ voidReason: 'Monto mal digitado' });
+    const voided: ApiResponse<Payment> = {
+      success: true,
+      message: 'Abono anulado',
+      data: {
+        id: 'pay-1',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'EFECTIVO',
+        receiptNumber: 'C-000045',
+        paidAt: '2026-10-10T12:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: true,
+        voidReason: 'Monto mal digitado',
+      },
+    };
+    voidRequest.flush(voided);
+
+    const reloadRequest = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    const reloaded: ApiResponse<PatientAccount> = { success: true, message: 'Cuenta obtenida', data: accountResponse };
+    reloadRequest.flush(reloaded);
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    reloadPayments.flush({ success: true, message: 'Abonos obtenidos', data: [] });
+    harness.detectChanges();
+
+    expect(element.textContent).toContain('Anulado');
+    expect(element.textContent).toContain('Monto mal digitado');
+    expect(findButton('Anular')).toBeUndefined();
+  });
+
+  it('director abre Historial de cambios → GET /audit/patients/{id} → revisiones de la más reciente a la más antigua', async () => {
+    await openAs(director);
+    const patientRequest = httpMock.expectOne('/api/v1/patients/pat-1');
+    const patientBody: ApiResponse<Patient> = { success: true, message: 'Paciente obtenido', data: patientResponse };
+    patientRequest.flush(patientBody);
+
+    httpMock.expectOne('/api/v1/patients/pat-1/account').flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+    httpMock.expectOne('/api/v1/patients/pat-1/payments').flush({ success: true, message: 'Abonos obtenidos', data: [] });
+    harness.detectChanges();
+
+    findButton('Historial de cambios')!.click();
+    harness.detectChanges();
+
+    const auditRequest = httpMock.expectOne('/api/v1/audit/patients/pat-1');
+    expect(auditRequest.request.method).toBe('GET');
+    const auditBody: ApiResponse<AuditEntry[]> = { success: true, message: 'Historial obtenido', data: auditResponse };
+    auditRequest.flush(auditBody);
+    TestBed.inject(ApplicationRef).tick();
+
+    const dialog = document.querySelector('.audit-history') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const firstRevision = dialog.querySelector('.audit-history__entry') as HTMLElement;
+    expect(firstRevision.textContent).toContain('Modificó');
+    expect(firstRevision.textContent).toContain('Teléfono');
+    expect(dialog.textContent).toContain('Creó');
+    expect(dialog.textContent).toContain('secretaria');
+    expect(dialog.textContent).not.toContain('updatedAt');
+  });
+
+  it('historial sin permiso → 403 → mensaje en el diálogo', async () => {
+    await openAs(director);
+    const patientRequest = httpMock.expectOne('/api/v1/patients/pat-1');
+    const patientBody: ApiResponse<Patient> = { success: true, message: 'Paciente obtenido', data: patientResponse };
+    patientRequest.flush(patientBody);
+
+    httpMock.expectOne('/api/v1/patients/pat-1/account').flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+    httpMock.expectOne('/api/v1/patients/pat-1/payments').flush({ success: true, message: 'Abonos obtenidos', data: [] });
+    harness.detectChanges();
+
+    findButton('Historial de cambios')!.click();
+    harness.detectChanges();
+
+    httpMock.expectOne('/api/v1/audit/patients/pat-1').flush(
+      { success: false, message: 'No tiene permisos para realizar esta acción.', data: null },
+      { status: 403, statusText: 'Forbidden' }
+    );
+    TestBed.inject(ApplicationRef).tick();
+
+    const dialog = document.querySelector('.audit-history') as HTMLElement;
+    expect(dialog.textContent).toContain('No tienes permiso para esta acción.');
+  });
+
+  it('abrir la ficha → GET /payments → se ve el abono anulado con su motivo y el vigente con "Anular"; anular el vigente → POST /payments/{id}/void con { voidReason } → recarga account y payments', async () => {
+    const paymentVoided: PaymentListItem = {
+      id: 'pay-void',
+      encounterId: null,
+      amount: 15,
+      method: 'EFECTIVO',
+      receiptNumber: 'C-000010',
+      paidAt: '2026-10-01T10:00:00-05:00',
+      receivedBy: 'user-sec',
+      receivedByName: 'Secretaria',
+      voided: true,
+      voidedAt: '2026-10-01T11:00:00-05:00',
+      voidReason: 'Error de digitación',
+    };
+    const paymentActive: PaymentListItem = {
+      id: 'pay-active',
+      encounterId: null,
+      amount: 25,
+      method: 'TRANSFERENCIA',
+      receiptNumber: 'C-000011',
+      paidAt: '2026-10-02T10:00:00-05:00',
+      receivedBy: 'user-sec',
+      receivedByName: 'Secretaria',
+      voided: false,
+      voidedAt: null,
+      voidReason: null,
+    };
+
+    await openAs(secretaria);
+
+    httpMock.expectOne('/api/v1/patients/pat-1').flush({ success: true, message: 'Paciente obtenido', data: patientResponse });
+    httpMock.expectOne('/api/v1/appointments?patientId=pat-1').flush({ success: true, message: 'Citas obtenidas', data: appointmentsResponse });
+    httpMock.expectOne('/api/v1/patients/pat-1/account').flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+    const paymentsRequest = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(paymentsRequest.request.method).toBe('GET');
+    paymentsRequest.flush({
+      success: true,
+      message: 'Abonos obtenidos',
+      data: [paymentVoided, paymentActive],
+    });
+    harness.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('C-000010');
+    expect(element.textContent).toContain('Anulado');
+    expect(element.textContent).toContain('Error de digitación');
+    expect(element.textContent).toContain('C-000011');
+
+    const voidButton = findButton('Anular')!;
+    expect(voidButton).toBeDefined();
+    expect(voidButton.getAttribute('aria-label')).toContain('C-000011');
+    voidButton.click();
+    harness.detectChanges();
+
+    const reasonInput = document.querySelector('.confirm-dialog__textarea') as HTMLTextAreaElement;
+    reasonInput.value = 'Cobro duplicado';
+    reasonInput.dispatchEvent(new Event('input'));
+    TestBed.inject(ApplicationRef).tick();
+
+    const confirmButton = document.querySelector('.confirm-dialog .btn-danger') as HTMLButtonElement;
+    confirmButton.click();
+
+    const voidRequest = httpMock.expectOne('/api/v1/payments/pay-active/void');
+    expect(voidRequest.request.method).toBe('POST');
+    expect(voidRequest.request.body).toEqual({ voidReason: 'Cobro duplicado' });
+    voidRequest.flush({
+      success: true,
+      message: 'Abono anulado',
+      data: {
+        id: 'pay-active',
+        patientId: 'pat-1',
+        encounterId: null,
+        amount: 25,
+        method: 'TRANSFERENCIA',
+        receiptNumber: 'C-000011',
+        paidAt: '2026-10-02T10:00:00-05:00',
+        receivedBy: 'user-sec',
+        voided: true,
+        voidReason: 'Cobro duplicado',
+      },
+    });
+
+    const reloadAccount = httpMock.expectOne('/api/v1/patients/pat-1/account');
+    expect(reloadAccount.request.method).toBe('GET');
+    reloadAccount.flush({ success: true, message: 'Cuenta obtenida', data: accountResponse });
+
+    const reloadPayments = httpMock.expectOne('/api/v1/patients/pat-1/payments');
+    expect(reloadPayments.request.method).toBe('GET');
+    reloadPayments.flush({
+      success: true,
+      message: 'Abonos obtenidos',
+      data: [paymentVoided, { ...paymentActive, voided: true, voidReason: 'Cobro duplicado' }],
+    });
+    harness.detectChanges();
+
+    expect(findButton('Anular')).toBeUndefined();
+    expect(element.textContent).toContain('Cobro duplicado');
   });
 });

@@ -10,7 +10,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, filter, finalize, forkJoin, map, merge, Observable, of, Subject, switchMap, tap } from 'rxjs';
-import { FileText } from 'lucide-angular';
+import { FileText, History, ShieldCheck } from 'lucide-angular';
 import { SessionStore } from '../../../../core/auth/session.store';
 import { ApiError } from '../../../../core/api/api.models';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
@@ -20,7 +20,10 @@ import { ConfirmDialogService } from '../../../../shared/components/confirm-dial
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
+import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { Appointment, AppointmentsApi } from '../../../appointments';
+import { PatientAccountSectionComponent, PatientAccountStore, Payment, PaymentListItem } from '../../../billing';
+import { AuditHistoryDialogService } from '../../../management';
 import { AdminNotesComponent } from '../../components/admin-notes/admin-notes.component';
 import { PatientAppointmentsComponent } from '../../components/patient-appointments/patient-appointments.component';
 import { PatientIdentityComponent } from '../../components/patient-identity/patient-identity.component';
@@ -38,7 +41,9 @@ import { PatientsApi } from '../../services/patients.api';
     PatientIdentityComponent,
     AdminNotesComponent,
     PatientAppointmentsComponent,
+    PatientAccountSectionComponent,
   ],
+  providers: [PatientAccountStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="patient-reception">
@@ -58,18 +63,36 @@ import { PatientsApi } from '../../services/patients.api';
           @if (canViewForm033()) {
             <div class="patient-reception__actions">
               <a
-                class="btn btn-outline patient-reception__btn-033"
+                class="btn btn-outline patient-reception__btn"
                 [routerLink]="['/pacientes', current.id, '033']"
                 aria-label="Ver Formulario 033"
               >
                 <bd-icon [name]="fileTextIcon" [size]="18" />
                 <span>Formulario 033</span>
               </a>
+              @if (isDirector()) {
+                <button
+                  type="button"
+                  class="btn btn-outline patient-reception__btn"
+                  (click)="onOpenChangesHistory(current)"
+                >
+                  <bd-icon [name]="historyIcon" [size]="18" />
+                  <span>Historial de cambios</span>
+                </button>
+                <a
+                  class="btn btn-outline patient-reception__btn"
+                  [routerLink]="['/direccion/auditoria']"
+                  [queryParams]="{ paciente: current.id }"
+                >
+                  <bd-icon [name]="shieldIcon" [size]="18" />
+                  <span>Ver toda la actividad del paciente</span>
+                </a>
+              }
             </div>
           }
         </div>
 
-        @if (isSecretaria()) {
+        @if (isSecretaria() || isDirector()) {
           <bd-admin-notes
             [notes]="current.adminNotes"
             [canEdit]="canEdit()"
@@ -77,7 +100,37 @@ import { PatientsApi } from '../../services/patients.api';
             [error]="notesError()"
             (save)="onSaveNotes($event)"
           />
+        }
 
+        @if (canViewAccount()) {
+          <bd-patient-account-section
+            [account]="accountStore.account()"
+            [payments]="accountStore.payments()"
+            [loading]="accountStore.loading()"
+            [error]="accountStore.error()"
+            [canRegister]="canRegisterPayment()"
+            [formOpen]="accountStore.formOpen()"
+            [saving]="accountStore.saving()"
+            [saveError]="accountStore.saveError()"
+            [defaultEncounterId]="accountStore.defaultEncounterId()"
+            [lastPayment]="accountStore.lastPayment()"
+            [canVoid]="canRegisterPayment()"
+            [printing]="accountStore.printing()"
+            [voiding]="accountStore.voiding()"
+            [pendingReceiptPaymentId]="accountStore.pendingReceipt()?.paymentId ?? null"
+            [pendingReceiptUrl]="accountStore.pendingReceipt()?.link.url ?? null"
+            [paymentActionError]="accountStore.actionError()"
+            (retry)="accountStore.reload()"
+            (openForm)="accountStore.openForm()"
+            (closeForm)="accountStore.closeForm()"
+            (submitPayment)="accountStore.registerPayment($event)"
+            (printReceipt)="accountStore.printReceipt($event ?? undefined)"
+            (openPendingReceipt)="accountStore.openPendingReceipt($event)"
+            (voidPayment)="onVoidPayment($event)"
+          />
+        }
+
+        @if (isSecretaria()) {
           <section class="patient-reception__appointments" aria-labelledby="patient-reception-appointments-title">
             <h2 id="patient-reception-appointments-title" class="patient-reception__section-title">Citas</h2>
 
@@ -124,10 +177,12 @@ import { PatientsApi } from '../../services/patients.api';
 
     .patient-reception__actions {
       display: flex;
+      flex-wrap: wrap;
       justify-content: flex-end;
+      gap: var(--space-sm);
     }
 
-    .patient-reception__btn-033 {
+    .patient-reception__btn {
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
@@ -169,7 +224,10 @@ export class PatientReceptionPage implements OnInit {
   private readonly clinicClock = inject(ClinicClock);
   private readonly notificationService = inject(NotificationService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly auditHistory = inject(AuditHistoryDialogService);
   private readonly clinicTimePipe = new ClinicTimePipe();
+  private readonly moneyPipe = new MoneyPipe();
+  readonly accountStore = inject(PatientAccountStore);
 
   private readonly reloadPatient$ = new Subject<void>();
 
@@ -191,9 +249,16 @@ export class PatientReceptionPage implements OnInit {
     return prof === 'ODONTOLOGO' || prof === 'DIRECTOR';
   });
   readonly fileTextIcon = FileText;
+  readonly historyIcon = History;
+  readonly shieldIcon = ShieldCheck;
+  readonly isDirector = computed(() => this.sessionStore.profile() === 'DIRECTOR');
   readonly canEdit = computed(
-    () => this.isSecretaria() && this.sessionStore.hasPermission('PATIENT_UPDATE')
+    () => (this.isSecretaria() || this.isDirector()) && this.sessionStore.hasPermission('PATIENT_UPDATE')
   );
+  readonly canViewAccount = computed(
+    () => this.sessionStore.hasPermission('BILLING_READ')
+  );
+  readonly canRegisterPayment = computed(() => this.sessionStore.hasPermission('BILLING_CREATE'));
   readonly canUpdateAppointments = computed(() =>
     this.sessionStore.hasPermission('APPOINTMENT_UPDATE')
   );
@@ -235,6 +300,14 @@ export class PatientReceptionPage implements OnInit {
     if (patient) {
       this.router.navigate(['/pacientes', patient.id, 'editar']);
     }
+  }
+
+  onOpenChangesHistory(patient: Patient): void {
+    this.auditHistory.open({
+      entity: 'patients',
+      id: patient.id,
+      title: 'Historial de cambios · ' + patient.fullName,
+    });
   }
 
   onSaveNotes(adminNotes: string): void {
@@ -296,6 +369,25 @@ export class PatientReceptionPage implements OnInit {
       });
   }
 
+  /** Confirma la anulación de un abono con motivo obligatorio; la franja reporta el resultado. */
+  onVoidPayment(payment: Payment | PaymentListItem): void {
+    this.confirmDialog
+      .open({
+        title: 'Anular abono',
+        message: `El abono ${payment.receiptNumber} de ${this.moneyPipe.transform(payment.amount)} dejará de contar en el saldo. El comprobante quedará marcado como anulado.`,
+        confirmLabel: 'Anular abono',
+        cancelLabel: 'Volver',
+        tone: 'danger',
+        reasonLabel: 'Motivo de la anulación',
+        reasonRequired: true,
+      })
+      .pipe(
+        filter((result) => result.confirmed),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((result) => this.accountStore.voidPayment(payment.id, (result.reason ?? '').trim()));
+  }
+
   private loadPatient(id: string): Observable<unknown> {
     this.patient.set(null);
     this.patientLoading.set(true);
@@ -304,6 +396,10 @@ export class PatientReceptionPage implements OnInit {
     this.appointments.set([]);
     this.appointmentsError.set(null);
     this.appointmentsLoading.set(this.isSecretaria());
+
+    if (this.canViewAccount()) {
+      this.accountStore.load(id);
+    }
 
     const patient$ = this.patientsApi.getById(id).pipe(
       tap({

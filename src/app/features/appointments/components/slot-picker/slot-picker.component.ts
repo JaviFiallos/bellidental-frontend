@@ -48,6 +48,8 @@ export class SlotPickerComponent {
   readonly error = input<string | null>(null);
   readonly ready = input<boolean>(false);
   readonly ariaLabelledby = input<string | undefined>(undefined);
+  /** Solo hoy (sin cita): sin «Ver día siguiente» y mensajes de vacío referidos a hoy. */
+  readonly singleDay = input<boolean>(false);
 
   readonly startChange = output<string>();
   readonly durationChange = output<number>();

@@ -3,13 +3,15 @@ import {
   Component,
   computed,
   effect,
-  ElementRef,
   inject,
   OnInit,
+  signal,
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SessionStore } from '../../../../core/auth/session.store';
+import { AuditHistoryDialogService } from '../../../management';
+import { PaymentDialogService } from '../../../billing';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { ConfirmDialogService } from '../../../../shared/components/confirm-dialog';
@@ -17,6 +19,7 @@ import { SideSheetComponent } from '../../../../shared/components/side-sheet/sid
 import { SkeletonComponent } from '../../../../shared/components/skeleton/skeleton.component';
 import { ClinicDatePipe } from '../../../../shared/pipes/clinic-date.pipe';
 import { ClinicTimePipe } from '../../../../shared/pipes/clinic-time.pipe';
+import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import {
   CreateFindingRequest,
   Finding,
@@ -30,10 +33,13 @@ import {
   FindingOption,
   PerformedTreatment,
   RecordTreatmentRequest,
+  TreatmentEditorComponent,
   TreatmentsSectionComponent,
   TreatmentsStore,
 } from '../../../treatments';
 import {
+  MedicationPresetRequest,
+  MedicationRequest,
   Prescription,
   PrescriptionEditorComponent,
   PrescriptionHeaderDraft,
@@ -54,6 +60,10 @@ import {
 import { Diagnosis, DiagnosisCertainty } from '../../models/encounter.models';
 import { EncounterStore } from '../../services/encounter.store';
 import { HistoryPanelStore } from '../../services/history-panel.store';
+import { OrthodonticControlService } from '../../services/orthodontic-control.service';
+
+/** Paneles laterales de la atención: solo uno abierto a la vez. */
+type EncounterSheet = 'history' | 'prescription' | 'treatment';
 
 @Component({
   selector: 'bd-encounter-page',
@@ -67,6 +77,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     EncounterNotesComponent,
     DiagnosisListComponent,
     TreatmentsSectionComponent,
+    TreatmentEditorComponent,
     PrescriptionsSectionComponent,
     PrescriptionEditorComponent,
     EncounterExtraComponent,
@@ -75,8 +86,16 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     HistoryPanelComponent,
     ClinicDatePipe,
     ClinicTimePipe,
+    MoneyPipe,
   ],
-  providers: [EncounterStore, HistoryPanelStore, OdontogramStore, TreatmentsStore, PrescriptionsStore],
+  providers: [
+    EncounterStore,
+    HistoryPanelStore,
+    OdontogramStore,
+    TreatmentsStore,
+    PrescriptionsStore,
+    OrthodonticControlService,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="encounter-page">
@@ -85,6 +104,15 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
         <a routerLink="/consultorio" class="encounter-page__back-link">
           ← Mis citas
         </a>
+        @if (canChargeCompleted()) {
+          <button
+            type="button"
+            class="btn btn-outline btn-sm encounter-page__header-charge-btn"
+            (click)="onOpenChargeDialog()"
+          >
+            Cobrar
+          </button>
+        }
       </nav>
 
       <!-- Estado: Carga con Skeleton -->
@@ -151,7 +179,9 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           <bd-patient-clinical-header
             [patient]="store.patient()!"
             [clinicalRecord]="store.clinicalRecord()"
-            (openHistory)="historyStore.open()"
+            [canViewChanges]="isDirector()"
+            (openHistory)="onOpenHistory()"
+            (viewChanges)="onOpenChangesHistory()"
           />
 
           <!-- 2. Odontograma vigente (solo lectura) -->
@@ -214,14 +244,14 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             (queryChange)="store.searchIcd10($event)"
             (addDiagnosis)="onAddDiagnosis($event)"
             (voidDiagnosis)="onVoidDiagnosis($event)"
+            [showOrthodonticControl]="!store.isReadOnly()"
+            [orthodonticBusy]="orthodonticControl.working() || treatmentsStore.loading()"
+            [orthodonticError]="orthodonticControl.error()"
+            (orthodonticControl)="onOrthodonticControl()"
           />
 
           <!-- 4b. Tratamientos: catálogo, registro, total y anulación -->
-          <div #treatmentsBlock>
           <bd-treatments-section
-            [diagnoses]="diagnosisOptions()"
-            [pendingFindings]="pendingFindingOptions()"
-            [selectedFindingId]="treatmentsStore.selectedFindingId()"
             [isReadOnly]="store.isReadOnly()"
             [items]="treatmentsStore.items()"
             [isLoading]="treatmentsStore.loading()"
@@ -229,24 +259,10 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             [sessionTotal]="treatmentsStore.sessionTotal()"
             [actionError]="treatmentsStore.actionError()"
             [voiding]="treatmentsStore.voiding()"
-            [query]="treatmentsStore.query()"
-            [results]="treatmentsStore.results()"
-            [catalogLoading]="treatmentsStore.catalogLoading()"
-            [catalogError]="treatmentsStore.catalogError()"
-            [selectedTreatment]="treatmentsStore.selectedTreatment()"
-            [selectedTooth]="treatmentsStore.selectedTooth()"
-            [saving]="treatmentsStore.saving()"
-            [saveError]="treatmentsStore.saveError()"
-            (catalogRequest)="treatmentsStore.ensureCatalog()"
-            (queryChange)="treatmentsStore.setQuery($event)"
-            (pick)="treatmentsStore.pickTreatment($event)"
-            (cancel)="treatmentsStore.clearSelection()"
-            (findingChange)="treatmentsStore.selectFinding($event)"
-            (register)="onRegisterTreatment($event)"
+            (openEditor)="onOpenTreatmentEditor()"
             (voidRequest)="onVoidTreatment($event)"
             (retryLoad)="treatmentsStore.reload()"
           />
-          </div>
 
           <!-- 4c. Receta: lista de la atención y borrador en el editor lateral -->
           <bd-prescriptions-section
@@ -259,11 +275,12 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
             [actionError]="prescriptionsStore.actionError()"
             [busyPrescriptionId]="prescriptionsStore.busyPrescriptionId()"
             [pendingPdfId]="prescriptionsStore.pendingPdf()?.prescriptionId ?? null"
-            (newPrescription)="prescriptionsStore.openNew()"
-            (editPrescription)="prescriptionsStore.openEdit($event)"
+            [pendingPdfUrl]="prescriptionsStore.pendingPdf()?.link.url ?? null"
+            (newPrescription)="closeOtherSheets('prescription'); prescriptionsStore.openNew()"
+            (editPrescription)="closeOtherSheets('prescription'); prescriptionsStore.openEdit($event)"
             (emitPrescription)="onEmitPrescription($event)"
             (printPrescription)="onPrintPrescription($event)"
-            (openPendingPdf)="prescriptionsStore.openPendingPdf()"
+            (openPendingPdf)="prescriptionsStore.openPendingPdf($event)"
             (voidPrescription)="onVoidPrescription($event)"
             (redoPrescription)="onRedoPrescription($event)"
             (retryLoad)="prescriptionsStore.reload()"
@@ -285,6 +302,31 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           />
         </main>
 
+        <!-- Aviso de cobro de sesión -->
+        @if (chargeNotice(); as notice) {
+          <div class="encounter-page__charge-notice" role="status">
+            <span class="encounter-page__charge-notice-text">
+              Total de la sesión: <strong>{{ notice.total | money }}</strong>
+            </span>
+            <div class="encounter-page__charge-notice-actions">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                (click)="onChargeNow()"
+              >
+                Cobrar ahora
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                (click)="onChargeLater()"
+              >
+                Después
+              </button>
+            </div>
+          </div>
+        }
+
         <!-- 6. Barra de completar fija abajo -->
         <bd-complete-bar
           [missingRequirements]="store.missingRequirements()"
@@ -304,11 +346,9 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
           titleId="history-panel-title"
           (closed)="historyStore.close()"
         >
-          @if (historyStore.generalError()) {
-            <bd-alert variant="error" [message]="historyStore.generalError()" />
-          }
           <bd-history-panel
             [patientName]="store.patient()?.fullName || ''"
+            [generalError]="historyStore.generalError()"
             [conditions]="historyStore.conditions()"
             [conditionsLoading]="historyStore.conditionsLoading()"
             [conditionsError]="historyStore.conditionsError()"
@@ -349,14 +389,53 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
               [saving]="prescriptionsStore.saving()"
               [saveError]="prescriptionsStore.saveError()"
               [copiedFrom]="prescriptionsStore.copiedFrom()"
+              [medicationSaving]="prescriptionsStore.medicationSaving()"
+              [medicationSaveError]="prescriptionsStore.medicationSaveError()"
+              [presetSaving]="prescriptionsStore.presetSaving()"
+              [presetSaveError]="prescriptionsStore.presetSaveError()"
+              [createdMedication]="prescriptionsStore.createdMedication()"
+              [createdPreset]="prescriptionsStore.createdPreset()"
               (medicationQueryChange)="prescriptionsStore.searchMedications($event)"
               (addItem)="prescriptionsStore.upsertItem($event)"
               (editItem)="prescriptionsStore.editItem($event)"
               (removeItem)="prescriptionsStore.removeItem($event)"
               (cancelItemEdit)="prescriptionsStore.cancelItemEdit()"
+              (createMedication)="onCreateMedicationFromPrescription($event)"
+              (savePreset)="onSavePresetFromPrescription($event)"
               (save)="onSavePrescription($event)"
               (saveAndEmit)="onSaveAndEmitPrescription($event)"
               (close)="prescriptionsStore.closeEditor()"
+            />
+          }
+        </bd-side-sheet>
+
+        <!-- 9. Registro de tratamiento en panel lateral (pantalla completa bajo md) -->
+        <bd-side-sheet
+          [isOpen]="treatmentsStore.editorOpen()"
+          [fullscreenBelowMd]="true"
+          titleId="treatment-editor-title"
+          (closed)="treatmentsStore.closeEditor()"
+        >
+          @if (treatmentsStore.editorOpen()) {
+            <bd-treatment-editor
+              [diagnoses]="diagnosisOptions()"
+              [pendingFindings]="pendingFindingOptions()"
+              [query]="treatmentsStore.query()"
+              [results]="treatmentsStore.results()"
+              [catalogLoading]="treatmentsStore.catalogLoading()"
+              [catalogError]="treatmentsStore.catalogError()"
+              [selectedTreatment]="treatmentsStore.selectedTreatment()"
+              [selectedTooth]="treatmentsStore.selectedTooth()"
+              [selectedFindingId]="treatmentsStore.selectedFindingId()"
+              [saving]="treatmentsStore.saving()"
+              [saveError]="treatmentsStore.saveError()"
+              (catalogRequest)="treatmentsStore.ensureCatalog()"
+              (queryChange)="treatmentsStore.setQuery($event)"
+              (pick)="treatmentsStore.pickTreatment($event)"
+              (cancel)="treatmentsStore.clearSelection()"
+              (close)="treatmentsStore.closeEditor()"
+              (findingChange)="treatmentsStore.selectFinding($event)"
+              (register)="onRegisterTreatment($event)"
             />
           }
         </bd-side-sheet>
@@ -382,6 +461,7 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     .encounter-page__nav {
       display: flex;
       align-items: center;
+      justify-content: space-between;
     }
 
     .encounter-page__back-link {
@@ -443,6 +523,41 @@ import { HistoryPanelStore } from '../../services/history-panel.store';
     .encounter-page__return-btn {
       margin-left: var(--space-sm);
     }
+
+    .encounter-page__charge-notice {
+      position: sticky;
+      bottom: 4.5rem;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background-color: var(--blue-900);
+      color: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      margin: 0 var(--space-md) var(--space-sm) var(--space-md);
+    }
+
+    .encounter-page__charge-notice-text {
+      font-size: var(--fs-sm);
+    }
+
+    .encounter-page__charge-notice-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .encounter-page__charge-notice-actions .btn-ghost {
+      color: var(--white);
+    }
+
+    .encounter-page__header-charge-btn {
+      margin-inline-start: auto;
+    }
   `,
 })
 export class EncounterPage implements OnInit {
@@ -456,6 +571,16 @@ export class EncounterPage implements OnInit {
   private readonly router = inject(Router);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly notificationService = inject(NotificationService);
+  private readonly auditHistory = inject(AuditHistoryDialogService);
+  private readonly paymentDialog = inject(PaymentDialogService);
+  readonly orthodonticControl = inject(OrthodonticControlService);
+
+  readonly isDirector = computed<boolean>(() => this.sessionStore.profile() === 'DIRECTOR');
+  readonly chargeNotice = signal<{ total: number } | null>(null);
+
+  readonly canChargeCompleted = computed<boolean>(() => {
+    return this.store.isCompleted() && this.sessionStore.hasPermission('BILLING_CREATE');
+  });
 
   readonly odontogramEditable = computed<boolean>(() => {
     return !this.store.isReadOnly() && this.sessionStore.hasPermission('RECORD_CREATE');
@@ -475,7 +600,6 @@ export class EncounterPage implements OnInit {
   });
 
   readonly treatmentsSection = viewChild(TreatmentsSectionComponent);
-  readonly treatmentsBlock = viewChild<ElementRef<HTMLElement>>('treatmentsBlock');
 
   /** Hallazgos pendientes del paciente, en el formato que pide la sección de tratamientos. */
   readonly pendingFindingOptions = computed<FindingOption[]>(() => {
@@ -520,6 +644,17 @@ export class EncounterPage implements OnInit {
     }
   }
 
+  onOpenChangesHistory(): void {
+    const encounterId = this.route.snapshot.paramMap.get('encounterId');
+    if (!encounterId) return;
+    this.auditHistory.open({
+      entity: 'encounters',
+      id: encounterId,
+      title: 'Historial de cambios de la atención',
+      isEncounterFull: true,
+    });
+  }
+
   onRetry(): void {
     const encounterId = this.route.snapshot.paramMap.get('encounterId');
     if (encounterId) {
@@ -559,13 +694,64 @@ export class EncounterPage implements OnInit {
       });
   }
 
+  onOrthodonticControl(): void {
+    this.orthodonticControl.apply().subscribe((outcome) => {
+      this.notificationService.success(
+        outcome === 'REGISTERED'
+          ? 'Control de ortodoncia registrado'
+          : 'El control de ortodoncia ya está registrado'
+      );
+    });
+  }
+
   onComplete(): void {
+    const sessionTotal = this.treatmentsStore.sessionTotal();
+    const canCreateBilling = this.sessionStore.hasPermission('BILLING_CREATE');
+
     this.store.complete().subscribe({
       next: () => {
         this.notificationService.success('Atención completada');
-        this.router.navigate(['/consultorio']);
+        if (canCreateBilling && sessionTotal > 0) {
+          this.chargeNotice.set({ total: sessionTotal });
+        } else {
+          this.router.navigate(['/consultorio']);
+        }
       },
       error: () => {},
+    });
+  }
+
+  onChargeNow(): void {
+    const encounter = this.store.encounter();
+    const patient = this.store.patient();
+    if (!encounter || !patient) return;
+
+    this.paymentDialog
+      .open({
+        patientId: patient.id,
+        patientName: patient.fullName,
+        encounterId: encounter.id,
+      })
+      .subscribe(() => {
+        this.chargeNotice.set(null);
+        this.router.navigate(['/consultorio']);
+      });
+  }
+
+  onChargeLater(): void {
+    this.chargeNotice.set(null);
+    this.router.navigate(['/consultorio']);
+  }
+
+  onOpenChargeDialog(): void {
+    const encounter = this.store.encounter();
+    const patient = this.store.patient();
+    if (!encounter || !patient) return;
+
+    this.paymentDialog.open({
+      patientId: patient.id,
+      patientName: patient.fullName,
+      encounterId: encounter.id,
     });
   }
 
@@ -612,6 +798,42 @@ export class EncounterPage implements OnInit {
     });
   }
 
+  onOpenHistory(): void {
+    this.openSheet('history', () => this.historyStore.open());
+  }
+
+  onOpenTreatmentEditor(findingId: string | null = null): void {
+    this.openSheet('treatment', () => this.treatmentsStore.openEditor(findingId));
+  }
+
+  /** Abre un panel lateral cerrando los otros; si la receta está abierta, pide confirmar antes de descartarla. */
+  private openSheet(sheet: EncounterSheet, open: () => void): void {
+    if (sheet === 'prescription' || !this.prescriptionsStore.editorOpen()) {
+      this.closeOtherSheets(sheet);
+      open();
+      return;
+    }
+    this.confirmDialog
+      .open({
+        title: 'Descartar el borrador de la receta',
+        message: 'La receta abierta no se ha guardado. Si continúas, se pierden sus cambios.',
+        tone: 'danger',
+        confirmLabel: 'Descartar',
+      })
+      .subscribe((res) => {
+        if (!res.confirmed) return;
+        this.closeOtherSheets(sheet);
+        open();
+      });
+  }
+
+  /** Un solo panel lateral abierto: abrir uno cierra los otros dos. */
+  closeOtherSheets(sheet: EncounterSheet): void {
+    if (sheet !== 'history') this.historyStore.close();
+    if (sheet !== 'prescription') this.prescriptionsStore.closeEditor();
+    if (sheet !== 'treatment') this.treatmentsStore.closeEditor();
+  }
+
   onRegisterTreatment(request: RecordTreatmentRequest): void {
     const linksPendingFinding =
       !!request.dentalFindingId &&
@@ -624,27 +846,15 @@ export class EncounterPage implements OnInit {
         if (linksPendingFinding) {
           this.odontogramStore.reload();
         }
-        this.treatmentsSection()?.focusSearch();
+        this.treatmentsSection()?.focusOpenButton();
       },
       error: () => {},
     });
   }
 
-  /** "Tratar" en el panel de la pieza: preselecciona el hallazgo, lleva a Tratamientos y enfoca el buscador. */
+  /** "Tratar" en el panel de la pieza: abre el registro con el hallazgo preseleccionado. */
   onTreatFinding(finding: Finding): void {
-    this.treatmentsStore.selectFinding(finding.id);
-
-    // Diferido: el panel de la pieza se cierra en el siguiente ciclo y cambia la altura de la página.
-    setTimeout(() => {
-      const block = this.treatmentsBlock()?.nativeElement;
-      const reduceMotion =
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (block && typeof block.scrollIntoView === 'function') {
-        block.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-      }
-      this.treatmentsSection()?.focusSearch();
-    });
+    this.onOpenTreatmentEditor(finding.id);
   }
 
   onVoidTreatment(item: PerformedTreatment): void {
@@ -665,6 +875,18 @@ export class EncounterPage implements OnInit {
           error: () => {},
         });
       });
+  }
+
+  onCreateMedicationFromPrescription(request: MedicationRequest): void {
+    this.prescriptionsStore.createMedication(request).subscribe({
+      error: () => {},
+    });
+  }
+
+  onSavePresetFromPrescription(event: { medicationId: number; request: MedicationPresetRequest }): void {
+    this.prescriptionsStore.savePreset(event.medicationId, event.request).subscribe({
+      error: () => {},
+    });
   }
 
   onSavePrescription(draft: PrescriptionHeaderDraft): void {
@@ -723,7 +945,10 @@ export class EncounterPage implements OnInit {
       .subscribe((res) => {
         if (!res.confirmed) return;
         this.prescriptionsStore.voidAndRedo(prescription).subscribe({
-          next: () => this.notificationService.success('Receta anulada'),
+          next: () => {
+            this.closeOtherSheets('prescription');
+            this.notificationService.success('Receta anulada');
+          },
           error: () => {},
         });
       });

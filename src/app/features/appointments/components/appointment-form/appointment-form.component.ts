@@ -129,28 +129,31 @@ import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
             </button>
           </div>
         </bd-field>
+      }
 
-        <!-- 5. Hora -->
-        <div class="appt-form__slot-section">
-          <span id="appt-slot-label" class="appt-form__section-label">Hora</span>
-          @if (notice()) {
-            <p class="appt-form__notice" role="status">{{ notice() }}</p>
-          }
-          <bd-slot-picker
-            [ariaLabelledby]="'appt-slot-label'"
-            [blocks]="slots()"
-            [durationMinutes]="durationMinutes()"
-            [selectedStart]="selectedStart()"
-            [loading]="slotsLoading()"
-            [error]="slotsError()"
-            [ready]="isSlotPickerReady()"
-            (startChange)="startChange.emit($event)"
-            (durationChange)="durationChange.emit($event)"
-            (nextDay)="nextDayClicked.emit()"
-            (retry)="retrySlots.emit()"
-          />
-        </div>
+      <!-- 5. Hora -->
+      <div class="appt-form__slot-section">
+        <span id="appt-slot-label" class="appt-form__section-label">Hora</span>
+        @if (notice()) {
+          <p class="appt-form__notice" role="status">{{ notice() }}</p>
+        }
+        <bd-slot-picker
+          [ariaLabelledby]="'appt-slot-label'"
+          [blocks]="slots()"
+          [durationMinutes]="durationMinutes()"
+          [selectedStart]="selectedStart()"
+          [loading]="slotsLoading()"
+          [error]="slotsError()"
+          [ready]="isSlotPickerReady()"
+          [singleDay]="mode() === 'walk-in'"
+          (startChange)="startChange.emit($event)"
+          (durationChange)="durationChange.emit($event)"
+          (nextDay)="nextDayClicked.emit()"
+          (retry)="retrySlots.emit()"
+        />
+      </div>
 
+      @if (mode() !== 'walk-in') {
         <!-- 6. Motivo (opcional) -->
         <bd-field label="Motivo (opcional)" fieldId="appt-reason-input">
           <input

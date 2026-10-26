@@ -695,25 +695,61 @@ describe('ReceptionAgendaPage', () => {
     fixture.detectChanges();
 
     // Se pide disponibilidad para cada profesional con esa especialidad
-    const reqAvail1 = httpMock.expectOne('/api/v1/availability?professionalId=prof-1&specialtyId=1&date=2026-10-10');
-    const reqAvail2 = httpMock.expectOne('/api/v1/availability?professionalId=prof-2&specialtyId=1&date=2026-10-10');
+    const reqAvail1 = httpMock.expectOne(
+      '/api/v1/availability?professionalId=prof-1&specialtyId=1&date=2026-10-10&durationMinutes=15'
+    );
+    const reqAvail2 = httpMock.expectOne(
+      '/api/v1/availability?professionalId=prof-2&specialtyId=1&date=2026-10-10&durationMinutes=15'
+    );
 
     // prof-1 tiene hueco a las 11:30, prof-2 a las 10:45 (más cercano)
     reqAvail1.flush({
       success: true,
       message: 'Huecos obtenidos',
-      data: [{ startAt: '2026-10-10T11:30:00-05:00', endAt: '2026-10-10T12:00:00-05:00' }],
+      data: [{ startAt: '2026-10-10T11:30:00-05:00', endAt: '2026-10-10T11:45:00-05:00' }],
     });
     reqAvail2.flush({
       success: true,
       message: 'Huecos obtenidos',
-      data: [{ startAt: '2026-10-10T10:45:00-05:00', endAt: '2026-10-10T11:15:00-05:00' }],
+      data: [{ startAt: '2026-10-10T10:45:00-05:00', endAt: '2026-10-10T11:00:00-05:00' }],
     });
     fixture.detectChanges();
 
     // Queda elegido el profesional del hueco más cercano (prof-2)
     const profSelect = fixture.nativeElement.querySelector('#appt-professional-select') as HTMLSelectElement;
     expect(profSelect.value).toBe('prof-2');
+
+    // Se piden los bloques de hoy para prof-2
+    const reqAvailProf2 = httpMock.expectOne(
+      '/api/v1/availability?professionalId=prof-2&specialtyId=1&date=2026-10-10&durationMinutes=15'
+    );
+    reqAvailProf2.flush({
+      success: true,
+      message: 'Huecos obtenidos',
+      data: [
+        { startAt: '2026-10-10T10:45:00-05:00', endAt: '2026-10-10T11:00:00-05:00' },
+        { startAt: '2026-10-10T11:00:00-05:00', endAt: '2026-10-10T11:15:00-05:00' },
+        { startAt: '2026-10-10T11:15:00-05:00', endAt: '2026-10-10T11:30:00-05:00' },
+        { startAt: '2026-10-10T11:30:00-05:00', endAt: '2026-10-10T11:45:00-05:00' },
+      ],
+    });
+    fixture.detectChanges();
+
+    // Se ven los bloques y el primero (10:45) queda marcado
+    const firstRadio = fixture.nativeElement.querySelector(
+      'input[value="2026-10-10T10:45:00-05:00"]'
+    ) as HTMLInputElement;
+    expect(firstRadio).toBeTruthy();
+    expect(firstRadio.checked).toBe(true);
+
+    // Elegir otro bloque (11:15)
+    const otherRadio = fixture.nativeElement.querySelector(
+      'input[value="2026-10-10T11:15:00-05:00"]'
+    ) as HTMLInputElement;
+    expect(otherRadio).toBeTruthy();
+    otherRadio.click();
+    otherRadio.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
 
     // 4. Registrar llegada
     const submitBtn = fixture.nativeElement.querySelector('.appt-form__submit-btn') as HTMLButtonElement;
@@ -727,6 +763,8 @@ describe('ReceptionAgendaPage', () => {
       patientId: 'pat-10',
       professionalId: 'prof-2',
       specialtyId: 1,
+      startAt: '2026-10-10T11:15:00-05:00',
+      endAt: '2026-10-10T11:45:00-05:00',
     });
 
     const mockWalkInAppt: Appointment = {
@@ -737,11 +775,11 @@ describe('ReceptionAgendaPage', () => {
       professionalName: 'Dr. Carlos Mendoza',
       specialtyId: 1,
       specialtyName: 'Odontología General',
-      startAt: '2026-10-10T10:45:00-05:00',
-      endAt: '2026-10-10T11:15:00-05:00',
+      startAt: '2026-10-10T11:15:00-05:00',
+      endAt: '2026-10-10T11:45:00-05:00',
       status: 'PENDING',
       source: 'WALK_IN',
-      checkedInAt: '2026-10-10T10:45:00-05:00',
+      checkedInAt: '2026-10-10T11:15:00-05:00',
     };
 
     reqWalkIn.flush({

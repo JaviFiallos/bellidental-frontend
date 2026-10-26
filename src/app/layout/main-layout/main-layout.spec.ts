@@ -429,7 +429,7 @@ describe('MainLayout', () => {
     });
   });
 
-  it('clic en "Pacientes" en el sidebar → ejecuta focusSearch(), enfoca input y aplica resalte visual en el header', async () => {
+  it('atajo "/" ejecuta focusSearch(), enfoca input y aplica resalte visual en el header; "Pacientes" en el sidebar es enlace a /pacientes', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
 
@@ -449,13 +449,14 @@ describe('MainLayout', () => {
     appReq.flush({ success: true, message: 'OK', data: [] });
     fixture.detectChanges();
 
-    // Buscar el botón "Pacientes" en el sidebar
-    const buttons = fixture.nativeElement.querySelectorAll('.sidebar__link--btn') as NodeListOf<HTMLButtonElement>;
-    const pacientesBtn = Array.from(buttons).find((btn) => btn.textContent?.includes('Pacientes'));
-    expect(pacientesBtn).toBeTruthy();
+    // Enlace "Pacientes" en el sidebar
+    const links = fixture.nativeElement.querySelectorAll('.sidebar__link') as NodeListOf<HTMLAnchorElement>;
+    const pacientesLink = Array.from(links).find((link) => link.textContent?.includes('Pacientes'));
+    expect(pacientesLink).toBeTruthy();
+    expect(pacientesLink?.getAttribute('href')).toBe('/pacientes');
 
-    // Clic en "Pacientes"
-    pacientesBtn!.click();
+    // Presionar '/' para abrir el buscador global
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/' }));
     fixture.detectChanges();
 
     // El input del combobox queda enfocado
@@ -472,6 +473,7 @@ describe('MainLayout', () => {
 
     expect(patientSearchEl.classList.contains('is-highlighted')).toBe(false);
   });
+
 
   it('buscador: normaliza término con guiones o espacios (cédula) → envía query limpia a GET /api/v1/patients y muestra resultados', async () => {
     vi.useFakeTimers();

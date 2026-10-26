@@ -16,6 +16,7 @@ import {
   CheckCheck,
   ExternalLink,
   UserX,
+  Wallet,
 } from 'lucide-angular';
 import { AlertComponent } from '../../../../shared/components/alert/alert.component';
 import { IconComponent, LucideIconData } from '../../../../shared/components/icon/icon.component';
@@ -428,6 +429,7 @@ export class AppointmentPanelComponent {
   readonly checkIcon: LucideIconData = Check;
   readonly checkCheckIcon: LucideIconData = CheckCheck;
   readonly userXIcon: LucideIconData = UserX;
+  readonly walletIcon: LucideIconData = Wallet;
 
   readonly displayState = computed(() => appointmentDisplayState(this.appointment()));
 
@@ -466,6 +468,8 @@ export class AppointmentPanelComponent {
         return 'No asistió';
       case 'reschedule':
         return 'Reprogramar';
+      case 'charge':
+        return 'Cobrar';
       case 'cancel':
         return 'Cancelar cita';
     }
@@ -481,6 +485,8 @@ export class AppointmentPanelComponent {
         return this.userXIcon;
       case 'reschedule':
         return this.calendarSyncIcon;
+      case 'charge':
+        return this.walletIcon;
       case 'cancel':
         return this.calendarXIcon;
     }

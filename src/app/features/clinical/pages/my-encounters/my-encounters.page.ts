@@ -22,10 +22,10 @@ import { SkeletonComponent } from '../../../../shared/components/skeleton/skelet
 import { EncounterLogTableComponent } from '../../components/encounter-log-table/encounter-log-table.component';
 import { encounterSummaryText } from '../../domain/encounter-log';
 import {
-  EncounterPeriodKind,
-  parseEncounterPeriod,
-  shiftEncounterAnchor,
-} from '../../domain/encounter-period';
+  CalendarPeriodKind,
+  parseCalendarPeriod,
+  shiftCalendarAnchor,
+} from '../../../../shared/utils/calendar-period';
 import { MyEncountersStore } from '../../services/my-encounters.store';
 
 @Component({
@@ -164,7 +164,7 @@ export class MyEncountersPage {
   private readonly clinicClock = inject(ClinicClock);
   readonly store = inject(MyEncountersStore);
 
-  readonly periodOptions: SegmentedOption<EncounterPeriodKind>[] = [
+  readonly periodOptions: SegmentedOption<CalendarPeriodKind>[] = [
     { value: 'dia', label: 'Día' },
     { value: 'semana', label: 'Semana' },
     { value: 'mes', label: 'Mes' },
@@ -174,7 +174,7 @@ export class MyEncountersPage {
   readonly period = toSignal(
     this.route.queryParamMap.pipe(
       map((params) =>
-        parseEncounterPeriod(
+        parseCalendarPeriod(
           params.get('periodo'),
           params.get('fecha'),
           this.clinicClock.todayDateString()
@@ -197,19 +197,19 @@ export class MyEncountersPage {
     });
   }
 
-  onKindChange(kind: EncounterPeriodKind): void {
+  onKindChange(kind: CalendarPeriodKind): void {
     this.navigateTo(kind, this.period().anchorDate);
   }
 
   onShift(direction: -1 | 1): void {
-    this.navigateTo(this.period().kind, shiftEncounterAnchor(this.period(), direction));
+    this.navigateTo(this.period().kind, shiftCalendarAnchor(this.period(), direction));
   }
 
   onToday(): void {
     this.navigateTo(this.period().kind, this.clinicClock.todayDateString());
   }
 
-  private navigateTo(kind: EncounterPeriodKind, anchorDate: string): void {
+  private navigateTo(kind: CalendarPeriodKind, anchorDate: string): void {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { periodo: kind, fecha: anchorDate },

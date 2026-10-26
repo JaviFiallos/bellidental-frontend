@@ -106,9 +106,15 @@ import { Prescription } from '../../models/prescription.models';
                   }
                 }
                 @if (pendingPdfId() === prescription.id) {
-                  <button type="button" class="btn btn-primary prescriptions-section__action" (click)="openPendingPdf.emit()">
+                  <a
+                    class="btn btn-primary prescriptions-section__action"
+                    [href]="pendingPdfUrl()"
+                    target="_blank"
+                    rel="noopener"
+                    (click)="openPendingPdf.emit($event)"
+                  >
                     Abrir PDF
-                  </button>
+                  </a>
                 }
               </div>
             </li>
@@ -265,13 +271,15 @@ export class PrescriptionsSectionComponent {
   readonly busyPrescriptionId = input<string | null>(null);
   /** Receta cuyo PDF espera un clic para abrirse (la pestaña fue bloqueada). */
   readonly pendingPdfId = input<string | null>(null);
+  /** Enlace temporal de ese PDF: el "Abrir PDF" pendiente es un enlace real (no lo bloquea el navegador). */
+  readonly pendingPdfUrl = input<string | null>(null);
 
   readonly newPrescription = output<void>();
   readonly editPrescription = output<Prescription>();
   readonly retryLoad = output<void>();
   readonly emitPrescription = output<Prescription>();
   readonly printPrescription = output<Prescription>();
-  readonly openPendingPdf = output<void>();
+  readonly openPendingPdf = output<MouseEvent>();
   readonly voidPrescription = output<Prescription>();
   readonly redoPrescription = output<Prescription>();
 
