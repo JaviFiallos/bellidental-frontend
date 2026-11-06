@@ -57,6 +57,8 @@ export interface Prescription {
   icd10Code: string;
   icd10Description: string;
   status: PrescriptionStatus;
+  /** Número correlativo asignado al emitir (R-000001); `null` mientras es borrador. */
+  prescriptionNumber: string | null;
   prescribedAt: string;
   generalInstructions: string | null;
   voided: boolean;

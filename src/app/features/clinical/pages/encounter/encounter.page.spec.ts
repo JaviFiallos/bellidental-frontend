@@ -1484,7 +1484,12 @@ describe('EncounterPage', () => {
     issueReq.flush({
       success: true,
       message: 'Receta emitida',
-      data: { ...mockPrescriptionDraft, status: 'ISSUED', prescribedAt: '2026-10-19T10:42:00-05:00' },
+      data: {
+        ...mockPrescriptionDraft,
+        status: 'ISSUED',
+        prescriptionNumber: 'R-000123',
+        prescribedAt: '2026-10-19T10:42:00-05:00',
+      },
     });
     fixture.detectChanges();
 
@@ -1501,6 +1506,7 @@ describe('EncounterPage', () => {
 
     const section = fixture.nativeElement.querySelector('.prescriptions-section') as HTMLElement;
     expect(section.textContent).toContain('Emitida');
+    expect(section.textContent).toContain('R-000123');
     expect(pdfWindow.location.href).toBe('/api/v1/prescriptions/rx-1/receta.pdf?t=abc');
   });
 

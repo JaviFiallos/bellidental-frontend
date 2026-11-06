@@ -51,7 +51,11 @@ import { Prescription } from '../../models/prescription.models';
                     @if (prescription.status === 'DRAFT') {
                       Borrador
                     } @else {
-                      Emitida · {{ prescription.prescribedAt | clinicDate }} {{ prescription.prescribedAt | clinicTime }}
+                      Emitida
+                      @if (prescription.prescriptionNumber; as number) {
+                        N.º <span class="prescriptions-section__number">{{ number }}</span>
+                      }
+                      · {{ prescription.prescribedAt | clinicDate }} {{ prescription.prescribedAt | clinicTime }}
                     }
                   </span>
                   <span class="prescriptions-section__code">{{ prescription.icd10Code }}</span>
@@ -206,6 +210,12 @@ import { Prescription } from '../../models/prescription.models';
     .prescriptions-section__status--issued {
       background-color: var(--teal-100);
       color: var(--teal-700);
+    }
+
+    .prescriptions-section__number {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      white-space: nowrap;
     }
 
     .prescriptions-section__code {

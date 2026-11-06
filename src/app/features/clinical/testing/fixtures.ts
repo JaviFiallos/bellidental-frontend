@@ -724,6 +724,7 @@ export const mockPrescriptionDraft: Prescription = {
   icd10Code: 'K02.1',
   icd10Description: 'Caries de la dentina',
   status: 'DRAFT',
+  prescriptionNumber: null,
   prescribedAt: '2026-10-12T09:40:00-05:00',
   generalInstructions: null,
   voided: false,
