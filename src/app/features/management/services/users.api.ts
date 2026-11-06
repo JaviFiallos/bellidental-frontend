@@ -5,6 +5,7 @@ import {
   CreateUserRequest,
   GrantAccessRequest,
   ResetPasswordRequest,
+  UpdateUserRequest,
   UpdateUserRolesRequest,
   User,
 } from '../models/user.models';
@@ -30,6 +31,11 @@ export class UsersApi {
 
   activate(id: string): Observable<User> {
     return this.api.post<User>(`/api/v1/users/${id}/activate`);
+  }
+
+  /** Solo cambia los campos enviados; el backend responde la cuenta completa. */
+  updateAccount(id: string, request: UpdateUserRequest): Observable<User> {
+    return this.api.put<User>(`/api/v1/users/${id}`, request);
   }
 
   updateRoles(id: string, request: UpdateUserRolesRequest): Observable<User> {

@@ -5,6 +5,7 @@ import { StatusBadgeComponent } from '../../../../shared/components/status-badge
 import {
   describeRoles,
   describeUnmanageable,
+  isEditableUser,
   isManageableUser,
 } from '../../domain/user-display';
 import { Professional } from '../../../professionals';
@@ -52,48 +53,59 @@ import { User } from '../../models/user.models';
               }
             </td>
             <td data-label="Acciones">
-              @if (isManageable(user)) {
+              @if (isEditable(user)) {
                 <div class="user-table__actions">
                   <button
                     type="button"
                     class="btn btn-ghost user-table__action"
                     [disabled]="busyUserId() !== null"
-                    [attr.aria-label]="'Cambiar roles de ' + user.username"
-                    (click)="editRoles.emit(user)"
+                    [attr.aria-label]="'Editar cuenta de ' + user.username"
+                    (click)="editAccount.emit(user)"
                   >
-                    Roles
+                    Editar
                   </button>
-                  <button
-                    type="button"
-                    class="btn btn-ghost user-table__action"
-                    [disabled]="busyUserId() !== null"
-                    [attr.aria-label]="'Restablecer contraseña de ' + user.username"
-                    (click)="resetPassword.emit(user)"
-                  >
-                    Restablecer contraseña
-                  </button>
-                  @if (user.active) {
+                  @if (isManageable(user)) {
                     <button
                       type="button"
-                      class="btn btn-outline user-table__action"
+                      class="btn btn-ghost user-table__action"
                       [disabled]="busyUserId() !== null"
-                      [attr.aria-busy]="busyUserId() === user.id"
-                      [attr.aria-label]="'Desactivar a ' + user.username"
-                      (click)="deactivate.emit(user)"
+                      [attr.aria-label]="'Cambiar roles de ' + user.username"
+                      (click)="editRoles.emit(user)"
                     >
-                      {{ busyUserId() === user.id ? 'Guardando…' : 'Desactivar' }}
+                      Roles
                     </button>
-                  } @else {
                     <button
                       type="button"
-                      class="btn btn-outline user-table__action"
+                      class="btn btn-ghost user-table__action"
                       [disabled]="busyUserId() !== null"
-                      [attr.aria-busy]="busyUserId() === user.id"
-                      [attr.aria-label]="'Activar a ' + user.username"
-                      (click)="activate.emit(user)"
+                      [attr.aria-label]="'Restablecer contraseña de ' + user.username"
+                      (click)="resetPassword.emit(user)"
                     >
-                      {{ busyUserId() === user.id ? 'Guardando…' : 'Activar' }}
+                      Restablecer contraseña
                     </button>
+                    @if (user.active) {
+                      <button
+                        type="button"
+                        class="btn btn-outline user-table__action"
+                        [disabled]="busyUserId() !== null"
+                        [attr.aria-busy]="busyUserId() === user.id"
+                        [attr.aria-label]="'Desactivar a ' + user.username"
+                        (click)="deactivate.emit(user)"
+                      >
+                        {{ busyUserId() === user.id ? 'Guardando…' : 'Desactivar' }}
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="btn btn-outline user-table__action"
+                        [disabled]="busyUserId() !== null"
+                        [attr.aria-busy]="busyUserId() === user.id"
+                        [attr.aria-label]="'Activar a ' + user.username"
+                        (click)="activate.emit(user)"
+                      >
+                        {{ busyUserId() === user.id ? 'Guardando…' : 'Activar' }}
+                      </button>
+                    }
                   }
                 </div>
               } @else {
@@ -216,10 +228,12 @@ export class UserTableComponent {
 
   readonly deactivate = output<User>();
   readonly activate = output<User>();
+  readonly editAccount = output<User>();
   readonly editRoles = output<User>();
   readonly resetPassword = output<User>();
 
   readonly describeRoles = describeRoles;
   readonly describeUnmanageable = describeUnmanageable;
+  readonly isEditable = isEditableUser;
   readonly isManageable = isManageableUser;
 }

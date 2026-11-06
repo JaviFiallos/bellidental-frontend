@@ -913,6 +913,10 @@ Ocho correcciones agrupadas por pantalla. Solo 013c y 004d necesitan backend (02
   sin cuenta" (`userId = null`) con "Dar acceso". Un solo `bd-side-sheet` con `activePanel`
   (`create | roles | reset | access`); el contenido se recrea al cambiar de fila con el panel abierto (en `lg+` el
   panel no es modal). El aviso de contraseña temporal de la 023a es único para crear, restablecer y dar acceso.
+- **023f — editar correo y nombre de usuario** (backend 032, D-24b): `PUT /users/{id}` `{email?, username?}`
+  parcial. Acción "Editar" en filas gestionables y en filas ADMIN (también la propia); panel `edit` del mismo
+  `bd-side-sheet`; solo se envían los campos cambiados. Editar la cuenta propia recarga `/auth/me` (pie del menú)
+  sin cerrar sesión; a otra persona no se le cierra la sesión y su siguiente ingreso es con el correo nuevo.
 
 ---
 
@@ -1158,6 +1162,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 008d | Atención: cabecera en dos grupos y panel de antecedentes con márgenes de la receta | 008b | Aprobada (2026-10-24, ejecutó Haiku) |
 | 012c | Atención: tratamientos con formulario en panel lateral | 008d · 012b | Aprobada (2026-10-24, ejecutó Haiku) |
 | 023e | Profesionales del director: alta y edición con color de agenda | 023c | Aprobada (2026-10-24, ejecutó Gemini) |
+| 023f | Usuarios: el director edita correo y nombre de usuario (también su cuenta) | 023c · backend 032 | Aprobada (2026-10-27, ejecutó Haiku) |
 | 013c | Receta y comprobante: PDF por enlace temporal (sin `blob:`) | 013b · 015c · backend 026 | Aprobada (2026-10-24, ejecutó Haiku) |
 | 004d | Sin cita: hora y duración en bloques de 15 min | 004c · backend 027 | Aprobada (2026-10-24, ejecutó Gemini) |
 | 013d | Medicamentos y posologías: página de administración | 013b · backend 028 | Aprobada (2026-10-24) |

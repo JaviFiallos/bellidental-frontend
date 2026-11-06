@@ -2,6 +2,8 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable } from 'rxjs';
 import { ApiError } from '../../../core/api/api.models';
+import { AuthService } from '../../../core/auth/auth.service';
+import { SessionStore } from '../../../core/auth/session.store';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Professional, ProfessionalsApi } from '../../professionals';
 import {
@@ -9,12 +11,13 @@ import {
   CreateUserRequest,
   GrantAccessRequest,
   TemporaryPasswordNotice,
+  UpdateUserRequest,
   User,
 } from '../models/user.models';
 import { UsersApi } from './users.api';
 
 /** Panel lateral de la pantalla Usuarios: solo uno abierto a la vez. */
-export type UsersPanel = 'create' | 'roles' | 'reset' | 'access';
+export type UsersPanel = 'create' | 'roles' | 'edit' | 'reset' | 'access';
 
 /** Estado de la pantalla Usuarios. Se provee en la página (no es singleton). */
 @Injectable()
@@ -22,6 +25,8 @@ export class UsersStore {
   private readonly usersApi = inject(UsersApi);
   private readonly professionalsApi = inject(ProfessionalsApi);
   private readonly notifications = inject(NotificationService);
+  private readonly auth = inject(AuthService);
+  private readonly sessionStore = inject(SessionStore);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly users = signal<User[]>([]);
@@ -85,6 +90,11 @@ export class UsersStore {
 
   openRoles(user: User): void {
     this.openPanel('roles');
+    this.selectedUser.set(user);
+  }
+
+  openEdit(user: User): void {
+    this.openPanel('edit');
     this.selectedUser.set(user);
   }
 
@@ -155,6 +165,31 @@ export class UsersStore {
       });
   }
 
+  /** Cambia correo y/o nombre de usuario. Si es la cuenta propia, recarga la sesión para el pie del menú. */
+  updateAccount(request: UpdateUserRequest): void {
+    const user = this.selectedUser();
+    if (!user || this.saving()) {
+      return;
+    }
+    this.startSaving();
+
+    this.usersApi
+      .updateAccount(user.id, request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.finishSaving();
+          this.users.update((list) => list.map((item) => (item.id === updated.id ? updated : item)));
+          this.closePanel();
+          this.notifications.success('Cuenta actualizada');
+          if (updated.id === this.sessionStore.currentUser()?.userId) {
+            this.reloadCurrentUser();
+          }
+        },
+        error: (err: ApiError) => this.failSaving(err, 'No se pudo actualizar la cuenta'),
+      });
+  }
+
   resetPassword(temporaryPassword: string): void {
     const user = this.selectedUser();
     if (!user || this.saving()) {
@@ -220,6 +255,16 @@ export class UsersStore {
     this.selectedUser.set(null);
     this.selectedProfessional.set(null);
     this.activePanel.set(panel);
+  }
+
+  private reloadCurrentUser(): void {
+    this.auth
+      .loadCurrentUser()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        error: (err: ApiError) =>
+          this.notifications.error(err?.message || 'No se pudo actualizar los datos de la sesión'),
+      });
   }
 
   private startSaving(): void {

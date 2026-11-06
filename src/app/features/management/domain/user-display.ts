@@ -26,6 +26,11 @@ export function isManageableUser(user: User): boolean {
   return user.roles.length > 0 && !user.roles.includes('ADMIN');
 }
 
+/** Editar correo y nombre de usuario: cualquier cuenta con roles (también ADMIN); la del sistema no (F-17/G-12). */
+export function isEditableUser(user: User): boolean {
+  return user.roles.length > 0;
+}
+
 /** Texto que reemplaza las acciones de una fila no gestionable. */
 export function describeUnmanageable(user: User): string {
   return user.roles.length === 0 ? 'Cuenta del sistema' : 'Sin acciones';

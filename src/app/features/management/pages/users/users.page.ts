@@ -8,6 +8,7 @@ import { GrantAccessFormComponent } from '../../components/grant-access-form/gra
 import { ProfessionalsWithoutAccessComponent } from '../../components/professionals-without-access/professionals-without-access.component';
 import { ResetPasswordFormComponent } from '../../components/reset-password-form/reset-password-form.component';
 import { UserCreateFormComponent } from '../../components/user-create-form/user-create-form.component';
+import { UserEditFormComponent } from '../../components/user-edit-form/user-edit-form.component';
 import { UserRolesFormComponent } from '../../components/user-roles-form/user-roles-form.component';
 import { UserTableComponent } from '../../components/user-table/user-table.component';
 import { summarizeAccounts } from '../../domain/user-display';
@@ -26,6 +27,7 @@ import { UsersStore } from '../../services/users.store';
     ResetPasswordFormComponent,
     SkeletonComponent,
     UserCreateFormComponent,
+    UserEditFormComponent,
     UserRolesFormComponent,
     UserTableComponent,
   ],
@@ -75,6 +77,7 @@ import { UsersStore } from '../../services/users.store';
           [busyUserId]="store.busyUserId()"
           (deactivate)="onDeactivate($event)"
           (activate)="store.activate($event)"
+          (editAccount)="store.openEdit($event)"
           (editRoles)="store.openRoles($event)"
           (resetPassword)="store.openReset($event)"
         />
@@ -106,6 +109,17 @@ import { UsersStore } from '../../services/users.store';
                   (submitted)="store.create($event)"
                   (cancelled)="store.closePanel()"
                 />
+              }
+              @case ('edit') {
+                @if (store.selectedUser(); as user) {
+                  <bd-user-edit-form
+                    [user]="user"
+                    [saving]="store.saving()"
+                    [errorMessage]="store.saveError()"
+                    (submitted)="store.updateAccount($event)"
+                    (cancelled)="store.closePanel()"
+                  />
+                }
               }
               @case ('roles') {
                 @if (store.selectedUser(); as user) {
@@ -218,6 +232,8 @@ export class UsersPage {
     switch (this.store.activePanel()) {
       case 'create':
         return 'Nueva secretaria';
+      case 'edit':
+        return user ? `Editar «${user.username}»` : 'Editar cuenta';
       case 'roles':
         return user ? `Roles de «${user.username}»` : 'Roles';
       case 'reset':

@@ -37,6 +37,12 @@ export interface UpdateUserRolesRequest {
   roles: AssignableRole[];
 }
 
+/** Cuerpo de `PUT /api/v1/users/{id}`. Parcial: solo se envían los campos que cambian (nunca `{}`). */
+export interface UpdateUserRequest {
+  email?: string;
+  username?: string;
+}
+
 /** Cuerpo de `POST /api/v1/users/{id}/reset-password`. */
 export interface ResetPasswordRequest {
   temporaryPassword: string;

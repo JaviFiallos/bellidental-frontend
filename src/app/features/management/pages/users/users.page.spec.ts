@@ -318,4 +318,67 @@ describe('UsersPage', () => {
     );
     expect(document.querySelector('#reset-temporary-password')).not.toBeNull();
   });
+
+  it('Editar solo el nombre de usuario → PUT /users/{id} con ese campo → la fila se actualiza', async () => {
+    const harness = await RouterTestingHarness.create('/direccion/usuarios');
+    await loadList(harness, httpMock);
+
+    document
+      .querySelector<HTMLButtonElement>('button[aria-label="Editar cuenta de odontologa"]')
+      ?.click();
+    await settle(harness);
+    typeInto('#user-edit-username', 'odontologa.mora');
+    await settle(harness);
+    findButton('Guardar cambios')?.click();
+    await settle(harness);
+
+    const updateRequest = httpMock.expectOne({
+      method: 'PUT',
+      url: '/api/v1/users/22222222-2222-2222-2222-222222222222',
+    });
+    expect(updateRequest.request.body).toEqual({ username: 'odontologa.mora' });
+    updateRequest.flush({
+      success: true,
+      message: 'Usuario actualizado.',
+      data: { ...USERS[1], username: 'odontologa.mora' },
+    });
+    await settle(harness);
+
+    expect(harness.fixture.nativeElement.textContent).toContain('odontologa.mora');
+    expect(document.querySelector('#user-edit-username')).toBeNull();
+  });
+
+  it('Correo de otra cuenta → 409 → mensaje en el panel', async () => {
+    const harness = await RouterTestingHarness.create('/direccion/usuarios');
+    await loadList(harness, httpMock);
+
+    document
+      .querySelector<HTMLButtonElement>('button[aria-label="Editar cuenta de odontologa"]')
+      ?.click();
+    await settle(harness);
+    typeInto('#user-edit-email', 'secretaria@bellidental.local');
+    await settle(harness);
+    findButton('Guardar cambios')?.click();
+    await settle(harness);
+
+    const updateRequest = httpMock.expectOne({
+      method: 'PUT',
+      url: '/api/v1/users/22222222-2222-2222-2222-222222222222',
+    });
+    expect(updateRequest.request.body).toEqual({ email: 'secretaria@bellidental.local' });
+    updateRequest.flush(
+      {
+        success: false,
+        message: "El email 'secretaria@bellidental.local' ya está en uso.",
+        data: null,
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+    await settle(harness);
+
+    expect(harness.fixture.nativeElement.textContent).toContain(
+      "El email 'secretaria@bellidental.local' ya está en uso."
+    );
+    expect(document.querySelector('#user-edit-email')).not.toBeNull();
+  });
 });
