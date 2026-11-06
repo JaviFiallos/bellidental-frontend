@@ -3,8 +3,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Page } from '../../../../core/api/page';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { AuditEntry, AuditLogEntry } from '../../models/audit.models';
 import { User } from '../../models/user.models';
 import { AuditLogPage } from './audit-log.page';
@@ -58,6 +59,25 @@ async function settle(harness: RouterTestingHarness): Promise<void> {
   harness.detectChanges();
   await harness.fixture.whenStable();
   harness.detectChanges();
+}
+
+/** Abre la página, responde usuarios y auditoría para dejar la cabecera lista. */
+async function openAuditPage(httpMock: HttpTestingController): Promise<RouterTestingHarness> {
+  const harness = await RouterTestingHarness.create('/direccion/auditoria');
+  await settle(harness);
+
+  httpMock
+    .match('/api/v1/users')
+    .forEach((req) => req.flush({ success: true, message: 'OK', data: USERS_RESPONSE }));
+  httpMock
+    .expectOne((req) => req.url === '/api/v1/audit')
+    .flush({ success: true, message: 'OK', data: AUDIT_PAGE_RESPONSE });
+  await settle(harness);
+  return harness;
+}
+
+function exportButton(harness: RouterTestingHarness): HTMLButtonElement {
+  return harness.fixture.nativeElement.querySelector('.page-header__actions button') as HTMLButtonElement;
 }
 
 describe('AuditLogPage', () => {
@@ -143,5 +163,75 @@ describe('AuditLogPage', () => {
 
     const text = harness.fixture.nativeElement.textContent as string;
     expect(text).toContain('El rango de fechas no puede superar 92 días');
+  });
+
+  it('clic en "Exportar datos" → GET /api/v1/admin/export en blob → se descarga el ZIP con su nombre y se ve el toast de éxito', async () => {
+    const harness = await openAuditPage(httpMock);
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    const revokeObjectUrl = vi.fn();
+    URL.createObjectURL = vi.fn(() => 'blob:bellidental-export');
+    URL.revokeObjectURL = revokeObjectUrl;
+
+    const downloadedNames: string[] = [];
+    const recordDownload = (event: Event): void => {
+      const target = event.target;
+      if (target instanceof HTMLAnchorElement && target.hasAttribute('download')) {
+        downloadedNames.push(target.download);
+        event.preventDefault();
+      }
+    };
+    document.addEventListener('click', recordDownload, true);
+
+    try {
+      exportButton(harness).click();
+      await settle(harness);
+
+      const exportReq = httpMock.expectOne('/api/v1/admin/export');
+      expect(exportReq.request.method).toBe('GET');
+      expect(exportReq.request.responseType).toBe('blob');
+      exportReq.flush(new Blob(['zip']), {
+        headers: {
+          'Content-Disposition': 'attachment; filename="bellidental-export-20261106-1015.zip"',
+        },
+      });
+      await settle(harness);
+
+      expect(downloadedNames).toEqual(['bellidental-export-20261106-1015.zip']);
+      await new Promise((resolve) => setTimeout(resolve));
+      expect(revokeObjectUrl).toHaveBeenCalledWith('blob:bellidental-export');
+      expect(TestBed.inject(NotificationService).toasts()).toContainEqual(
+        expect.objectContaining({ type: 'success', message: 'Exportación descargada.' })
+      );
+      expect(exportButton(harness).disabled).toBe(false);
+    } finally {
+      document.removeEventListener('click', recordDownload, true);
+      URL.createObjectURL = originalCreateObjectUrl;
+      URL.revokeObjectURL = originalRevokeObjectUrl;
+    }
+  });
+
+  it('respuesta 403 al exportar → se ve el toast "Solo el director puede exportar los datos."', async () => {
+    const harness = await openAuditPage(httpMock);
+
+    exportButton(harness).click();
+    await settle(harness);
+
+    const exportReq = httpMock.expectOne('/api/v1/admin/export');
+    exportReq.flush(
+      new Blob([JSON.stringify({ success: false, message: 'Acceso denegado', data: null })], {
+        type: 'application/json',
+      }),
+      { status: 403, statusText: 'Forbidden' }
+    );
+    await settle(harness);
+
+    expect(TestBed.inject(NotificationService).toasts()).toContainEqual(
+      expect.objectContaining({
+        type: 'error',
+        message: 'Solo el director puede exportar los datos.',
+      })
+    );
+    expect(exportButton(harness).disabled).toBe(false);
   });
 });

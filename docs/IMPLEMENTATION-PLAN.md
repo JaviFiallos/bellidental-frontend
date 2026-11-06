@@ -1042,6 +1042,7 @@ incisal (`SurfaceLabelResolver`).
 | `POST /payments/{id}/void` (`BILLING_CREATE`) | body `{ voidReason }` (obligatorio, 400) → `Payment` con `voided: true` (ya anulado → 409) |
 | `GET /payments/{id}/receipt` (`BILLING_READ`) | binario `application/pdf` A5 (sin `ApiResponse`; 404 JSON si no existe) |
 | `GET /audit/{entity}/{id}` (ADMIN; backend 013) | `[{ revision, at (Instant UTC, "…Z"), userId, username (null = proceso sin usuario), type ADD/MOD/DEL, changes[{ field (nombre Java: "chiefComplaint", "voidedAt"…), oldValue, newValue }] }]` (texto; de la más antigua a la más reciente; entidad desconocida → 404; registro sin historial → `[]`) |
+| `GET /admin/export` (ADMIN; backend 018d) | binario `application/zip` (sin `ApiResponse`): un CSV por tabla + `README.txt`; nombre en `Content-Disposition: attachment; filename="bellidental-export-<yyyyMMdd-HHmm>.zip"` (401/403 con JSON `ApiResponse`) |
 | `GET /dashboard/summary?from&to` (ADMIN; backend 020) | `{ from, to, patients{ totalActive, newInRange }, appointments{ total, byStatus{PENDING,CONFIRMED,ATTENDED,CANCELLED,NO_SHOW,RESCHEDULED}, noShowRate (0–100, 1 decimal), completedEncounters }, billing{ collected, byMethod{EFECTIVO,TRANSFERENCIA,TARJETA}, outstandingBalance }, topTreatments[{ code, name, quantity, amount }] (≤ 5), byProfessional[{ professionalId, name, encounters, revenue }], byChannel[{ source RECEPTION/PROFESSIONAL/BOT/WALK_IN, appointments }] }` |
 | `GET /users` · `GET /users/{id}` (ADMIN; backend 019) | `User { id, username, email, active, lastLoginAt, createdAt, roles[] }` (lista: todas las cuentas sin borrado lógico, por `createdAt` desc; sin `isSystem` ni profesional [G-12]) |
 | `POST /users` · `PUT /users/{id}/roles` · `POST /users/{id}/deactivate` · `/activate` | body `{ email, username?, temporaryPassword, roles[] }` → 201 `User` · `{ roles[] }` → `User` · sin body → `User` |
@@ -1168,6 +1169,7 @@ Al redactar cada tarea Claude confirma el DTO si el backend cambió desde esta t
 | 013d | Medicamentos y posologías: página de administración | 013b · backend 028 | Aprobada (2026-10-24) |
 | 013e | Receta: agregar medicamento que falta y guardar posología como plantilla | 013d | Aprobada (2026-10-24) |
 | 005c | Pacientes: lista de últimos atendidos y últimos registrados | 005b · backend 029 | Aprobada (2026-10-25) |
+| 029 | Dirección: botón «Exportar datos» (ZIP de CSV) en Auditoría | 017b · backend 018d | Aprobada (2026-11-06, ejecutó Haiku) |
 
 Estados: — (sin redactar) · Redactada · En corrección · Aprobada · Commit `<hash>`.
 Ruta crítica para la tesis (TGA): 001 → 002a → 002b → 003a → 003b → 003c → 004a → 004b → 007 → 008 → 009/010 → 012a → 012b → 013a → 013b → 015a → 015b.

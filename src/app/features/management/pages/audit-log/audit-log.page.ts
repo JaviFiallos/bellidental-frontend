@@ -9,8 +9,10 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Download } from 'lucide-angular';
 import { map } from 'rxjs';
 import { ClinicClock } from '../../../../core/services/clinic-clock.service';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { PageHeaderComponent } from '../../../../shared/components/page-header/page-header.component';
 import {
   AuditFiltersComponent,
@@ -27,6 +29,7 @@ import {
 import { AuditEntityName, AuditLogEntry } from '../../models/audit.models';
 import { AuditHistoryDialogService } from '../../services/audit-history-dialog.service';
 import { AuditLogStore } from '../../services/audit-log.store';
+import { DataExportStore } from '../../services/data-export.store';
 
 @Component({
   selector: 'bd-audit-log-page',
@@ -34,17 +37,30 @@ import { AuditLogStore } from '../../services/audit-log.store';
   imports: [
     AuditFiltersComponent,
     AuditTimelineComponent,
+    IconComponent,
     PageHeaderComponent,
     StatsPeriodBarComponent,
   ],
-  providers: [AuditLogStore],
+  providers: [AuditLogStore, DataExportStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="audit-log-page">
       <bd-page-header
         title="Auditoría"
         subtitle="Registro de actividad y cambios del sistema"
-      />
+      >
+        <button
+          type="button"
+          class="btn btn-outline"
+          [disabled]="exportStore.exporting()"
+          [attr.aria-busy]="exportStore.exporting() ? 'true' : null"
+          title="ZIP con un CSV por tabla (Excel, LibreOffice)"
+          (click)="exportStore.export()"
+        >
+          <bd-icon [name]="downloadIcon" [size]="18" />
+          <span>{{ exportStore.exporting() ? 'Exportando…' : 'Exportar datos' }}</span>
+        </button>
+      </bd-page-header>
 
       <bd-stats-period-bar
         [period]="period()"
@@ -96,6 +112,8 @@ import { AuditLogStore } from '../../services/audit-log.store';
 })
 export class AuditLogPage implements OnInit {
   readonly store = inject(AuditLogStore);
+  readonly exportStore = inject(DataExportStore);
+  readonly downloadIcon = Download;
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly clock = inject(ClinicClock);
